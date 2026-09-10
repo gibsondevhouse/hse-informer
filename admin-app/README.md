@@ -8,7 +8,7 @@ Use Node 22.13+ and npm. Run `npm install`, then `npm run dev`.
 
 ## Included
 
-- Site-scoped program summaries and a five-course management table. The knowledge-completion detail counts distinct people with at least one incomplete assignment, and opens the incomplete-assignment view.
+- Site-scoped program summaries and a five-course management table. The knowledge-completion detail counts distinct people with at least one incomplete assignment. Clicking the card replaces the assignment table with four circular status indicators: Not started, In progress, Knowledge Complete, and Overdue. Each shows its assignment count and percentage for the selected sites and opens the matching records. Overdue takes precedence over Not started/In progress, so the groups do not overlap. View assignment records restores the full table.
 - Assignment filters, learner records, editable deadlines, and ascending/descending sorting by learner, site, course, assignment reason, displayed status, and due date. Fixed column proportions keep sorting and pagination from changing the layout. Sorting covers the full filtered set before pagination and does not rewrite saved records.
 - Course detail panels with all 48 lesson titles and local instruction outlines.
 - A Preview training action beside the Respiratory Protection title, opening a separate learner preview while preserving the admin page.

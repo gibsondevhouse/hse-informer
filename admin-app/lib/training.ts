@@ -250,6 +250,37 @@ export function scopedAssignments(records: Assignment[], siteId: string) {
 export function isOverdue(record: Assignment) {
   return record.status !== 'Knowledge Complete' && record.due < DEMO_DATE;
 }
+export const assignmentStatuses = [
+  { key: 'not-started', label: 'Not started' },
+  { key: 'in-progress', label: 'In progress' },
+  { key: 'complete', label: 'Knowledge Complete' },
+  { key: 'overdue', label: 'Overdue' },
+] as const;
+export type AssignmentStatusKey = (typeof assignmentStatuses)[number]['key'];
+
+/** Overdue takes precedence so every assignment belongs to exactly one group. */
+export function assignmentStatus(record: Assignment): AssignmentStatusKey {
+  if (isOverdue(record)) return 'overdue';
+  if (record.status === 'Knowledge Complete') return 'complete';
+  return record.status === 'In progress' ? 'in-progress' : 'not-started';
+}
+
+export function summarizeAssignmentStatuses(records: Assignment[]) {
+  const counts: Record<AssignmentStatusKey, number> = {
+    'not-started': 0,
+    'in-progress': 0,
+    complete: 0,
+    overdue: 0,
+  };
+  for (const record of records) counts[assignmentStatus(record)] += 1;
+  return assignmentStatuses.map((status) => ({
+    ...status,
+    count: counts[status.key],
+    percent: records.length
+      ? Math.round((counts[status.key] / records.length) * 100)
+      : 0,
+  }));
+}
 export function isDueSoon(record: Assignment) {
   return (
     record.status !== 'Knowledge Complete' &&

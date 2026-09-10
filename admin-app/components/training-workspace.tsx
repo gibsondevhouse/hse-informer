@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import Link from 'next/link';
 import './training-summary.css';
+import { CompletionBreakdown } from '@/components/completion-breakdown';
 import {
   ArrowDown,
   ArrowUp,
@@ -90,17 +91,20 @@ import {
   formatDate,
   isAssignment,
   sortAssignments,
+  assignmentStatus,
+  assignmentStatuses,
   STORAGE_KEY,
   DEMO_DATE,
   type Assignment,
   type Course,
   type AssignmentSort,
   type AssignmentSortKey,
+  type AssignmentStatusKey,
 } from '@/lib/training';
 
 const courseIcons = [Wind, LockKeyhole, Layers3, FlaskConical, BookOpen];
 type View = 'programs' | 'assignments' | 'sites' | 'library';
-type StatusFilter = 'all' | 'overdue' | 'due' | 'complete' | 'open';
+type StatusFilter = 'all' | 'due' | 'open' | AssignmentStatusKey;
 
 const assignmentSortLabels: Record<AssignmentSortKey, string> = {
   learner: 'Learner',
@@ -313,6 +317,9 @@ function Navigation({
 
 export default function TrainingWorkspace() {
   const [view, setView] = useState<View>('programs');
+  const [assignmentPanel, setAssignmentPanel] = useState<
+    'records' | 'completion'
+  >('records');
   const [site, setSite] = useState('all');
   const [records, setRecords] = useState<Assignment[]>(seedAssignments);
   const [loaded, setLoaded] = useState(false);
@@ -403,6 +410,7 @@ export default function TrainingWorkspace() {
   };
   function navigate(next: View) {
     setView(next);
+    setAssignmentPanel('records');
     setQuery('');
     setFilter('all');
     setCourseFilter('all');
@@ -414,6 +422,10 @@ export default function TrainingWorkspace() {
     setFilter(status);
     setCourseFilter(courseId);
     setDetail(null);
+  }
+  function showCompletion() {
+    navigate('assignments');
+    setAssignmentPanel('completion');
   }
   function changeAssignmentSort(key: AssignmentSortKey) {
     setAssignmentSort((current) => ({
@@ -455,9 +467,8 @@ export default function TrainingWorkspace() {
           .toLowerCase()
           .includes(query.toLowerCase()) &&
         (filter === 'all' ||
-          (filter === 'overdue' && isOverdue(record)) ||
+          filter === assignmentStatus(record) ||
           (filter === 'due' && isDueSoon(record)) ||
-          (filter === 'complete' && record.status === 'Knowledge Complete') ||
           (filter === 'open' && record.status !== 'Knowledge Complete'))
       );
     }),
@@ -582,7 +593,10 @@ export default function TrainingWorkspace() {
               </button>
               <button
                 className="stat-card"
-                onClick={() => showAssignments('open')}
+                onClick={showCompletion}
+                aria-pressed={
+                  view === 'assignments' && assignmentPanel === 'completion'
+                }
               >
                 <span className="stat-label">
                   Knowledge completion
@@ -919,7 +933,15 @@ export default function TrainingWorkspace() {
             </>
           )}
 
-          {view === 'assignments' && (
+          {view === 'assignments' && assignmentPanel === 'completion' && (
+            <CompletionBreakdown
+              records={scoped}
+              onSelect={showAssignments}
+              onBack={() => showAssignments()}
+            />
+          )}
+
+          {view === 'assignments' && assignmentPanel === 'records' && (
             <section className="panel">
               <div className="panel-heading">
                 <div>
@@ -966,10 +988,12 @@ export default function TrainingWorkspace() {
                   }}
                   options={[
                     { value: 'all', label: 'All statuses' },
-                    { value: 'overdue', label: 'Overdue' },
+                    ...assignmentStatuses.map((status) => ({
+                      value: status.key,
+                      label: status.label,
+                    })),
                     { value: 'due', label: 'Due in 30 days' },
                     { value: 'open', label: 'Open assignments' },
-                    { value: 'complete', label: 'Knowledge Complete' },
                   ]}
                 />
               </div>
