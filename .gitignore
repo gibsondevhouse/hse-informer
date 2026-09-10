@@ -1,0 +1,11 @@
+# Local metadata, credentials, and temporary files
+.DS_Store
+Thumbs.db
+*.pem
+.env*
+!.env.example
+**/__pycache__/
+*.pyc
+
+# The app's own .gitignore excludes dependencies and build/preview output.
+/admin-app/.git/

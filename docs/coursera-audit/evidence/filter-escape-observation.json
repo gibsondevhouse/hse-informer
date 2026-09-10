@@ -1,0 +1,16 @@
+{
+  "focusTag": "BODY",
+  "hiddenRoots": [
+    {
+      "ariaHidden": "true",
+      "id": "rendered-content",
+      "inert": false,
+      "tag": "DIV"
+    }
+  ],
+  "viewport": {
+    "clientWidth": 390,
+    "scrollWidth": 390,
+    "width": 390
+  }
+}

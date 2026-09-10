@@ -1,0 +1,540 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HSE Informer — UI reference & component guide</title>
+<meta name="description" content="An evidence-backed Coursera UI audit and component style guide for the HSE Informer web app.">
+<link rel="stylesheet" href="hse-tokens.css">
+<link rel="stylesheet" href="style-guide.css">
+</head>
+<body class="hse-surface">
+<a class="skip" href="#main">Skip to guide</a>
+<aside class="guide-nav" aria-label="Guide navigation">
+ <a class="wordmark" href="#overview"><svg width="32" height="36" viewBox="0 0 32 36" fill="none" aria-hidden="true"><path d="M16 2 29 7v12c0 7-7 12-13 15C10 31 3 26 3 19V7L16 2Z" stroke="currentColor" stroke-width="2"/><path d="M10 18h12M16 12v12" stroke="currentColor" stroke-width="2"/></svg><span>HSE Informer<small>Interface reference / 01</small></span></a>
+ <p class="nav-label">Design foundation</p>
+ <nav><a href="#overview" aria-current="location"><span>01</span> Direction</a><a href="#foundations"><span>02</span> Foundations</a><a href="#components"><span>03</span> Components</a><a href="#patterns"><span>04</span> HSE patterns</a><a href="#inventory"><span>05</span> Component contracts</a><a href="#audit"><span>06</span> Audit findings</a><a href="#evidence"><span>07</span> Evidence & sources</a></nav>
+ <div class="nav-bottom"><span class="status-dot"></span> Version 1.0 <p>Observed September 7, 2026<br>Light theme · Desktop to mobile</p><a href="audit-report.md">Read the full audit ↗</a></div>
+</aside>
+<div class="guide-body">
+<header class="guide-top"><span>DESIGN SYSTEM / RESEARCH REFERENCE</span><a href="README.md">Package index <span aria-hidden="true">↗</span></a></header>
+<main id="main">
+<section id="overview" class="section intro">
+ <p class="eyebrow">Coursera benchmark → HSE Informer</p>
+ <h1>A clear interface for<br><span>consequential learning.</span></h1>
+ <p class="intro-copy">A component and styling reference grounded in Coursera’s live experience, translated for HSE training, qualification, and evidence.</p>
+ <div class="intro-meta"><span>32 component contracts</span><span>18 evidence captures</span><span>4 viewport samples</span></div>
+ <div class="decision"><strong>The design decision</strong><p>Adopt the clear hierarchy, prominent search, consistent cards, and visible source attribution. Add explicit qualification stages, readable operational metadata, and dependable recovery states.</p></div>
+ <div class="overview-grid">
+  <figure class="reference-image"><a href="evidence/04-search-desktop.png"><img src="evidence/04-search-desktop.png" alt="Coursera desktop search showing prominent search, filters, provider names and a four-column course grid" width="1440" height="1000"></a><figcaption><span class="tag measured">Observed</span> Coursera catalog · E04 · 1440px viewport</figcaption></figure>
+  <div class="principles"><h2>Familiar patterns.<br>Precise meaning.</h2><div><b>01</b><p><strong>Make the next action obvious</strong><br>Search, discover, learn, then verify the next required step.</p></div><div><b>02</b><p><strong>Show the basis for trust</strong><br>Provider, applicability, content version, reviewer, and evidence.</p></div><div><b>03</b><p><strong>Keep completion and authorization distinct</strong><br>Knowledge can be complete while practical evaluation remains pending.</p></div></div>
+ </div>
+ <p class="scope-note">Scope: signed-in discovery, course detail, navigation, filters, and an empty learning workspace. Anonymous and peer pages received a public content review. Dark mode, checkout, authenticated course playback, and full assistive-technology testing were not exercised. This is a design reference, not a conformance certification or production LMS.</p>
+</section>
+
+<section id="foundations" class="section">
+ <div class="section-heading"><div><p class="eyebrow">02 / Foundations</p><h2>Color, type, space.</h2></div><a class="text-link" href="design-tokens.json">Structured tokens ↗</a></div>
+ <div class="legend"><span class="tag measured">M · Measured</span><span class="tag proposed">R · Recommended for HSE</span><span class="tag unverified">U · Not verified</span></div>
+ <p>The names below are descriptive audit labels. HSE tokens are versioned recommendations; Coursera’s internal token names were not extracted.</p>
+ <h3>Core palette <span class="tag measured">M</span></h3>
+ <div class="swatches" id="core-swatches"></div>
+ <div class="two-col foundation-split"><div><h3>Semantic colors <span class="tag proposed">R</span></h3><div class="semantic-list"><div class="semantic info"><strong>Information</strong><code>#0048B1 / #F0F6FF</code></div><div class="semantic success"><strong>Success</strong><code>#166534 / #ECFDF3</code></div><div class="semantic warning"><strong>Warning</strong><code>#854D0E / #FFF8E6</code></div><div class="semantic danger"><strong>Danger</strong><code>#B42318 / #FFF1F0</code></div></div><p class="small muted">Every status needs text. These HSE semantic pairs all exceed 4.5:1 in the supplied contrast calculation.</p></div><div><h3>Contrast is a usage rule</h3><div class="contrast-big"><strong>6.44<span>:1</span></strong><p>White text on action blue<br><code>#FFFFFF on #0056D2</code></p></div><p>Coursera’s pale borders are useful for grouping. HSE inputs use a stronger <code>#687994</code> boundary, measured at 4.42:1 on white.</p><a href="contrast-results.json">See all 16 contrast checks ↗</a></div></div>
+ <div class="type-block"><div><p class="eyebrow">Typography</p><h3>Source Sans 3</h3><p>Proposed HSE font, bundled locally.<br>Coursera was measured using <strong>Source Sans Pro</strong>.</p><p class="small muted">400 body · 600 headings and actions · 700 emphasis<br>16px root · rem units · 68ch maximum prose</p><a href="assets/OFL.txt">Font license ↗</a></div><div class="type-scale"><div><span>Display · 44 / 52</span><p class="display-sample">Build safer capability.</p></div><div><span>Page title · 32 / 40</span><p class="title-sample">Your learning, in context</p></div><div><span>Section · 24 / 32</span><p class="section-sample">Required qualifications</p></div><div><span>Body · 16 / 24</span><p>Complete the site addendum before requesting a practical evaluation.</p></div><div><span>Metadata · 14 / 20</span><p class="small">Version 2.1 · 20 minutes · Site instruction required</p></div></div></div>
+ <div class="two-col"><div><h3>Spacing <span class="tag proposed">R</span></h3><div class="spacing-scale" id="spacing-scale"></div><p class="small muted">4px base · 16px card padding · 24px groups · 32–48px sections</p></div><div><h3>Shape and elevation</h3><div class="shape-samples"><div class="shape control">8px<br><small>Controls · M</small></div><div class="shape card-shape">16px<br><small>Cards · M</small></div><div class="shape raised">Raised<br><small>Overlay · R</small></div></div><p class="small muted">Flat surfaces are the default. Elevation describes a floating layer or meaningful interaction, not every container.</p></div></div>
+ <div class="responsive-rules"><h3>Responsive composition <span class="tag proposed">R</span></h3><div><article><strong>320–639px</strong><p>One column, 16px gutters. Wrap applied filters. Keep status and restrictions visible.</p></article><article><strong>640–959px</strong><p>Two columns where cards fit. 24px gutters. Move supporting rails below or into drawers.</p></article><article><strong>960–1279px</strong><p>Allow main plus rail when main retains 600px. Otherwise stack by content fit.</p></article><article><strong>1280px+</strong><p>Up to four catalog columns, 1280px max content. Reading text remains at 68ch.</p></article></div></div>
+</section>
+
+<section id="components" class="section">
+ <div class="section-heading"><div><p class="eyebrow">03 / Components</p><h2>Consistent actions. Visible states.</h2></div><span class="tag proposed">HSE specimens</span></div>
+ <p>Interact with these local examples. Demo changes remain in this page and do not create learner or compliance records.</p>
+ <article class="specimen"><div class="specimen-title"><h3>Buttons</h3><code>44px default / 48px coarse pointer</code></div><div class="button-row"><button class="hse-button" data-demo="Primary action">Resume course</button><button class="hse-button secondary" data-demo="Secondary action">View evidence</button><button class="hse-button tertiary" data-demo="Tertiary action">Save for later</button><button class="hse-button danger" data-demo="Destructive style only">Revoke authorization</button><button class="hse-button" disabled>Unavailable</button><button class="hse-button secondary" id="loading-demo">Test loading state</button></div><div class="state-row"><span><i class="state-dot default"></i>Default</span><span><i class="state-dot hover"></i>Hover #0048B1</span><span><i class="state-dot active"></i>Active #003C94</span><span class="focus-sample">Keyboard focus · 3px</span><span>Disabled · native state</span></div><p class="specimen-note">Use an anchor to navigate and a button to change state. A destructive action must identify the person, scope, and consequence before confirmation.</p></article>
+ <div class="two-col"><article class="specimen"><div class="specimen-title"><h3>Form field and validation</h3><span class="tag proposed">C15</span></div><form id="field-demo" novalidate><label for="addendum-title">Site addendum title <span class="required">(required)</span></label><input class="hse-input" id="addendum-title" name="title" required placeholder="e.g. Warehouse traffic plan" aria-describedby="title-helper"><p id="title-helper" class="field-helper">Use a name that identifies the site instruction.</p><p class="field-error" id="title-error" hidden>Enter a title before saving the draft.</p><button class="hse-button" type="submit">Save example draft</button><p class="field-status" id="field-status" role="status"></p></form></article><article class="specimen"><div class="specimen-title"><h3>Choice controls</h3><span class="tag proposed">C16</span></div><fieldset><legend>Required evidence</legend><label class="choice"><input type="checkbox" checked> Site addendum reviewed</label><label class="choice"><input type="checkbox"> Practical evaluation recorded</label></fieldset><fieldset><legend>Delivery format</legend><label class="choice"><input type="radio" name="delivery" value="online" checked> Online learning</label><label class="choice"><input type="radio" name="delivery" value="blended"> Online and on-site instruction</label></fieldset></article></div>
+ <article class="specimen"><div class="specimen-title"><h3>Status is an explicit statement</h3><span class="tag proposed">C17 / P01</span></div><div class="badge-row"><span class="hse-badge">Not assessed</span><span class="hse-badge info">In progress</span><span class="hse-badge success">✓ Knowledge Complete</span><span class="hse-badge warning">Practical evaluation pending</span><span class="hse-badge danger">Not authorized</span></div><p class="specimen-note">Access, progress, qualification, and validity are different dimensions. The green knowledge milestone never overrides a pending practical evaluation.</p></article>
+ <div class="two-col"><article class="notice info"><span aria-hidden="true">i</span><div><h3>Site instruction is part of this path</h3><p>Review the local addendum before requesting evaluation.</p></div></article><article class="notice warning"><span aria-hidden="true">!</span><div><h3>Authorization is pending</h3><p>Your knowledge assessment is complete. A practical evaluation is still required.</p></div></article></div>
+ <article class="specimen"><div class="specimen-title"><h3>Accordion</h3><span class="tag proposed">C14</span></div><details class="hse-accordion"><summary><span>Site-specific instruction<small>Required prerequisite · View details</small></span></summary><div><p>Include the local procedures, equipment, and contacts identified by the qualification plan.</p><p class="small muted">A critical prerequisite remains named even when the details are collapsed. Preview and Start actions belong beside the trigger, not inside it.</p></div></details><details class="hse-accordion"><summary><span>Evidence and version history<small>Supporting information</small></span></summary><div><p>Retain the course version and site addendum used for the assignment. Historical records continue to reference those versions.</p></div></details></article>
+</section>
+
+<section id="patterns" class="section">
+ <div class="section-heading"><div><p class="eyebrow">04 / HSE patterns</p><h2>From discovery to evidence.</h2></div><span class="tag proposed">Illustrative data</span></div>
+ <p>These examples combine the measured visual language with the training and qualification requirements in your product vision. All content and records below are fictional design specimens.</p>
+ <article class="workspace-example">
+ <div class="example-top"><span class="example-brand">HSE Informer <small>Learning catalog</small></span><span class="hse-badge">Example workspace</span></div>
+ <div class="example-content"><h3>Find the right learning.</h3><p class="muted">Explore instruction by topic. Applicability is determined by the employer’s qualification plan.</p>
+ <form class="catalog-toolbar" id="catalog-search" role="search"><div class="search-control"><label for="course-query" class="sr-only">Search example courses</label><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="10" r="6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="m15 15 6 6" stroke="currentColor" stroke-width="1.8"/></svg><input id="course-query" placeholder="Search courses or topics" type="search"><button class="hse-button" type="submit">Search</button></div><button class="hse-button secondary" type="button" id="filter-open">Filters <span id="filter-count">(0)</span></button></form>
+ <div class="result-toolbar"><p id="result-count" role="status">3 example courses</p><div><label for="sort-courses">Sort</label><select id="sort-courses"><option value="title">Title (A–Z)</option><option value="duration">Duration</option></select></div></div>
+ <div id="applied-filters" class="applied-filters"></div><div class="course-grid" id="course-grid"></div>
+ <div class="empty-state" id="catalog-empty" hidden><svg width="48" height="48" viewBox="0 0 48 48" aria-hidden="true"><circle cx="20" cy="20" r="12" stroke="currentColor" fill="none" stroke-width="2"/><path d="m29 29 13 13" stroke="currentColor" stroke-width="2"/></svg><h4>No courses match this search</h4><p>Try another topic or clear the current search and filters.</p><button class="hse-button secondary" id="clear-catalog" type="button">Clear search and filters</button></div></div></article>
+ <article class="qualification-example"><div class="qualification-head"><div><p class="eyebrow">Example qualification record</p><h3>Powered industrial truck operator</h3><p class="muted">Warehouse A · Truck type: counterbalance · Example version 2.1</p></div><span class="hse-badge warning">Not authorized — evaluation pending</span></div>
+ <div class="hse-tabs" role="tablist" aria-label="Qualification example"><button role="tab" id="tab-path" aria-controls="panel-path" aria-selected="true" tabindex="0">Learning path</button><button role="tab" id="tab-evidence" aria-controls="panel-evidence" aria-selected="false" tabindex="-1">Evidence record</button></div>
+ <div role="tabpanel" id="panel-path" aria-labelledby="tab-path" tabindex="0"><div class="progress-caption"><strong>2 of 4 example prerequisites recorded</strong><span>50%</span></div><progress max="4" value="2" aria-label="Example prerequisites recorded">2 of 4</progress><ol class="requirement-list"><li><span class="requirement-icon complete" aria-hidden="true">✓</span><div><strong>Knowledge Complete</strong><p>Assessment result retained with course version 2.1.</p></div><span class="hse-badge success">Complete</span></li><li><span class="requirement-icon complete" aria-hidden="true">✓</span><div><strong>Site Training Complete</strong><p>Warehouse traffic plan reviewed, addendum version 1.3.</p></div><span class="hse-badge success">Complete</span></li><li><span class="requirement-icon pending" aria-hidden="true">3</span><div><strong>Practical Evaluation</strong><p>An assigned evaluator must record the workplace evaluation.</p></div><span class="hse-badge warning">Pending</span></li><li><span class="requirement-icon" aria-hidden="true">4</span><div><strong>Employer authorization</strong><p>Available only after all applicable prerequisites are verified.</p></div><span class="hse-badge">Blocked</span></li></ol><p class="small muted">This example shows one conditional path. External Credential Verified is a separate supported milestone and is not mandatory for every qualification.</p></div>
+ <div role="tabpanel" id="panel-evidence" aria-labelledby="tab-evidence" tabindex="0" hidden><dl class="record-facts"><div><dt>Record</dt><dd>DEMO-0042</dd></div><div><dt>Course version</dt><dd>2.1</dd></div><div><dt>Site addendum</dt><dd>1.3</dd></div><div><dt>Authorization</dt><dd>Not authorized</dd></div></dl><ol class="timeline"><li><strong>Knowledge assessment recorded</strong><p>Example record · September 4, 2026 · 09:10 EDT</p></li><li><strong>Site addendum reviewed</strong><p>Example record · September 5, 2026 · 14:35 EDT</p></li><li><strong>Practical evaluation pending</strong><p>Awaiting the assigned evaluator. No authorization event recorded.</p></li></ol></div>
+ </article>
+ <article class="specimen"><div class="specimen-title"><h3>Evaluator record table</h3><span class="tag proposed">C22 / C26</span></div><p class="small muted">A table supports comparing records. On narrow screens, only this labelled region scrolls.</p><div class="table-scroll" role="region" aria-label="Example training records, horizontally scrollable" tabindex="0"><table class="hse-table"><caption>Example training records — illustrative data</caption><thead><tr><th scope="col">Learning requirement</th><th scope="col">Version</th><th scope="col">Knowledge</th><th scope="col">Authorization</th><th scope="col">Evidence</th></tr></thead><tbody><tr><th scope="row">PIT operator · Warehouse A</th><td>2.1</td><td><span class="hse-badge success">Complete</span></td><td><span class="hse-badge warning">Evaluation pending</span></td><td><button class="hse-button tertiary" id="record-open">View record</button></td></tr><tr><th scope="row">Task-specific PPE · Mixing area</th><td>1.4</td><td><span class="hse-badge info">In progress</span></td><td>Not assessed</td><td>Awaiting evidence</td></tr></tbody></table></div></article>
+ <div class="two-col"><article class="empty-state small-empty"><h3>No assignments yet</h3><p>Your supervisor has not assigned learning for this workspace.</p><a class="hse-button secondary" href="#course-query" id="browse-demo">Browse example courses</a></article><article class="notice danger"><span aria-hidden="true">!</span><div><h3>Evidence could not be uploaded</h3><p>Your evaluation draft is saved. Try the upload again.</p><button class="hse-button secondary" id="retry-demo">Test retry feedback</button><p class="small" id="retry-status" role="status"></p></div></article></div>
+</section>
+
+<section id="inventory" class="section"><div class="section-heading"><div><p class="eyebrow">05 / Component contracts</p><h2>The implementation checklist.</h2></div><a href="components.json">Download inventory ↗</a></div><p>Every component specifies anatomy, states, behavior, accessibility, and source coverage. Extensions for evidence and qualification are explicitly labelled.</p><div class="inventory-controls"><label for="component-query">Find a component</label><input class="hse-input" type="search" id="component-query" placeholder="e.g. dialog, evidence, loading"><p id="component-count" role="status">32 component contracts</p></div><div id="component-inventory" class="component-inventory"></div><p id="component-empty" hidden>No component contracts match that search.</p></section>
+
+<section id="audit" class="section"><div class="section-heading"><div><p class="eyebrow">06 / Audit findings</p><h2>What to retain. What to improve.</h2></div><a href="audit-report.md">Full audit & acceptance gates ↗</a></div><div class="findings-grid"><article class="finding"><span class="finding-level">Keep · Observed</span><h3>Search stays in context</h3><p>Queries persist into the result field and URL. Filters expose a selection count and state.</p><a href="evidence/04-search-desktop.png">E04 · Catalog ↗</a></article><article class="finding"><span class="finding-level">Keep · Observed</span><h3>Cards adapt to mobile</h3><p>Four desktop columns become two on tablet and compact thumbnail rows on mobile.</p><a href="evidence/07-search-mobile.png">E07 · Mobile ↗</a></article><article class="finding caution"><span class="finding-level">P1 · Intermittent observation</span><h3>Close every layer cleanly</h3><p>One filter dismissal left the main root hidden from accessibility with focus on BODY. Later retests passed. Test asynchronous close paths explicitly.</p><a href="evidence/filter-escape-observation.json">First observation ↗</a> · <a href="evidence/filter-escape-repeat.json">Retest ↗</a></article><article class="finding"><span class="finding-level">P2 · Readability</span><h3>Increase useful metadata</h3><p>Coursera card metadata measured 12/18px. HSE uses 14/20px and keeps scope and restrictions fully visible.</p><a href="evidence/measurements.json">Measurements ↗</a></article><article class="finding"><span class="finding-level">P2 · Recovery</span><h3>Explain substituted results</h3><p>A single unmatched query still produced broad courses. HSE should distinguish exact results from suggestions and provide clear recovery.</p><a href="evidence/16-unmatched-query.png">E16 · Search probe ↗</a></article><article class="finding"><span class="finding-level">P2 · Task focus</span><h3>Keep help under user control</h3><p>The assistant rail was expanded on course arrival in this session. HSE assistance starts collapsed with an explicit restore control.</p><a href="evidence/12a-course-ai-panel.png">E12a · Assistant rail ↗</a></article></div>
+ <div class="acceptance"><h3>Required before production release</h3><ul><li>Keyboard and screen-reader task completion; modal focus cleanup.</li><li>320px reflow, 200% zoom, real mobile touch and readable long labels.</li><li>Actual rendered contrast; text and icons for status, not color alone.</li><li>Loading, empty, offline, denied, validation, retry and conflict states.</li><li>Versioned evidence and server-confirmed qualification transitions.</li><li>Representative workers can distinguish knowledge completion from authorization.</li></ul><p class="small muted">WCAG 2.2 AA target-size minimum is 24px or an applicable exception. HSE’s 44px / 48px policy is a stronger design choice. Prototype checks do not certify the final app.</p><a href="validation.md">Read package validation ↗</a></div>
+</section>
+
+<section id="evidence" class="section"><div class="section-heading"><div><p class="eyebrow">07 / Evidence & sources</p><h2>A traceable design reference.</h2></div><a href="evidence/index.md">Evidence register ↗</a></div><p>Open a capture for its full detail. Source appearances are a point-in-time sample and may differ by account, region, or experiment.</p><div class="evidence-gallery" id="evidence-gallery"></div><div class="sources"><h3>Market and standards basis</h3><div><p><a href="https://www.coursera.org/">Coursera</a><br>Primary live UI benchmark; public acquisition structure.</p><p><a href="https://www.edx.org/">edX</a> · <a href="https://www.futurelearn.com/">FutureLearn</a><br>Limited public structure comparison: topics, provider identity, program types, outcomes.</p><p><a href="https://designsystem.digital.gov/components/search/">USWDS Search</a> · <a href="https://designsystem.digital.gov/components/card/">Cards</a> · <a href="https://designsystem.digital.gov/components/table/">Tables</a><br>Published component usage guidance.</p><p><a href="https://www.w3.org/TR/WCAG22/">WCAG 2.2</a> · <a href="https://www.w3.org/WAI/ARIA/apg/patterns/dialog-modal/">WAI Dialog</a> · <a href="https://www.w3.org/WAI/ARIA/apg/patterns/tabs/">WAI Tabs</a><br>Accessibility requirements and interaction patterns.</p></div></div><p class="scope-note">This guide follows <a href="../vision/phases.txt">HSE Informer’s existing product vision</a>. Its domain requirements are treated as a product brief, not independently validated legal advice. Coursera artwork remains attributed research evidence and must not be reused as HSE production assets. No user study or market performance uplift is claimed.</p></section>
+</main><footer class="guide-footer"><strong>HSE Informer</strong><span>UI reference v1.0 · September 7, 2026</span><a href="hse-tokens.css">Implementation tokens ↗</a></footer>
+</div>
+
+<dialog id="filter-dialog" class="hse-dialog filter-dialog" aria-labelledby="filter-title"><form id="filter-form"><div class="dialog-head"><h2 id="filter-title">Filter example courses</h2><button class="close-button" type="button" data-close="filter-dialog" aria-label="Close filters">×</button></div><div class="dialog-content"><fieldset><legend>Topic</legend><label class="choice"><input type="checkbox" name="topic" value="Hazard communication"> Hazard communication</label><label class="choice"><input type="checkbox" name="topic" value="PPE"> PPE</label><label class="choice"><input type="checkbox" name="topic" value="Energy control"> Energy control</label></fieldset><p class="small muted">Selections are staged. Show results applies them; Cancel or Escape preserves the current filters.</p></div><div class="dialog-actions"><button class="hse-button" type="submit">Show results</button><button class="hse-button secondary" type="button" data-close="filter-dialog">Cancel</button><button class="hse-button tertiary" type="button" id="clear-draft">Clear selection</button></div></form></dialog>
+<dialog id="record-dialog" class="hse-dialog" aria-labelledby="record-title"><div class="dialog-head"><h2 id="record-title">Example evidence record</h2><button class="close-button" type="button" data-close="record-dialog" aria-label="Close record">×</button></div><div class="dialog-content"><p class="eyebrow">DEMO-0042 / Illustrative data</p><h3>PIT operator · Warehouse A</h3><dl class="record-facts"><div><dt>Course version</dt><dd>2.1</dd></div><div><dt>Site addendum</dt><dd>1.3</dd></div><div><dt>Knowledge</dt><dd>Complete</dd></div><div><dt>Practical evaluation</dt><dd>Pending</dd></div></dl><div class="notice warning"><span aria-hidden="true">!</span><div><h3>Not authorized</h3><p>This example has no recorded practical evaluation or employer authorization.</p></div></div></div><div class="dialog-actions"><button class="hse-button" type="button" data-close="record-dialog">Close record</button></div></dialog>
+<div id="demo-toast" class="demo-toast" role="status" aria-live="polite"></div>
+<script id="component-data" type="application/json">[
+  {
+    "id": "C01",
+    "name": "App shell",
+    "coverage": "Observed + HSE adaptation",
+    "evidence": "E01 / E04 / E07",
+    "anatomy": "Brand, primary destinations, catalog search, help, current context, account.",
+    "states": "Default, active destination, mobile navigation, loading context, access denied.",
+    "behavior": "HSE: use a 64px starting header, stable navigation and a visible organization/site context. Collapse navigation when it no longer fits.",
+    "accessibility": "Skip link, navigation labels, one main region, aria-current on the active route; preserve focus after navigation."
+  },
+  {
+    "id": "C02",
+    "name": "Mega menu and mobile navigation",
+    "coverage": "Observed + HSE adaptation",
+    "evidence": "E02 / E09",
+    "anatomy": "Desktop grouped headings and links; mobile nested rows with chevrons, Back and Close.",
+    "states": "Closed, open, focused, expanded subsection, current destination.",
+    "behavior": "HSE: ordinary navigation links in desktop disclosure; full-width mobile modal; do not hide essential destinations in unlabelled icons.",
+    "accessibility": "aria-expanded on disclosure, Escape closes, focus returns to opener. Mobile modal contains focus; navigation is not an ARIA application menu."
+  },
+  {
+    "id": "C03",
+    "name": "Breadcrumbs",
+    "coverage": "Observed + HSE adaptation",
+    "evidence": "E12 / E15",
+    "anatomy": "Ordered ancestor links, separators, current location.",
+    "states": "Full, collapsed ancestors, keyboard focused.",
+    "behavior": "HSE: readable path with current page as text; keep a meaningful parent on mobile and expose hidden ancestors.",
+    "accessibility": "Label the navigation Breadcrumbs; separators decorative; current page aria-current=page."
+  },
+  {
+    "id": "C04",
+    "name": "Search field and suggestions",
+    "coverage": "Observed + HSE adaptation",
+    "evidence": "E03 / E04",
+    "anatomy": "Label, text input, clear action, submit, popup with suggestion types.",
+    "states": "Empty, entered, focused, suggestions, loading, no matches, request failure.",
+    "behavior": "HSE: 44px minimum / 48px touch, preserved query, labelled result types; keyboard Enter searches, Escape closes popup. Exact and suggested results are distinct.",
+    "accessibility": "Combobox semantics only when implemented; listbox options, aria-expanded/controls/activedescendant; announce result changes politely."
+  },
+  {
+    "id": "C05",
+    "name": "Filter toolbar and chips",
+    "coverage": "Observed + HSE adaptation",
+    "evidence": "E04 / E06 / E07",
+    "anatomy": "Filter action with count, facet triggers, removable applied chips, Clear all, result count.",
+    "states": "Default, selected, open facet, focused, no results.",
+    "behavior": "HSE: keep count visible and wrap applied chips below the toolbar. An individual removal preserves all other filters.",
+    "accessibility": "Removal buttons name the filter; do not nest buttons inside buttons; selection cannot depend on color alone."
+  },
+  {
+    "id": "C06",
+    "name": "Filter drawer",
+    "coverage": "Observed + HSE adaptation",
+    "evidence": "E05 / E08",
+    "anatomy": "Title, Close, scrollable fieldsets/accordions, count, Clear, Show results.",
+    "states": "Open, draft selection, applying, empty selection, error, dismissed.",
+    "behavior": "HSE: 360px desktop starting width / full viewport mobile. Stage changes and commit on Show results; Escape and Cancel discard drafts. This differs from observed Coursera immediate URL updates.",
+    "accessibility": "Modal dialog name, initial focus, Tab containment, Escape, restore trigger. Clear inert/aria-hidden on every close path including in-flight updates."
+  },
+  {
+    "id": "C07",
+    "name": "Buttons and action groups",
+    "coverage": "Observed + HSE adaptation",
+    "evidence": "E01 / E12",
+    "anatomy": "Verb label, optional leading/trailing icon, optional pending indicator.",
+    "states": "Primary, secondary, tertiary, icon, destructive; default, hover, active, focus, disabled, loading.",
+    "behavior": "HSE: 44px default, 48px coarse pointer, 36px compact only for deliberate dense desktop contexts. One primary action per task group. Preserve button width during loading.",
+    "accessibility": "Native button for mutation, anchor for navigation. Accessible name on icon actions. Visible focus. Disable duplicate submission and announce completion."
+  },
+  {
+    "id": "C08",
+    "name": "Links and section navigation",
+    "coverage": "Observed + HSE adaptation",
+    "evidence": "E12 / E13",
+    "anatomy": "Descriptive label; optional external-destination cue; current section indicator.",
+    "states": "Default, hover, focus, active location, visited where appropriate.",
+    "behavior": "HSE: underline inline links. Sticky section anchors scroll to content and respect header offset; they do not masquerade as tab panels.",
+    "accessibility": "Accessible destination text; aria-current=location for current anchor. Keyboard focus cannot be covered by sticky bars."
+  },
+  {
+    "id": "C09",
+    "name": "Catalog card",
+    "coverage": "Observed + HSE adaptation",
+    "evidence": "E04 / E07 / card geometry",
+    "anatomy": "Optional image, owner, linked title, concise summary, duration/type, version, status.",
+    "states": "Default, hover, focus-within, saved, unavailable, image fallback.",
+    "behavior": "HSE: 16px corners/padding, 16:9 optional art, 14px metadata. Compact 64px image rows on mobile. Never truncate critical scope or restrictions.",
+    "accessibility": "One primary linked title plus sibling actions. No nested interactive elements. Avoid redundant image alt when the same title is adjacent."
+  },
+  {
+    "id": "C10",
+    "name": "Collections and pagination",
+    "coverage": "Observed + HSE adaptation",
+    "evidence": "E01 / E04",
+    "anatomy": "Section title, result count, card list, optional See all / pagination controls.",
+    "states": "First/last page, current page, more loading, empty collection, error.",
+    "behavior": "HSE: use grids/lists for assigned work; reserve carousels for optional discovery. Keep query, filters, page and scroll position on Back.",
+    "accessibility": "Label pagination and current page; expose list semantics; announce newly loaded range; all carousel content reachable without dragging."
+  },
+  {
+    "id": "C11",
+    "name": "Course detail header",
+    "coverage": "Observed + HSE adaptation",
+    "evidence": "E12 / E15",
+    "anatomy": "Breadcrumb, title, provider, outcomes, version, next action, scope.",
+    "states": "Available, assigned, in progress, unavailable, superseded version.",
+    "behavior": "HSE: 32/40px app title; 44/52 marketing display. Keep applicability/practical prerequisites near the main action; show the content version being used.",
+    "accessibility": "One descriptive H1; logical heading sequence; long titles wrap; CTA is present in the meaningful document order."
+  },
+  {
+    "id": "C12",
+    "name": "Summary facts",
+    "coverage": "Observed + HSE adaptation",
+    "evidence": "E12",
+    "anatomy": "Label/value groups for duration, level, modules and outcome type.",
+    "states": "Known, unknown, not applicable, warning/blocking.",
+    "behavior": "HSE: use a definition list; stack on mobile. Replace consumer ratings with verified scope/version facts when those better support the task.",
+    "accessibility": "Read label before value; explain unknowns; icons supplement text. Do not use unavailable values as zero."
+  },
+  {
+    "id": "C13",
+    "name": "Tabs",
+    "coverage": "Observed + HSE adaptation",
+    "evidence": "E17",
+    "anatomy": "Tablist, labelled tabs, active indicator, linked panel.",
+    "states": "Selected, unselected, keyboard focused, disabled if justified.",
+    "behavior": "HSE: Arrow keys/Home/End move focus; Enter/Space activates for manual tabs; activation and focus are distinct. My Learning showed manual-focus movement.",
+    "accessibility": "tablist/tab/tabpanel, aria-selected, roving tabindex, aria-controls and aria-labelledby; only relevant panel is exposed."
+  },
+  {
+    "id": "C14",
+    "name": "Accordion and syllabus",
+    "coverage": "Observed + HSE adaptation",
+    "evidence": "E13 / E14",
+    "anatomy": "Heading trigger, summary/duration, chevron, content region, separate Preview/Start action.",
+    "states": "Collapsed, expanded, focus, locked content with reason.",
+    "behavior": "HSE: Enter/Space toggles; group related secondary details. Blocking prerequisites remain visible in the summary. Never nest Preview inside the expansion button.",
+    "accessibility": "aria-expanded and aria-controls; meaningful headings and named region when useful; hide collapsed content from focus and accessibility."
+  },
+  {
+    "id": "C15",
+    "name": "Text input and textarea",
+    "coverage": "HSE extension; search input observed",
+    "evidence": "E03 / R",
+    "anatomy": "Visible label, optional helper, control, optional counter, inline error.",
+    "states": "Empty, filled, focus, read-only, disabled, invalid, pending save.",
+    "behavior": "HSE: 16px input text, 44px minimum; label above; preserve values after failure. Textarea grows or scrolls predictably.",
+    "accessibility": "Label association, required semantics, aria-invalid and describedby for errors; errors explain recovery rather than color alone."
+  },
+  {
+    "id": "C16",
+    "name": "Checkbox, radio, select and switch",
+    "coverage": "Observed controls + HSE extension",
+    "evidence": "E05 / E06",
+    "anatomy": "Labelled options grouped by a legend; helper and optional count.",
+    "states": "Unchecked/checked, indeterminate checkbox, focus, disabled, invalid.",
+    "behavior": "HSE: checkbox for independent multiple choices; radio for one choice; select for long simple choices; switch only for immediate on/off settings. Label row is the hit target.",
+    "accessibility": "Prefer native controls. Fieldset/legend, keyboard behavior, selected state announced; 44px label target. Counts are supplemental."
+  },
+  {
+    "id": "C17",
+    "name": "Badges and qualification states",
+    "coverage": "Observed badges + HSE extension",
+    "evidence": "E04 / P01",
+    "anatomy": "Explicit status text, optional icon, separate scope/expiry metadata.",
+    "states": "Not started, pending, complete, passed, authorized, expired, revoked, unknown.",
+    "behavior": "HSE: distinguish knowledge, site, practical, authorization and external credential milestones. All required gates must be met before authorization; missing data stays Unknown.",
+    "accessibility": "Text is mandatory; distinguish states beyond hue. Do not make a noninteractive tag look like a clickable filter."
+  },
+  {
+    "id": "C18",
+    "name": "Alerts and inline notices",
+    "coverage": "Observed + HSE adaptation",
+    "evidence": "E01 / E12a",
+    "anatomy": "Severity icon, concise title, explanation, recovery/help link, optional Close.",
+    "states": "Information, success, warning, error; dismissible or persistent.",
+    "behavior": "HSE: place task errors near task. A blocking warning names the missing prerequisite. Dismissible informational notices must not hide critical unresolved status.",
+    "accessibility": "role=alert only for urgent new failures; status/polite for routine updates. Visible title and text; close has an accessible name and target."
+  },
+  {
+    "id": "C19",
+    "name": "Progress and assigned-learning card",
+    "coverage": "HSE extension; populated Coursera card unverified",
+    "evidence": "E17 / P01",
+    "anatomy": "Assignment, due date, progress value, current module, next action, qualification status.",
+    "states": "Assigned, in progress, knowledge complete, blocked, overdue, stale save.",
+    "behavior": "HSE: exact progress value and last saved status; assigned work precedes discovery. Progress never authorizes a worker.",
+    "accessibility": "Native progress or progressbar with accessible value/name; text alternative; no rapid live announcements for every percentage."
+  },
+  {
+    "id": "C20",
+    "name": "Modal dialog",
+    "coverage": "Observed + HSE adaptation",
+    "evidence": "E05 / E08",
+    "anatomy": "Title, message/content, Close, primary and cancel actions.",
+    "states": "Opening, open, busy, validation error, cancelled, closed.",
+    "behavior": "HSE: use native dialog or tested primitive; width fits viewport; retain content on validation error; destructive actions name the exact object/scope.",
+    "accessibility": "Accessible name; modal focus containment; Escape; restore focus; background not interactive. Test with async content and route changes."
+  },
+  {
+    "id": "C21",
+    "name": "Contextual rail and assistant",
+    "coverage": "Observed + HSE adaptation",
+    "evidence": "E12 / E12a",
+    "anatomy": "Title, close/restore, supporting details or messages, citations, optional composer.",
+    "states": "Collapsed, expanded, loading, response, error, unavailable.",
+    "behavior": "HSE: collapsed by default; desktop rail only if main remains usable; mobile drawer. AI suggestions cannot approve evaluation or authorization.",
+    "accessibility": "Nonmodal rail uses complementary landmark and does not trap focus. Label AI responses; updates polite; composer named; no unsolicited focus stealing."
+  },
+  {
+    "id": "C22",
+    "name": "Data table and sorting",
+    "coverage": "HSE extension; not observed",
+    "evidence": "P01 / USWDS Table",
+    "anatomy": "Caption, column headers, sort control, rows, scope/status, row action, pagination.",
+    "states": "Default, sorted ascending/descending, selected rows, loading, empty, error.",
+    "behavior": "HSE: use records table for comparisons; label bulk scope; preserve sorting/filter state; allow local horizontal scroll when relationships require it.",
+    "accessibility": "Native table, th scope, aria-sort on sorted header, labelled region if scrollable. Avoid grid role without implementing its keyboard contract."
+  },
+  {
+    "id": "C23",
+    "name": "Qualification requirements",
+    "coverage": "HSE extension; not observed",
+    "evidence": "P01",
+    "anatomy": "Prerequisite label, state, evidence/version, responsible role, action, authorization summary.",
+    "states": "Not assessed, required, pending, satisfied, failed, not applicable, revoked.",
+    "behavior": "HSE: conditional requirement set from applicability model; show why blocked and who can resolve it. External credentials may satisfy a prerequisite; stages are not universally linear.",
+    "accessibility": "List semantics; explicit status and next action; status changes announced after save. Do not hide reasons in hover-only tooltips."
+  },
+  {
+    "id": "C24",
+    "name": "Evidence upload",
+    "coverage": "HSE extension; not observed",
+    "evidence": "P01",
+    "anatomy": "File picker, requirements, file list, progress, per-file result, remove/replace.",
+    "states": "Idle, choosing, uploading, uploaded, validation error, network failure, cancelled.",
+    "behavior": "HSE: state accepted types/size before selection; preserve draft on failure; preview file association and version before submission.",
+    "accessibility": "Keyboard-operable native file picker; drop area supplemental; accessible progress and per-file errors; no drag-only removal."
+  },
+  {
+    "id": "C25",
+    "name": "Evaluation and signoff",
+    "coverage": "HSE extension; not observed",
+    "evidence": "P01",
+    "anatomy": "Person/scope, rubric, evidence, evaluator, result, restrictions, review/submit.",
+    "states": "Draft, incomplete, ready for review, submitting, signed, rejected, superseded.",
+    "behavior": "HSE: explicit actor and scope; review consequential result; record server confirmation. Role enforcement is server-side, not inferred from enabled buttons.",
+    "accessibility": "Grouped inputs, error summary, labels, preserved values. Confirmation communicates exact consequence. Never silently overwrite a signed record."
+  },
+  {
+    "id": "C26",
+    "name": "Timeline and version record",
+    "coverage": "HSE extension; not observed",
+    "evidence": "P01",
+    "anatomy": "Event, actor, timestamp with zone, object/version, reason, evidence link.",
+    "states": "Current, historical, superseded, correction, unavailable evidence.",
+    "behavior": "HSE: append historical events; show current versus version-at-training; stable export identifiers; show missing data explicitly.",
+    "accessibility": "Ordered list with textual chronology; dates understandable without visual position; no color-only current-version indicator."
+  },
+  {
+    "id": "C27",
+    "name": "Empty, no results and access denied",
+    "coverage": "Observed empty + HSE extension",
+    "evidence": "E16 / E17",
+    "anatomy": "Contextual heading, explanation, permitted next action, optional illustration.",
+    "states": "First use, zero assignments, no matching filters, no permission, deleted/unavailable.",
+    "behavior": "HSE: distinguish absence from failed retrieval. No matches offers Clear filters; no assignments explains whether to browse or ask a supervisor.",
+    "accessibility": "Announce updates in status; heading meaningful; recovery is keyboard reachable; decorative art has empty alt."
+  },
+  {
+    "id": "C28",
+    "name": "Loading, failure, offline and conflict",
+    "coverage": "HSE extension; not observed",
+    "evidence": "R",
+    "anatomy": "Stable content placeholder, state text, retry/reconnect/resolve action, last saved time.",
+    "states": "Initial loading, refreshing, partial failure, offline, stale, save conflict.",
+    "behavior": "HSE: preserve last known content with stale label; never show completion until server confirms. Retry must not duplicate submissions.",
+    "accessibility": "aria-busy on relevant region; skeleton hidden from AT; one polite status; reduced motion; no indefinite spinner without recovery."
+  },
+  {
+    "id": "C29",
+    "name": "Toast and save feedback",
+    "coverage": "HSE extension; not observed",
+    "evidence": "R",
+    "anatomy": "Result text, optional Undo/View action, dismiss if useful.",
+    "states": "Success, pending, failure, expired message.",
+    "behavior": "HSE: status confirmation for low-risk saves; persistent error near the task. Toast cannot be the only evidence that qualification changed.",
+    "accessibility": "Polite live region; do not move focus; important actions persist and are reachable; honor timing requirements."
+  },
+  {
+    "id": "C30",
+    "name": "Tooltip, icon and provider identity",
+    "coverage": "Observed + HSE adaptation",
+    "evidence": "E04 / E10 / E12",
+    "anatomy": "Consistent SVG icon; optional tooltip; provider name with supporting logo.",
+    "states": "Default, hover/focus tooltip, image fallback.",
+    "behavior": "HSE: 20px common icon, 16px metadata, 24px prominent; 1.5–2px consistent stroke recommendation. Provider name remains visible if image fails.",
+    "accessibility": "Tooltip opens on focus too, Escape dismisses; supplementary content only. Decorative icons hidden; meaningful icon actions named."
+  },
+  {
+    "id": "C31",
+    "name": "Learning player and assessment",
+    "coverage": "HSE extension; not observed",
+    "evidence": "P01",
+    "anatomy": "Lesson region, outline, captions/transcript, progress, Back/Next, question/feedback/help.",
+    "states": "Ready, playing, paused, buffering, answered, correct/incorrect, saved, retry.",
+    "behavior": "HSE: support text-first instruction and human questions; exact assessment/version recorded; knowledge completion follows assessment and confirmed save rules.",
+    "accessibility": "Keyboard controls and captions, no autoplay audio, visible focus, understandable assessment feedback; provide accessible timing alternatives."
+  },
+  {
+    "id": "C32",
+    "name": "Footer and support",
+    "coverage": "Observed + HSE adaptation",
+    "evidence": "E14 / public footer DOM",
+    "anatomy": "Support, accessibility, privacy, terms, contact, version/product identity.",
+    "states": "Desktop groups, mobile stacked groups, focused links.",
+    "behavior": "HSE: compact support footer on task screens; fuller navigation on acquisition pages; human help is reachable during learning.",
+    "accessibility": "contentinfo landmark; descriptive links; logical reading order; do not force users through large link lists before core task content."
+  }
+]</script>
+<script id="evidence-data" type="application/json">[
+  {
+    "id": "E01",
+    "file": "01-dashboard-desktop.png",
+    "url": "https://www.coursera.org/",
+    "viewport": "1440 \u00d7 1000",
+    "state": "Recommendation region; cropped to omit personal greeting"
+  },
+  {
+    "id": "E02",
+    "file": "02-mega-menu-desktop.png",
+    "url": "https://www.coursera.org/search?query=occupational%20safety",
+    "viewport": "1440 \u00d7 1000",
+    "state": "Open desktop catalog mega menu; partial header frame"
+  },
+  {
+    "id": "E03",
+    "file": "03-search-suggestions.png",
+    "url": "https://www.coursera.org/search?query=occupational%20safety",
+    "viewport": "1440 \u00d7 1000",
+    "state": "Focused empty search with recent query, trending topics, and suggested courses"
+  },
+  {
+    "id": "E04",
+    "file": "04-search-desktop.png",
+    "url": "https://www.coursera.org/search?query=occupational%20safety",
+    "viewport": "1440 \u00d7 1000",
+    "state": "Unfiltered result grid"
+  },
+  {
+    "id": "E05",
+    "file": "05-filter-dialog-desktop.png",
+    "url": "https://www.coursera.org/search?query=occupational%20safety",
+    "viewport": "1440 \u00d7 1000",
+    "state": "Right filter drawer with Level expanded"
+  },
+  {
+    "id": "E06",
+    "file": "06-filter-selected.png",
+    "url": "https://www.coursera.org/search?query=occupational%20safety&productDifficultyLevel=Beginner&sortBy=BEST_MATCH",
+    "viewport": "1440 \u00d7 1000",
+    "state": "Selected Beginner checkbox and dynamic View count in desktop drawer"
+  },
+  {
+    "id": "E07",
+    "file": "07-search-mobile.png",
+    "url": "https://www.coursera.org/search?query=occupational%20safety&productDifficultyLevel=Beginner&sortBy=BEST_MATCH",
+    "viewport": "390 \u00d7 844",
+    "state": "Mobile search top and compact rows"
+  },
+  {
+    "id": "E08",
+    "file": "08-filter-mobile.png",
+    "url": "https://www.coursera.org/search?query=occupational%20safety&productDifficultyLevel=Beginner&sortBy=BEST_MATCH",
+    "viewport": "390 \u00d7 844",
+    "state": "Full-width mobile filter panel"
+  },
+  {
+    "id": "E09",
+    "file": "09-navigation-mobile.png",
+    "url": "https://www.coursera.org/search?query=occupational%20safety",
+    "viewport": "390 \u00d7 844",
+    "state": "Nested mobile category navigation with Back and Close controls"
+  },
+  {
+    "id": "E10",
+    "file": "10-search-tablet.png",
+    "url": "https://www.coursera.org/search?query=occupational%20safety&productDifficultyLevel=Beginner&sortBy=BEST_MATCH",
+    "viewport": "768 \u00d7 1024",
+    "state": "Two-column results; mobile-style navigation"
+  },
+  {
+    "id": "E11",
+    "file": "11-search-320.png",
+    "url": "https://www.coursera.org/search?query=occupational%20safety&productDifficultyLevel=Beginner&sortBy=BEST_MATCH",
+    "viewport": "320 \u00d7 800",
+    "state": "Narrow reflow; local chip strip"
+  },
+  {
+    "id": "E12",
+    "file": "12-course-detail-desktop.png",
+    "url": "https://www.coursera.org/learn/occupational-safety-and-health-administration-osha-basics",
+    "viewport": "1440 \u00d7 1000",
+    "state": "Course header with assistant rail closed"
+  },
+  {
+    "id": "E12a",
+    "file": "12a-course-ai-panel.png",
+    "url": "https://www.coursera.org/learn/occupational-safety-and-health-administration-osha-basics",
+    "viewport": "1440 \u00d7 1000",
+    "state": "Assistant rail expanded on arrival; no prompt sent"
+  },
+  {
+    "id": "E13",
+    "file": "13-module-expanded.png",
+    "url": "https://www.coursera.org/learn/occupational-safety-and-health-administration-osha-basics",
+    "viewport": "1440 \u00d7 1000",
+    "state": "First syllabus module expanded; sticky section navigation"
+  },
+  {
+    "id": "E14",
+    "file": "14-faq-desktop.png",
+    "url": "https://www.coursera.org/learn/occupational-safety-and-health-administration-osha-basics",
+    "viewport": "1440 \u00d7 1000",
+    "state": "First FAQ expanded"
+  },
+  {
+    "id": "E15",
+    "file": "15-course-mobile.png",
+    "url": "https://www.coursera.org/learn/occupational-safety-and-health-administration-osha-basics",
+    "viewport": "390 \u00d7 844",
+    "state": "Stacked course hero and full-width CTA"
+  },
+  {
+    "id": "E16",
+    "file": "16-unmatched-query.png",
+    "url": "https://www.coursera.org/search?query=zzqhseaudittestzzq",
+    "viewport": "1440 \u00d7 1000",
+    "state": "Single unmatched-query probe; broad results still shown"
+  },
+  {
+    "id": "E17",
+    "file": "17-learning-empty.png",
+    "url": "https://www.coursera.org/my-learning",
+    "viewport": "1440 \u00d7 1000",
+    "state": "Empty In Progress panel and tabs; personal heading cropped out"
+  }
+]</script>
+<script src="style-guide.js"></script>
+</body></html>
+

@@ -1,0 +1,256 @@
+{
+  "date": "2026-09-07",
+  "htmlIds": 48,
+  "components": 32,
+  "hseTokens": 73,
+  "sourceScreenshots": 18,
+  "contrastPairs": 16,
+  "errors": [],
+  "files": [
+    {
+      "path": "assets/OFL.txt",
+      "bytes": 4486,
+      "sha256": "56af9b9c6715597e458284a474dc118a50a4150e9d547c70f7b4a33c3e6a9328"
+    },
+    {
+      "path": "assets/source-sans-3.woff2",
+      "bytes": 170188,
+      "sha256": "5f16566f7a40d39b339ad26be151fa5a1ab1f0c2574c7a2e619765584a1acbd8"
+    },
+    {
+      "path": "audit-report.md",
+      "bytes": 33611,
+      "sha256": "20024f9da561c327f292188878feea75f4f008c26981ab956205b378cb8f8413"
+    },
+    {
+      "path": "build-data.py",
+      "bytes": 25355,
+      "sha256": "bcf04cecbc124deedf621ba8c0f3d4989379bf49d64893492075df23a751fdd7"
+    },
+    {
+      "path": "build-guide.py",
+      "bytes": 516,
+      "sha256": "7c90955eae1e6c5d20372e69d425dc2bcb98a1f9cbc7cb94f28a28aa4a03c059"
+    },
+    {
+      "path": "components.json",
+      "bytes": 20713,
+      "sha256": "ff5be17c5ee8f56b5d293a2c685fc6f8a7479aa0f6159caf964654814b05719b"
+    },
+    {
+      "path": "contrast-results.json",
+      "bytes": 2957,
+      "sha256": "0f1ff19ee2b83ea11a97fcb4a8da64262903586d30366904f88b88926469aca4"
+    },
+    {
+      "path": "design-tokens.json",
+      "bytes": 4994,
+      "sha256": "9d87acf4ecb24c44b2a6063e556890774ff804cd16301444b01ab5fb1fac176d"
+    },
+    {
+      "path": "evidence/01-dashboard-desktop.png",
+      "bytes": 389121,
+      "sha256": "0a7ebe77ba691d967582c90003179ef0c6244b9ad8272262ca281846262f4e07"
+    },
+    {
+      "path": "evidence/02-mega-menu-desktop.png",
+      "bytes": 349429,
+      "sha256": "09cc2f9325a97e643bb75885c1413c0172499edbd2dad792105dc9007de76a63"
+    },
+    {
+      "path": "evidence/03-search-suggestions.png",
+      "bytes": 574918,
+      "sha256": "226368c0f307165560ceca642a97d4d400de281e0ebfa3c7909989e1f2bebf9d"
+    },
+    {
+      "path": "evidence/04-search-desktop.png",
+      "bytes": 183729,
+      "sha256": "6901206f9f747496feec9854377c5a0145319c7763adf3cbba6acb1176fd9937"
+    },
+    {
+      "path": "evidence/05-filter-dialog-desktop.png",
+      "bytes": 137085,
+      "sha256": "a409a37ba2be1c38e2d3f005cac6f83366f7b3d4e3797db32319ce024b6c5e3b"
+    },
+    {
+      "path": "evidence/06-filter-selected.png",
+      "bytes": 149789,
+      "sha256": "42e9c4d040b70c2d8754a2518cdec3fc5733c18ccfa7b5807d61c24639c2b155"
+    },
+    {
+      "path": "evidence/07-search-mobile.png",
+      "bytes": 47133,
+      "sha256": "157c484095c1adc0b244a3e4421bb898fbdb117e6646e4d9923240c0426844e5"
+    },
+    {
+      "path": "evidence/08-filter-mobile.png",
+      "bytes": 20408,
+      "sha256": "21f1881bc8aca95208ad89836b80fb4445c833820660f62e9243db528cb09ae1"
+    },
+    {
+      "path": "evidence/09-navigation-mobile.png",
+      "bytes": 27107,
+      "sha256": "934e40f41ec123d36ca58e3318cddd03cc060a18220a91e22b87a02e96e31011"
+    },
+    {
+      "path": "evidence/10-search-tablet.png",
+      "bytes": 97222,
+      "sha256": "23abda28dc4affbc898c43d8a46ab345d19578cf1fc9f6d49a0080cfb96e0f2d"
+    },
+    {
+      "path": "evidence/11-search-320.png",
+      "bytes": 38230,
+      "sha256": "f3c43bcc40bb146101c622fc603a270586394666b10349b47862450c05850966"
+    },
+    {
+      "path": "evidence/12-course-detail-desktop.png",
+      "bytes": 89665,
+      "sha256": "9186c11b85181dcb7d8bfe610fc101a4dbf89c42fcef54e5b4cef2636f33680f"
+    },
+    {
+      "path": "evidence/12a-course-ai-panel.png",
+      "bytes": 109565,
+      "sha256": "d789f1ffa61bbdfafb45ca78183d38dc9568f917ebff1bb7de371210154e9332"
+    },
+    {
+      "path": "evidence/13-module-expanded.png",
+      "bytes": 107683,
+      "sha256": "54315e76e75e2a89363b48073cc665de610e51425be56eba2d34bb2af211e499"
+    },
+    {
+      "path": "evidence/14-faq-desktop.png",
+      "bytes": 86950,
+      "sha256": "36e4d746478aaf3ab7df8080c2303032c9983bf4c5463c54e7226c80e199a37e"
+    },
+    {
+      "path": "evidence/15-course-mobile.png",
+      "bytes": 42932,
+      "sha256": "bd02aa98ebf8337bd722c8afa43f4f2e320d6a10c7f73743918737aceb216179"
+    },
+    {
+      "path": "evidence/16-unmatched-query.png",
+      "bytes": 170976,
+      "sha256": "d8a8ed603bcf7d9d8948eef169f30f0f4ed7fccf25115b210920cb82bf014856"
+    },
+    {
+      "path": "evidence/17-learning-empty.png",
+      "bytes": 31556,
+      "sha256": "791696b99a28f012d46673f6067cac9a0f09fbd50958a4f69458a862aae4b8e8"
+    },
+    {
+      "path": "evidence/card-container-geometry.json",
+      "bytes": 1348,
+      "sha256": "959e1bab930cec8cc4051a4f6f06244a599c922972ade3e52abd0548b9d2d405"
+    },
+    {
+      "path": "evidence/card-geometry.json",
+      "bytes": 1941,
+      "sha256": "ba8b27fda9316385c49096fc787f6a9f5d97ac97991c6703fae942f134ad1284"
+    },
+    {
+      "path": "evidence/dashboard-paint-summary.json",
+      "bytes": 481,
+      "sha256": "2ffedde1762f221275489ab82a8e118e87996578cd83c44246a49570d79587db"
+    },
+    {
+      "path": "evidence/filter-escape-observation.json",
+      "bytes": 247,
+      "sha256": "950b7c3e982f78a1c3e490328529bbe04c5d4643dfc83a3ee429a7b1a27a74c4"
+    },
+    {
+      "path": "evidence/filter-escape-repeat.json",
+      "bytes": 205,
+      "sha256": "c0154a6eed94127e01b65b95c810a8073055ed5dc72b2e70be0bafab20436fd1"
+    },
+    {
+      "path": "evidence/index.json",
+      "bytes": 4711,
+      "sha256": "9602f455c43262e9b417043776af88dab4f7eb35c89b095e311855772a80e82e"
+    },
+    {
+      "path": "evidence/index.md",
+      "bytes": 5383,
+      "sha256": "2a24877c48b03c58ee92158ea4494ca6425a3f28824fddec93799804c50088c2"
+    },
+    {
+      "path": "evidence/measurements.json",
+      "bytes": 275001,
+      "sha256": "ba052531306f1dfa5e5990ffeb6eb664ac07ff0477b138b26cb382d611698dc2"
+    },
+    {
+      "path": "hse-tokens.css",
+      "bytes": 6259,
+      "sha256": "7942add0d4c40e845d006c6b9a7ab8baed2f423beeead0b58a3336143632846e"
+    },
+    {
+      "path": "qa/browser-checks.json",
+      "bytes": 1097,
+      "sha256": "6633fe5f8d343ccc4e40c7e9fad314c4e4c3b29120785f3e8387afd4fe91eeca"
+    },
+    {
+      "path": "qa/final-dialog-checks.json",
+      "bytes": 527,
+      "sha256": "37eb744d14c1d681609a01e7194521ebc47d531ceaea29b72198dedceb157d81"
+    },
+    {
+      "path": "qa/guide-desktop-filter.png",
+      "bytes": 95521,
+      "sha256": "6d4c588c3eba3d74a059970a8e8b47796e75d483c2f2536264686070d2e41bc4"
+    },
+    {
+      "path": "qa/guide-desktop.png",
+      "bytes": 131140,
+      "sha256": "1112908798784f128b14b3f9ec2a528b6ca42d97adb6d18d3da1c653a94475e9"
+    },
+    {
+      "path": "qa/guide-mobile-filter.png",
+      "bytes": 15661,
+      "sha256": "6620a23928adc7bc6b6603249250cd75c2a7b877d02b9b4dae7a0571cb1ba9fa"
+    },
+    {
+      "path": "qa/guide-mobile-patterns.png",
+      "bytes": 31177,
+      "sha256": "039d9ec9ae031aadb0cfbb186719999d32e9b2b161c26f968aad07c771930945"
+    },
+    {
+      "path": "qa/guide-overview.png",
+      "bytes": 76216,
+      "sha256": "93ad7a13c06e6fcdb4e20d3b13c7685fcd1491375aa04e3c17ec5da9b999ce13"
+    },
+    {
+      "path": "README.md",
+      "bytes": 2271,
+      "sha256": "387f74c723ed9f64517f61235b74ab6bd090f255f2869a50946fcdfd59065022"
+    },
+    {
+      "path": "style-guide.css",
+      "bytes": 29737,
+      "sha256": "1ca5e511cd6dd04bd1cb2660eb3775db9bac6ff1f8c2a9e77ed2884515e52794"
+    },
+    {
+      "path": "style-guide.html",
+      "bytes": 52887,
+      "sha256": "4e7332990cdf5a700568740c2872689c13c09247632c96287f26e32fd1ebf857"
+    },
+    {
+      "path": "style-guide.js",
+      "bytes": 12567,
+      "sha256": "fefa396e286b31c14a7eb298bb57690eac9d9d31bc4ae09df7e29ea4b2356cd0"
+    },
+    {
+      "path": "style-guide.template.html",
+      "bytes": 27408,
+      "sha256": "5d8b65f095a9226cc719e2c492e90c3865b7069bbc3c1d5c8f788586bb004058"
+    },
+    {
+      "path": "validate-package.py",
+      "bytes": 2791,
+      "sha256": "d6dfef50541c31945133b5c28ab4289ccc9c7c7213ec5f580acbebf80c054811"
+    },
+    {
+      "path": "validation.md",
+      "bytes": 4900,
+      "sha256": "b3b06e61c1094aa322d8430546e3032e3f892c7aa0c66c60d124d1561dfea8d6"
+    }
+  ]
+}

@@ -1,0 +1,322 @@
+[
+  {
+    "id": "C01",
+    "name": "App shell",
+    "coverage": "Observed + HSE adaptation",
+    "evidence": "E01 / E04 / E07",
+    "anatomy": "Brand, primary destinations, catalog search, help, current context, account.",
+    "states": "Default, active destination, mobile navigation, loading context, access denied.",
+    "behavior": "HSE: use a 64px starting header, stable navigation and a visible organization/site context. Collapse navigation when it no longer fits.",
+    "accessibility": "Skip link, navigation labels, one main region, aria-current on the active route; preserve focus after navigation."
+  },
+  {
+    "id": "C02",
+    "name": "Mega menu and mobile navigation",
+    "coverage": "Observed + HSE adaptation",
+    "evidence": "E02 / E09",
+    "anatomy": "Desktop grouped headings and links; mobile nested rows with chevrons, Back and Close.",
+    "states": "Closed, open, focused, expanded subsection, current destination.",
+    "behavior": "HSE: ordinary navigation links in desktop disclosure; full-width mobile modal; do not hide essential destinations in unlabelled icons.",
+    "accessibility": "aria-expanded on disclosure, Escape closes, focus returns to opener. Mobile modal contains focus; navigation is not an ARIA application menu."
+  },
+  {
+    "id": "C03",
+    "name": "Breadcrumbs",
+    "coverage": "Observed + HSE adaptation",
+    "evidence": "E12 / E15",
+    "anatomy": "Ordered ancestor links, separators, current location.",
+    "states": "Full, collapsed ancestors, keyboard focused.",
+    "behavior": "HSE: readable path with current page as text; keep a meaningful parent on mobile and expose hidden ancestors.",
+    "accessibility": "Label the navigation Breadcrumbs; separators decorative; current page aria-current=page."
+  },
+  {
+    "id": "C04",
+    "name": "Search field and suggestions",
+    "coverage": "Observed + HSE adaptation",
+    "evidence": "E03 / E04",
+    "anatomy": "Label, text input, clear action, submit, popup with suggestion types.",
+    "states": "Empty, entered, focused, suggestions, loading, no matches, request failure.",
+    "behavior": "HSE: 44px minimum / 48px touch, preserved query, labelled result types; keyboard Enter searches, Escape closes popup. Exact and suggested results are distinct.",
+    "accessibility": "Combobox semantics only when implemented; listbox options, aria-expanded/controls/activedescendant; announce result changes politely."
+  },
+  {
+    "id": "C05",
+    "name": "Filter toolbar and chips",
+    "coverage": "Observed + HSE adaptation",
+    "evidence": "E04 / E06 / E07",
+    "anatomy": "Filter action with count, facet triggers, removable applied chips, Clear all, result count.",
+    "states": "Default, selected, open facet, focused, no results.",
+    "behavior": "HSE: keep count visible and wrap applied chips below the toolbar. An individual removal preserves all other filters.",
+    "accessibility": "Removal buttons name the filter; do not nest buttons inside buttons; selection cannot depend on color alone."
+  },
+  {
+    "id": "C06",
+    "name": "Filter drawer",
+    "coverage": "Observed + HSE adaptation",
+    "evidence": "E05 / E08",
+    "anatomy": "Title, Close, scrollable fieldsets/accordions, count, Clear, Show results.",
+    "states": "Open, draft selection, applying, empty selection, error, dismissed.",
+    "behavior": "HSE: 360px desktop starting width / full viewport mobile. Stage changes and commit on Show results; Escape and Cancel discard drafts. This differs from observed Coursera immediate URL updates.",
+    "accessibility": "Modal dialog name, initial focus, Tab containment, Escape, restore trigger. Clear inert/aria-hidden on every close path including in-flight updates."
+  },
+  {
+    "id": "C07",
+    "name": "Buttons and action groups",
+    "coverage": "Observed + HSE adaptation",
+    "evidence": "E01 / E12",
+    "anatomy": "Verb label, optional leading/trailing icon, optional pending indicator.",
+    "states": "Primary, secondary, tertiary, icon, destructive; default, hover, active, focus, disabled, loading.",
+    "behavior": "HSE: 44px default, 48px coarse pointer, 36px compact only for deliberate dense desktop contexts. One primary action per task group. Preserve button width during loading.",
+    "accessibility": "Native button for mutation, anchor for navigation. Accessible name on icon actions. Visible focus. Disable duplicate submission and announce completion."
+  },
+  {
+    "id": "C08",
+    "name": "Links and section navigation",
+    "coverage": "Observed + HSE adaptation",
+    "evidence": "E12 / E13",
+    "anatomy": "Descriptive label; optional external-destination cue; current section indicator.",
+    "states": "Default, hover, focus, active location, visited where appropriate.",
+    "behavior": "HSE: underline inline links. Sticky section anchors scroll to content and respect header offset; they do not masquerade as tab panels.",
+    "accessibility": "Accessible destination text; aria-current=location for current anchor. Keyboard focus cannot be covered by sticky bars."
+  },
+  {
+    "id": "C09",
+    "name": "Catalog card",
+    "coverage": "Observed + HSE adaptation",
+    "evidence": "E04 / E07 / card geometry",
+    "anatomy": "Optional image, owner, linked title, concise summary, duration/type, version, status.",
+    "states": "Default, hover, focus-within, saved, unavailable, image fallback.",
+    "behavior": "HSE: 16px corners/padding, 16:9 optional art, 14px metadata. Compact 64px image rows on mobile. Never truncate critical scope or restrictions.",
+    "accessibility": "One primary linked title plus sibling actions. No nested interactive elements. Avoid redundant image alt when the same title is adjacent."
+  },
+  {
+    "id": "C10",
+    "name": "Collections and pagination",
+    "coverage": "Observed + HSE adaptation",
+    "evidence": "E01 / E04",
+    "anatomy": "Section title, result count, card list, optional See all / pagination controls.",
+    "states": "First/last page, current page, more loading, empty collection, error.",
+    "behavior": "HSE: use grids/lists for assigned work; reserve carousels for optional discovery. Keep query, filters, page and scroll position on Back.",
+    "accessibility": "Label pagination and current page; expose list semantics; announce newly loaded range; all carousel content reachable without dragging."
+  },
+  {
+    "id": "C11",
+    "name": "Course detail header",
+    "coverage": "Observed + HSE adaptation",
+    "evidence": "E12 / E15",
+    "anatomy": "Breadcrumb, title, provider, outcomes, version, next action, scope.",
+    "states": "Available, assigned, in progress, unavailable, superseded version.",
+    "behavior": "HSE: 32/40px app title; 44/52 marketing display. Keep applicability/practical prerequisites near the main action; show the content version being used.",
+    "accessibility": "One descriptive H1; logical heading sequence; long titles wrap; CTA is present in the meaningful document order."
+  },
+  {
+    "id": "C12",
+    "name": "Summary facts",
+    "coverage": "Observed + HSE adaptation",
+    "evidence": "E12",
+    "anatomy": "Label/value groups for duration, level, modules and outcome type.",
+    "states": "Known, unknown, not applicable, warning/blocking.",
+    "behavior": "HSE: use a definition list; stack on mobile. Replace consumer ratings with verified scope/version facts when those better support the task.",
+    "accessibility": "Read label before value; explain unknowns; icons supplement text. Do not use unavailable values as zero."
+  },
+  {
+    "id": "C13",
+    "name": "Tabs",
+    "coverage": "Observed + HSE adaptation",
+    "evidence": "E17",
+    "anatomy": "Tablist, labelled tabs, active indicator, linked panel.",
+    "states": "Selected, unselected, keyboard focused, disabled if justified.",
+    "behavior": "HSE: Arrow keys/Home/End move focus; Enter/Space activates for manual tabs; activation and focus are distinct. My Learning showed manual-focus movement.",
+    "accessibility": "tablist/tab/tabpanel, aria-selected, roving tabindex, aria-controls and aria-labelledby; only relevant panel is exposed."
+  },
+  {
+    "id": "C14",
+    "name": "Accordion and syllabus",
+    "coverage": "Observed + HSE adaptation",
+    "evidence": "E13 / E14",
+    "anatomy": "Heading trigger, summary/duration, chevron, content region, separate Preview/Start action.",
+    "states": "Collapsed, expanded, focus, locked content with reason.",
+    "behavior": "HSE: Enter/Space toggles; group related secondary details. Blocking prerequisites remain visible in the summary. Never nest Preview inside the expansion button.",
+    "accessibility": "aria-expanded and aria-controls; meaningful headings and named region when useful; hide collapsed content from focus and accessibility."
+  },
+  {
+    "id": "C15",
+    "name": "Text input and textarea",
+    "coverage": "HSE extension; search input observed",
+    "evidence": "E03 / R",
+    "anatomy": "Visible label, optional helper, control, optional counter, inline error.",
+    "states": "Empty, filled, focus, read-only, disabled, invalid, pending save.",
+    "behavior": "HSE: 16px input text, 44px minimum; label above; preserve values after failure. Textarea grows or scrolls predictably.",
+    "accessibility": "Label association, required semantics, aria-invalid and describedby for errors; errors explain recovery rather than color alone."
+  },
+  {
+    "id": "C16",
+    "name": "Checkbox, radio, select and switch",
+    "coverage": "Observed controls + HSE extension",
+    "evidence": "E05 / E06",
+    "anatomy": "Labelled options grouped by a legend; helper and optional count.",
+    "states": "Unchecked/checked, indeterminate checkbox, focus, disabled, invalid.",
+    "behavior": "HSE: checkbox for independent multiple choices; radio for one choice; select for long simple choices; switch only for immediate on/off settings. Label row is the hit target.",
+    "accessibility": "Prefer native controls. Fieldset/legend, keyboard behavior, selected state announced; 44px label target. Counts are supplemental."
+  },
+  {
+    "id": "C17",
+    "name": "Badges and qualification states",
+    "coverage": "Observed badges + HSE extension",
+    "evidence": "E04 / P01",
+    "anatomy": "Explicit status text, optional icon, separate scope/expiry metadata.",
+    "states": "Not started, pending, complete, passed, authorized, expired, revoked, unknown.",
+    "behavior": "HSE: distinguish knowledge, site, practical, authorization and external credential milestones. All required gates must be met before authorization; missing data stays Unknown.",
+    "accessibility": "Text is mandatory; distinguish states beyond hue. Do not make a noninteractive tag look like a clickable filter."
+  },
+  {
+    "id": "C18",
+    "name": "Alerts and inline notices",
+    "coverage": "Observed + HSE adaptation",
+    "evidence": "E01 / E12a",
+    "anatomy": "Severity icon, concise title, explanation, recovery/help link, optional Close.",
+    "states": "Information, success, warning, error; dismissible or persistent.",
+    "behavior": "HSE: place task errors near task. A blocking warning names the missing prerequisite. Dismissible informational notices must not hide critical unresolved status.",
+    "accessibility": "role=alert only for urgent new failures; status/polite for routine updates. Visible title and text; close has an accessible name and target."
+  },
+  {
+    "id": "C19",
+    "name": "Progress and assigned-learning card",
+    "coverage": "HSE extension; populated Coursera card unverified",
+    "evidence": "E17 / P01",
+    "anatomy": "Assignment, due date, progress value, current module, next action, qualification status.",
+    "states": "Assigned, in progress, knowledge complete, blocked, overdue, stale save.",
+    "behavior": "HSE: exact progress value and last saved status; assigned work precedes discovery. Progress never authorizes a worker.",
+    "accessibility": "Native progress or progressbar with accessible value/name; text alternative; no rapid live announcements for every percentage."
+  },
+  {
+    "id": "C20",
+    "name": "Modal dialog",
+    "coverage": "Observed + HSE adaptation",
+    "evidence": "E05 / E08",
+    "anatomy": "Title, message/content, Close, primary and cancel actions.",
+    "states": "Opening, open, busy, validation error, cancelled, closed.",
+    "behavior": "HSE: use native dialog or tested primitive; width fits viewport; retain content on validation error; destructive actions name the exact object/scope.",
+    "accessibility": "Accessible name; modal focus containment; Escape; restore focus; background not interactive. Test with async content and route changes."
+  },
+  {
+    "id": "C21",
+    "name": "Contextual rail and assistant",
+    "coverage": "Observed + HSE adaptation",
+    "evidence": "E12 / E12a",
+    "anatomy": "Title, close/restore, supporting details or messages, citations, optional composer.",
+    "states": "Collapsed, expanded, loading, response, error, unavailable.",
+    "behavior": "HSE: collapsed by default; desktop rail only if main remains usable; mobile drawer. AI suggestions cannot approve evaluation or authorization.",
+    "accessibility": "Nonmodal rail uses complementary landmark and does not trap focus. Label AI responses; updates polite; composer named; no unsolicited focus stealing."
+  },
+  {
+    "id": "C22",
+    "name": "Data table and sorting",
+    "coverage": "HSE extension; not observed",
+    "evidence": "P01 / USWDS Table",
+    "anatomy": "Caption, column headers, sort control, rows, scope/status, row action, pagination.",
+    "states": "Default, sorted ascending/descending, selected rows, loading, empty, error.",
+    "behavior": "HSE: use records table for comparisons; label bulk scope; preserve sorting/filter state; allow local horizontal scroll when relationships require it.",
+    "accessibility": "Native table, th scope, aria-sort on sorted header, labelled region if scrollable. Avoid grid role without implementing its keyboard contract."
+  },
+  {
+    "id": "C23",
+    "name": "Qualification requirements",
+    "coverage": "HSE extension; not observed",
+    "evidence": "P01",
+    "anatomy": "Prerequisite label, state, evidence/version, responsible role, action, authorization summary.",
+    "states": "Not assessed, required, pending, satisfied, failed, not applicable, revoked.",
+    "behavior": "HSE: conditional requirement set from applicability model; show why blocked and who can resolve it. External credentials may satisfy a prerequisite; stages are not universally linear.",
+    "accessibility": "List semantics; explicit status and next action; status changes announced after save. Do not hide reasons in hover-only tooltips."
+  },
+  {
+    "id": "C24",
+    "name": "Evidence upload",
+    "coverage": "HSE extension; not observed",
+    "evidence": "P01",
+    "anatomy": "File picker, requirements, file list, progress, per-file result, remove/replace.",
+    "states": "Idle, choosing, uploading, uploaded, validation error, network failure, cancelled.",
+    "behavior": "HSE: state accepted types/size before selection; preserve draft on failure; preview file association and version before submission.",
+    "accessibility": "Keyboard-operable native file picker; drop area supplemental; accessible progress and per-file errors; no drag-only removal."
+  },
+  {
+    "id": "C25",
+    "name": "Evaluation and signoff",
+    "coverage": "HSE extension; not observed",
+    "evidence": "P01",
+    "anatomy": "Person/scope, rubric, evidence, evaluator, result, restrictions, review/submit.",
+    "states": "Draft, incomplete, ready for review, submitting, signed, rejected, superseded.",
+    "behavior": "HSE: explicit actor and scope; review consequential result; record server confirmation. Role enforcement is server-side, not inferred from enabled buttons.",
+    "accessibility": "Grouped inputs, error summary, labels, preserved values. Confirmation communicates exact consequence. Never silently overwrite a signed record."
+  },
+  {
+    "id": "C26",
+    "name": "Timeline and version record",
+    "coverage": "HSE extension; not observed",
+    "evidence": "P01",
+    "anatomy": "Event, actor, timestamp with zone, object/version, reason, evidence link.",
+    "states": "Current, historical, superseded, correction, unavailable evidence.",
+    "behavior": "HSE: append historical events; show current versus version-at-training; stable export identifiers; show missing data explicitly.",
+    "accessibility": "Ordered list with textual chronology; dates understandable without visual position; no color-only current-version indicator."
+  },
+  {
+    "id": "C27",
+    "name": "Empty, no results and access denied",
+    "coverage": "Observed empty + HSE extension",
+    "evidence": "E16 / E17",
+    "anatomy": "Contextual heading, explanation, permitted next action, optional illustration.",
+    "states": "First use, zero assignments, no matching filters, no permission, deleted/unavailable.",
+    "behavior": "HSE: distinguish absence from failed retrieval. No matches offers Clear filters; no assignments explains whether to browse or ask a supervisor.",
+    "accessibility": "Announce updates in status; heading meaningful; recovery is keyboard reachable; decorative art has empty alt."
+  },
+  {
+    "id": "C28",
+    "name": "Loading, failure, offline and conflict",
+    "coverage": "HSE extension; not observed",
+    "evidence": "R",
+    "anatomy": "Stable content placeholder, state text, retry/reconnect/resolve action, last saved time.",
+    "states": "Initial loading, refreshing, partial failure, offline, stale, save conflict.",
+    "behavior": "HSE: preserve last known content with stale label; never show completion until server confirms. Retry must not duplicate submissions.",
+    "accessibility": "aria-busy on relevant region; skeleton hidden from AT; one polite status; reduced motion; no indefinite spinner without recovery."
+  },
+  {
+    "id": "C29",
+    "name": "Toast and save feedback",
+    "coverage": "HSE extension; not observed",
+    "evidence": "R",
+    "anatomy": "Result text, optional Undo/View action, dismiss if useful.",
+    "states": "Success, pending, failure, expired message.",
+    "behavior": "HSE: status confirmation for low-risk saves; persistent error near the task. Toast cannot be the only evidence that qualification changed.",
+    "accessibility": "Polite live region; do not move focus; important actions persist and are reachable; honor timing requirements."
+  },
+  {
+    "id": "C30",
+    "name": "Tooltip, icon and provider identity",
+    "coverage": "Observed + HSE adaptation",
+    "evidence": "E04 / E10 / E12",
+    "anatomy": "Consistent SVG icon; optional tooltip; provider name with supporting logo.",
+    "states": "Default, hover/focus tooltip, image fallback.",
+    "behavior": "HSE: 20px common icon, 16px metadata, 24px prominent; 1.5–2px consistent stroke recommendation. Provider name remains visible if image fails.",
+    "accessibility": "Tooltip opens on focus too, Escape dismisses; supplementary content only. Decorative icons hidden; meaningful icon actions named."
+  },
+  {
+    "id": "C31",
+    "name": "Learning player and assessment",
+    "coverage": "HSE extension; not observed",
+    "evidence": "P01",
+    "anatomy": "Lesson region, outline, captions/transcript, progress, Back/Next, question/feedback/help.",
+    "states": "Ready, playing, paused, buffering, answered, correct/incorrect, saved, retry.",
+    "behavior": "HSE: support text-first instruction and human questions; exact assessment/version recorded; knowledge completion follows assessment and confirmed save rules.",
+    "accessibility": "Keyboard controls and captions, no autoplay audio, visible focus, understandable assessment feedback; provide accessible timing alternatives."
+  },
+  {
+    "id": "C32",
+    "name": "Footer and support",
+    "coverage": "Observed + HSE adaptation",
+    "evidence": "E14 / public footer DOM",
+    "anatomy": "Support, accessibility, privacy, terms, contact, version/product identity.",
+    "states": "Desktop groups, mobile stacked groups, focused links.",
+    "behavior": "HSE: compact support footer on task screens; fuller navigation on acquisition pages; human help is reachable during learning.",
+    "accessibility": "contentinfo landmark; descriptive links; logical reading order; do not force users through large link lists before core task content."
+  }
+]

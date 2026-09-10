@@ -1,0 +1,128 @@
+[
+  {
+    "id": "E01",
+    "file": "01-dashboard-desktop.png",
+    "url": "https://www.coursera.org/",
+    "viewport": "1440 \u00d7 1000",
+    "state": "Recommendation region; cropped to omit personal greeting"
+  },
+  {
+    "id": "E02",
+    "file": "02-mega-menu-desktop.png",
+    "url": "https://www.coursera.org/search?query=occupational%20safety",
+    "viewport": "1440 \u00d7 1000",
+    "state": "Open desktop catalog mega menu; partial header frame"
+  },
+  {
+    "id": "E03",
+    "file": "03-search-suggestions.png",
+    "url": "https://www.coursera.org/search?query=occupational%20safety",
+    "viewport": "1440 \u00d7 1000",
+    "state": "Focused empty search with recent query, trending topics, and suggested courses"
+  },
+  {
+    "id": "E04",
+    "file": "04-search-desktop.png",
+    "url": "https://www.coursera.org/search?query=occupational%20safety",
+    "viewport": "1440 \u00d7 1000",
+    "state": "Unfiltered result grid"
+  },
+  {
+    "id": "E05",
+    "file": "05-filter-dialog-desktop.png",
+    "url": "https://www.coursera.org/search?query=occupational%20safety",
+    "viewport": "1440 \u00d7 1000",
+    "state": "Right filter drawer with Level expanded"
+  },
+  {
+    "id": "E06",
+    "file": "06-filter-selected.png",
+    "url": "https://www.coursera.org/search?query=occupational%20safety&productDifficultyLevel=Beginner&sortBy=BEST_MATCH",
+    "viewport": "1440 \u00d7 1000",
+    "state": "Selected Beginner checkbox and dynamic View count in desktop drawer"
+  },
+  {
+    "id": "E07",
+    "file": "07-search-mobile.png",
+    "url": "https://www.coursera.org/search?query=occupational%20safety&productDifficultyLevel=Beginner&sortBy=BEST_MATCH",
+    "viewport": "390 \u00d7 844",
+    "state": "Mobile search top and compact rows"
+  },
+  {
+    "id": "E08",
+    "file": "08-filter-mobile.png",
+    "url": "https://www.coursera.org/search?query=occupational%20safety&productDifficultyLevel=Beginner&sortBy=BEST_MATCH",
+    "viewport": "390 \u00d7 844",
+    "state": "Full-width mobile filter panel"
+  },
+  {
+    "id": "E09",
+    "file": "09-navigation-mobile.png",
+    "url": "https://www.coursera.org/search?query=occupational%20safety",
+    "viewport": "390 \u00d7 844",
+    "state": "Nested mobile category navigation with Back and Close controls"
+  },
+  {
+    "id": "E10",
+    "file": "10-search-tablet.png",
+    "url": "https://www.coursera.org/search?query=occupational%20safety&productDifficultyLevel=Beginner&sortBy=BEST_MATCH",
+    "viewport": "768 \u00d7 1024",
+    "state": "Two-column results; mobile-style navigation"
+  },
+  {
+    "id": "E11",
+    "file": "11-search-320.png",
+    "url": "https://www.coursera.org/search?query=occupational%20safety&productDifficultyLevel=Beginner&sortBy=BEST_MATCH",
+    "viewport": "320 \u00d7 800",
+    "state": "Narrow reflow; local chip strip"
+  },
+  {
+    "id": "E12",
+    "file": "12-course-detail-desktop.png",
+    "url": "https://www.coursera.org/learn/occupational-safety-and-health-administration-osha-basics",
+    "viewport": "1440 \u00d7 1000",
+    "state": "Course header with assistant rail closed"
+  },
+  {
+    "id": "E12a",
+    "file": "12a-course-ai-panel.png",
+    "url": "https://www.coursera.org/learn/occupational-safety-and-health-administration-osha-basics",
+    "viewport": "1440 \u00d7 1000",
+    "state": "Assistant rail expanded on arrival; no prompt sent"
+  },
+  {
+    "id": "E13",
+    "file": "13-module-expanded.png",
+    "url": "https://www.coursera.org/learn/occupational-safety-and-health-administration-osha-basics",
+    "viewport": "1440 \u00d7 1000",
+    "state": "First syllabus module expanded; sticky section navigation"
+  },
+  {
+    "id": "E14",
+    "file": "14-faq-desktop.png",
+    "url": "https://www.coursera.org/learn/occupational-safety-and-health-administration-osha-basics",
+    "viewport": "1440 \u00d7 1000",
+    "state": "First FAQ expanded"
+  },
+  {
+    "id": "E15",
+    "file": "15-course-mobile.png",
+    "url": "https://www.coursera.org/learn/occupational-safety-and-health-administration-osha-basics",
+    "viewport": "390 \u00d7 844",
+    "state": "Stacked course hero and full-width CTA"
+  },
+  {
+    "id": "E16",
+    "file": "16-unmatched-query.png",
+    "url": "https://www.coursera.org/search?query=zzqhseaudittestzzq",
+    "viewport": "1440 \u00d7 1000",
+    "state": "Single unmatched-query probe; broad results still shown"
+  },
+  {
+    "id": "E17",
+    "file": "17-learning-empty.png",
+    "url": "https://www.coursera.org/my-learning",
+    "viewport": "1440 \u00d7 1000",
+    "state": "Empty In Progress panel and tabs; personal heading cropped out"
+  }
+]

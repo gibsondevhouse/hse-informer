@@ -1,0 +1,11 @@
+{
+  "date": "2026-09-07",
+  "browser": "Codex Chromium on Windows",
+  "afterFinalStylesheetReload": true,
+  "mobile": {"viewport": [320, 800], "dialog": {"x": 0, "width": 320, "height": 800}, "bodyOverflow": "hidden"},
+  "desktop": {"viewport": [1440, 1000], "dialog": {"x": 1080, "y": 0, "width": 360, "height": 1000}},
+  "reverseTabFromClose": "clear-draft",
+  "escapeRestoresFocus": "filter-open",
+  "closedBodyOverflow": "visible",
+  "closedDesktop": {"clientWidth": 1425, "scrollWidth": 1425, "components": 32, "h1": 1}
+}

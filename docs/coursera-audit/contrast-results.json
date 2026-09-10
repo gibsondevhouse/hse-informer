@@ -1,0 +1,130 @@
+[
+  {
+    "name": "Coursera/HSE primary text",
+    "foreground": "#0D0F12",
+    "background": "#FFFFFF",
+    "ratio": 19.192504539790693,
+    "threshold": 4.5,
+    "passes": true
+  },
+  {
+    "name": "Coursera/HSE muted text",
+    "foreground": "#48546E",
+    "background": "#FFFFFF",
+    "ratio": 7.584428750807744,
+    "threshold": 4.5,
+    "passes": true
+  },
+  {
+    "name": "Coursera/HSE primary action",
+    "foreground": "#FFFFFF",
+    "background": "#0056D2",
+    "ratio": 6.438273383632428,
+    "threshold": 4.5,
+    "passes": true
+  },
+  {
+    "name": "Coursera card border \u2014 decorative only",
+    "foreground": "#C1CBDB",
+    "background": "#FFFFFF",
+    "ratio": 1.6364367094125427,
+    "threshold": 3,
+    "passes": false
+  },
+  {
+    "name": "Coursera filter border \u2014 decorative only",
+    "foreground": "#DAE1ED",
+    "background": "#FFFFFF",
+    "ratio": 1.3146317032785928,
+    "threshold": 3,
+    "passes": false
+  },
+  {
+    "name": "HSE control border",
+    "foreground": "#687994",
+    "background": "#FFFFFF",
+    "ratio": 4.419951123858094,
+    "threshold": 3,
+    "passes": true
+  },
+  {
+    "name": "HSE focus on white",
+    "foreground": "#6B3AC7",
+    "background": "#FFFFFF",
+    "ratio": 6.873782216895702,
+    "threshold": 3,
+    "passes": true
+  },
+  {
+    "name": "HSE focus on pale blue",
+    "foreground": "#6B3AC7",
+    "background": "#F0F6FF",
+    "ratio": 6.327597983564938,
+    "threshold": 3,
+    "passes": true
+  },
+  {
+    "name": "HSE info",
+    "foreground": "#0048B1",
+    "background": "#F0F6FF",
+    "ratio": 7.545974595612968,
+    "threshold": 4.5,
+    "passes": true
+  },
+  {
+    "name": "HSE success",
+    "foreground": "#166534",
+    "background": "#ECFDF3",
+    "ratio": 6.7605180086442935,
+    "threshold": 4.5,
+    "passes": true
+  },
+  {
+    "name": "HSE warning",
+    "foreground": "#854D0E",
+    "background": "#FFF8E6",
+    "ratio": 6.4666537672150755,
+    "threshold": 4.5,
+    "passes": true
+  },
+  {
+    "name": "HSE danger",
+    "foreground": "#B42318",
+    "background": "#FFF1F0",
+    "ratio": 5.977084271598387,
+    "threshold": 4.5,
+    "passes": true
+  },
+  {
+    "name": "HSE neutral badge",
+    "foreground": "#48546E",
+    "background": "#F2F5FA",
+    "ratio": 6.940416029226157,
+    "threshold": 4.5,
+    "passes": true
+  },
+  {
+    "name": "HSE action hover",
+    "foreground": "#FFFFFF",
+    "background": "#0048B1",
+    "ratio": 8.197326397662229,
+    "threshold": 4.5,
+    "passes": true
+  },
+  {
+    "name": "HSE action active",
+    "foreground": "#FFFFFF",
+    "background": "#003C94",
+    "ratio": 10.125522092664138,
+    "threshold": 4.5,
+    "passes": true
+  },
+  {
+    "name": "HSE destructive action",
+    "foreground": "#FFFFFF",
+    "background": "#B42318",
+    "ratio": 6.57428861557707,
+    "threshold": 4.5,
+    "passes": true
+  }
+]

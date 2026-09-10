@@ -1,0 +1,62 @@
+[
+  {
+    "bg": "rgb(255, 255, 255)",
+    "border": "1px solid rgb(193, 203, 219)",
+    "class": "cds-ProductCard-base cds-ProductCard-grid css-amuahx",
+    "display": "flex",
+    "gap": "normal",
+    "height": 416.203125,
+    "padding": "0px",
+    "radius": "16px",
+    "shadow": "none",
+    "tag": "DIV",
+    "width": 331.25,
+    "x": 32,
+    "y": 362
+  },
+  {
+    "bg": "rgba(0, 0, 0, 0)",
+    "border": "0px none rgb(13, 15, 18)",
+    "class": "css-1zwo54",
+    "display": "flex",
+    "gap": "normal",
+    "height": 416.203125,
+    "padding": "0px",
+    "radius": "0px",
+    "shadow": "none",
+    "tag": "DIV",
+    "width": 331.25,
+    "x": 32,
+    "y": 362
+  },
+  {
+    "bg": "rgba(0, 0, 0, 0)",
+    "border": "0px none rgb(13, 15, 18)",
+    "class": "css-1xv12gu",
+    "display": "block",
+    "gap": "normal",
+    "height": 428.203125,
+    "padding": "0px 6px 12px",
+    "radius": "0px",
+    "shadow": "none",
+    "tag": "DIV",
+    "width": 343.25,
+    "x": 26,
+    "y": 362
+  },
+  {
+    "bg": "rgba(0, 0, 0, 0)",
+    "border": "0px none rgb(13, 15, 18)",
+    "class": "cds-9 css-0 cds-11 cds-grid-item cds-56 cds-64 cds-76 cds-89",
+    "display": "list-item",
+    "gap": "normal",
+    "height": 428.203125,
+    "padding": "0px",
+    "radius": "0px",
+    "shadow": "none",
+    "tag": "LI",
+    "width": 343.25,
+    "x": 26,
+    "y": 362
+  }
+]

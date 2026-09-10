@@ -1,0 +1,93 @@
+/* HSE Informer v1.0 — proposed tokens, not Coursera's internal token names. */
+@font-face{font-family:"Source Sans 3";font-style:normal;font-weight:200 900;font-display:swap;src:url("assets/source-sans-3.woff2") format("woff2")}
+:root{
+  --hse-color-brand:#0056d2;
+  --hse-color-brand-hover:#0048b1;
+  --hse-color-brand-active:#003c94;
+  --hse-color-brand-subtle:#f0f6ff;
+  --hse-color-ink:#0d0f12;
+  --hse-color-muted:#48546e;
+  --hse-color-canvas:#f7f9fc;
+  --hse-color-surface:#ffffff;
+  --hse-color-surface-subtle:#f2f5fa;
+  --hse-color-border:#c1cbdb;
+  --hse-color-divider:#dae1ed;
+  --hse-color-control-border:#687994;
+  --hse-color-focus:#6b3ac7;
+  --hse-color-info:#0048b1;
+  --hse-color-info-bg:#f0f6ff;
+  --hse-color-success:#166534;
+  --hse-color-success-bg:#ecfdf3;
+  --hse-color-warning:#854d0e;
+  --hse-color-warning-bg:#fff8e6;
+  --hse-color-danger:#b42318;
+  --hse-color-danger-bg:#fff1f0;
+  --hse-color-disabled-bg:#edf0f5;
+  --hse-color-disabled-text:#667085;
+  --hse-font-sans:"Source Sans 3","Source Sans Pro","Segoe UI",Arial,sans-serif;
+  --hse-font-mono:Consolas,"SFMono-Regular",monospace;
+  --hse-text-xs:.75rem;
+  --hse-text-sm:.875rem;
+  --hse-text-base:1rem;
+  --hse-text-lg:1.25rem;
+  --hse-text-xl:1.5rem;
+  --hse-text-2xl:2rem;
+  --hse-text-display:2.75rem;
+  --hse-leading-xs:1.125rem;
+  --hse-leading-sm:1.25rem;
+  --hse-leading-base:1.5rem;
+  --hse-leading-lg:1.75rem;
+  --hse-leading-xl:2rem;
+  --hse-leading-2xl:2.5rem;
+  --hse-leading-display:3.25rem;
+  --hse-weight-regular:400;
+  --hse-weight-semibold:600;
+  --hse-weight-bold:700;
+  --hse-space-1:.25rem;--hse-space-2:.5rem;--hse-space-3:.75rem;
+  --hse-space-4:1rem;--hse-space-5:1.25rem;--hse-space-6:1.5rem;
+  --hse-space-8:2rem;--hse-space-10:2.5rem;--hse-space-12:3rem;
+  --hse-space-16:4rem;--hse-space-24:6rem;
+  --hse-radius-sm:.25rem;--hse-radius-control:.5rem;
+  --hse-radius-card:1rem;--hse-radius-pill:999px;
+  --hse-control-compact:2.25rem;--hse-control-default:2.75rem;--hse-control-touch:3rem;
+  --hse-shadow-raised:0 4px 16px rgb(13 15 18 / .10);
+  --hse-shadow-overlay:0 12px 40px rgb(13 15 18 / .18);
+  --hse-content-max:80rem;--hse-reading-max:68ch;--hse-rail-width:22.5rem;
+  --hse-duration-fast:120ms;--hse-duration-standard:180ms;
+  --hse-ease:cubic-bezier(.2,0,0,1);
+  --hse-z-base:0;--hse-z-sticky:20;--hse-z-popover:40;--hse-z-modal:60;--hse-z-toast:80;
+}
+/* Apply foundations within an HSE surface to avoid global host overrides. */
+.hse-surface{font-family:var(--hse-font-sans);font-size:var(--hse-text-base);line-height:var(--hse-leading-base);color:var(--hse-color-ink);background:var(--hse-color-surface);color-scheme:light}
+.hse-surface *{box-sizing:border-box}
+.hse-surface :where(button,input,select,textarea){font:inherit}
+.hse-surface :where(a){color:var(--hse-color-brand);text-underline-offset:3px}
+.hse-surface :where(button,a,input,select,textarea,summary,[tabindex]):focus-visible{outline:3px solid var(--hse-color-focus);outline-offset:3px}
+.hse-surface :where(h1,h2,h3,h4,p){margin-block-start:0}
+.hse-surface :where(h1,h2,h3,h4){font-weight:var(--hse-weight-semibold)}
+.hse-surface :where(h1){font-size:var(--hse-text-2xl);line-height:var(--hse-leading-2xl)}
+.hse-surface :where(h2){font-size:var(--hse-text-xl);line-height:var(--hse-leading-xl)}
+.hse-surface :where(h3){font-size:var(--hse-text-lg);line-height:var(--hse-leading-lg)}
+.hse-surface :where(p){margin-block-end:var(--hse-space-4)}
+.hse-button{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:var(--hse-control-default);padding:8px 16px;border:1px solid transparent;border-radius:var(--hse-radius-control);background:var(--hse-color-brand);color:white;font-weight:600;cursor:pointer;text-decoration:none;transition:background var(--hse-duration-fast) var(--hse-ease)}
+.hse-button:hover{background:var(--hse-color-brand-hover);color:white}
+.hse-button:active{background:var(--hse-color-brand-active)}
+.hse-button.secondary{background:white;color:var(--hse-color-brand);border-color:var(--hse-color-brand)}
+.hse-button.secondary:hover{background:var(--hse-color-brand-subtle)}
+.hse-button.tertiary{background:transparent;color:var(--hse-color-brand)}
+.hse-button.tertiary:hover{background:var(--hse-color-brand-subtle)}
+.hse-button.danger{background:var(--hse-color-danger)}
+.hse-button.danger:hover{background:#8d1b13}
+.hse-button:disabled{background:var(--hse-color-disabled-bg);border-color:var(--hse-color-border);color:var(--hse-color-disabled-text);cursor:not-allowed}
+.hse-input{display:block;min-height:var(--hse-control-default);width:100%;border:1px solid var(--hse-color-control-border);border-radius:var(--hse-radius-control);padding:10px 12px;background:white;color:var(--hse-color-ink)}
+.hse-input::placeholder{color:var(--hse-color-muted);opacity:1}
+.hse-input[aria-invalid="true"]{border:2px solid var(--hse-color-danger)}
+.hse-card{border:1px solid var(--hse-color-border);border-radius:var(--hse-radius-card);background:var(--hse-color-surface);padding:var(--hse-space-4)}
+.hse-badge{display:inline-flex;align-items:center;gap:6px;max-width:100%;border:1px solid var(--hse-color-border);border-radius:var(--hse-radius-pill);padding:3px 10px;font-size:var(--hse-text-sm);line-height:var(--hse-leading-sm);color:var(--hse-color-muted);background:var(--hse-color-surface-subtle)}
+.hse-badge.success{color:var(--hse-color-success);background:var(--hse-color-success-bg);border-color:var(--hse-color-success)}
+.hse-badge.warning{color:var(--hse-color-warning);background:var(--hse-color-warning-bg);border-color:var(--hse-color-warning)}
+.hse-badge.danger{color:var(--hse-color-danger);background:var(--hse-color-danger-bg);border-color:var(--hse-color-danger)}
+.hse-badge.info{color:var(--hse-color-info);background:var(--hse-color-info-bg);border-color:var(--hse-color-info)}
+@media(pointer:coarse){.hse-button,.hse-input{min-height:var(--hse-control-touch)}}
+@media(prefers-reduced-motion:reduce){.hse-surface *{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
+@media(forced-colors:active){.hse-button,.hse-input,.hse-card,.hse-badge{border:1px solid CanvasText}.hse-surface :focus-visible{outline:3px solid Highlight}}

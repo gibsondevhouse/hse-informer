@@ -1,0 +1,192 @@
+/* One geometry contract for Programs, Assignments, and Sites. */
+html:has([data-slot='sidebar-wrapper']) {
+  scrollbar-gutter: stable;
+}
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-auto-rows: 1fr;
+  align-items: stretch;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.stat-card {
+  display: grid;
+  grid-template-rows: minmax(1.25rem, auto) minmax(2rem, auto) minmax(
+      1.25rem,
+      auto
+    );
+  align-content: start;
+  row-gap: 4px;
+  min-width: 0;
+  min-block-size: 7rem;
+  text-align: left;
+  background: #fff;
+  border: 1px solid #dfe5ef;
+  border-radius: 7px;
+  padding: 12px 16px;
+  position: relative;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+.stat-card:hover {
+  border-color: #9ab7e2;
+  box-shadow: 0 3px 10px #25395c08;
+}
+.stat-label {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--hse-color-muted);
+  font-size: var(--hse-text-sm);
+  font-weight: 500;
+  line-height: var(--hse-leading-sm);
+}
+.stat-label svg {
+  color: #8495ad;
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+}
+.stat-card > strong {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 1.625rem;
+  letter-spacing: -0.04em;
+  line-height: 2rem;
+  margin: 0;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.stat-card > strong small {
+  font-size: 0.75rem;
+  color: #65758d;
+  letter-spacing: 0;
+  font-weight: 400;
+}
+.stat-card > .stat-detail {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  line-height: 1.25rem;
+  color: #63728a;
+  flex-wrap: wrap;
+}
+.stat-card.overdue-card::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 2px;
+  border-radius: 7px 7px 0 0;
+  background: #e2ad6b;
+}
+.overdue-card .stat-label svg {
+  color: #b47725;
+}
+.overdue-card > strong {
+  color: #a75b17;
+}
+.stat-meter {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  border-radius: 0 0 7px 7px;
+  overflow: hidden;
+  background: #ebf1f8;
+}
+.stat-meter::after {
+  content: '';
+  display: block;
+  width: var(--completion);
+  height: 100%;
+  background: #41947a;
+}
+@media (max-width: 1199px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 767px) {
+  .stats-grid {
+    gap: 8px;
+  }
+  .stat-card {
+    padding-inline: 12px;
+  }
+}
+@media (max-width: 539px) {
+  .stats-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .stat-card {
+    transition: none;
+  }
+}
+@media (forced-colors: active) {
+  .stat-card {
+    border: 1px solid CanvasText;
+  }
+}
+
+.assignment-table[data-slot='table'] {
+  table-layout: fixed;
+  width: 100%;
+  min-width: 52rem;
+}
+.assignment-table [data-slot='table-cell'] {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.assignment-sort-heading,
+.assignment-sort-heading > span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.assignment-sort-heading {
+  flex-wrap: wrap;
+  gap: 2px 6px;
+}
+.assignment-sort-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--hse-control-compact);
+  padding: 0 2px;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--hse-color-muted);
+  font-size: var(--hse-text-sm);
+  font-weight: 500;
+  text-align: left;
+  white-space: nowrap;
+}
+.assignment-sort-button > svg {
+  flex-shrink: 0;
+  color: #71839c;
+}
+.assignment-sort-button.is-sorted,
+.assignment-sort-button.is-sorted > svg {
+  color: #0056d2;
+}
+.assignment-sort-button:hover {
+  background: #eaf1fb;
+  color: #0056d2;
+}
+.sort-heading-divider {
+  color: #8190a5;
+}
+@media (pointer: coarse) {
+  .assignment-sort-button {
+    min-height: var(--hse-control-touch);
+  }
+}

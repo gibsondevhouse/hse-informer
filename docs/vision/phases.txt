@@ -1,0 +1,390 @@
+# Bottom line
+
+A large course catalog **will not make HSE Informer legally defensible**.
+
+A generic system that lets someone watch a video, pass five questions, and download a “certification” may actually create liability by implying the worker is qualified when the legally required practical, site-specific, or role-specific portions never occurred.
+
+For a U.S. general-industry LMS, legal defensibility means HSE Informer can demonstrate that the employer:
+
+1. Determined which training applied to the worker.
+2. Assigned the correct training for the worker’s job, hazards, equipment, and site.
+3. Used content aligned with the applicable regulation.
+4. Added the employer’s actual procedures, chemicals, emergency plans, and equipment.
+5. Delivered the training in language and vocabulary the employee understood.
+6. Verified knowledge and, where required, practical ability.
+7. Retrained the employee at the correct interval or after a triggering event.
+8. Preserved the exact training evidence used at that time.
+
+OSHA publishes an extensive cross-standard training-requirements compendium, requires training to be understandable to employees, and recognizes online training as only one component when practical or hands-on training is also required. 
+
+I am assuming the initial market is **U.S. private-sector general industry**, especially chemical manufacturing, formulation, warehousing, and industrial processing. State-plan states can impose different or more protective requirements, so “federal OSHA compliant everywhere” would be an unsafe product claim. 
+
+---
+
+# 1. Use four different completion states
+
+HSE Informer should not have one universal status called **Certified**.
+
+| Status | What it means |
+|---|---|
+| **Knowledge Complete** | The employee completed the course and passed the knowledge assessment. |
+| **Site Training Complete** | The employee reviewed the employer’s site-specific plan, hazards, procedures, contacts, and equipment. |
+| **Practical Evaluation Passed** | A qualified evaluator observed the employee performing the required task. |
+| **Authorized / Qualified** | All prerequisites, medical requirements, fit testing, practical evaluations, and approvals are complete and current. |
+| **External Credential Verified** | A credential from an outside provider, such as CPR/AED, has been validated and stored. |
+
+A person can therefore be:
+
+> PIT Knowledge Complete — **Not Authorized to Operate**
+
+That distinction is critical.
+
+---
+
+# 2. Recommended legally grounded course catalog
+
+## A. Foundational and broadly assigned courses
+
+These courses will be commonly assigned, but even these should not be marketed as universally required for every worker in every workplace.
+
+| Course family | Legal assignment logic | Required HSE Informer design |
+|---|---|---|
+| **1. Employee HSE Orientation** | Primarily an employer-policy course rather than one universal OSHA training requirement. | Worker rights, hazard reporting, incident reporting, stop-work/escalation expectations, site rules, prohibited activities, contractor rules, and emergency contacts. Label it **Employer Policy**, not “OSHA-required orientation.” |
+| **2. Emergency Action Plan, Alarms and Evacuation** | Review when the plan is developed, at initial assignment, when the employee’s responsibilities change, and when the plan changes.  | Must use the actual site’s alarms, exit routes, assembly areas, accountability process, emergency roles, and contact information. |
+| **3. Hazard Communication and GHS** | At initial assignment and whenever a new chemical hazard is introduced that the employee has not previously been trained about. There is no general federal requirement to repeat generic HazCom training annually.  | National concepts plus a mandatory site/work-area addendum covering actual operations, labeling systems, chemical hazards, SDS access, controls, and emergency procedures. |
+| **4. Personal Protective Equipment** | Required for employees who must use PPE. Employees must demonstrate understanding and the ability to use PPE before performing the work. Retraining is triggered by workplace changes, PPE changes, or demonstrated deficiencies.  | Tie the assignment to the site PPE hazard assessment. Include practical donning, doffing, adjustment, inspection, limitations, care, and disposal verification. |
+| **5. Portable Fire Extinguisher Awareness** | When extinguishers are provided for employee use, general education is required initially and at least annually. Designated firefighting-equipment users require additional equipment training initially and annually.  | Separate “evacuate only,” “general incipient-stage awareness,” and “designated extinguisher user” paths. Do not automatically tell every employee to fight a fire. |
+| **6. Walking-Working Surfaces, Ladders and Fall Protection** | Training is required before specified fall exposure or equipment use. It must be conducted by a qualified person, with retraining after relevant changes or demonstrated deficiencies.  | Separate general slip/trip awareness from ladder users, elevated-work users, personal fall-arrest users, and competent/qualified-person functions. |
+
+## B. Role-based and qualification courses
+
+These cannot be safely implemented as “online course equals qualification.”
+
+| Course family | Legal assignment logic | Required HSE Informer design |
+|---|---|---|
+| **7. Lockout/Tagout — Authorized Employee** | Role-specific training, followed by retraining when assignments, machines, processes, hazards, or procedures change, or when deviations or knowledge gaps are identified.  | National theory, site energy-control program, machine-specific procedures, practical application/removal, group LOTO, shift change, and evaluator signoff. |
+| **8. Lockout/Tagout — Affected and Other Employees** | Different content is required for workers who operate affected equipment or work in areas where energy-control procedures may be used.  | Do not assign the authorized-employee course to everyone merely to simplify administration. Maintain separate role definitions. |
+| **9. Powered Industrial Truck Operator** | Requires formal instruction, practical training, and workplace evaluation. Refresher training is event-triggered, and operator performance must be evaluated at least once every three years.  | Track truck class/type, attachments, workplace conditions, practical exercises, evaluator qualifications, evaluation result, restrictions, and authorization. A three-year evaluation is not simply a three-year online certificate expiration. |
+| **10. PIT Pedestrian Awareness** | Usually employer-policy and hazard-control training rather than operator qualification. | Separate pedestrian and operator assignments. Cover aisles, intersections, trailer loading, docks, visibility, parking, and local traffic rules. |
+| **11. Respiratory Protection — Required Use** | Training must be comprehensive, understandable, and repeated annually and more often when necessary. Tight-fitting respirators also require initial and at-least-annual fit testing.  | Course, respirator-specific practical demonstration, medical-clearance status, fit-test status, respirator make/model/size, cartridge or filter information, emergency limitations, and program-administrator approval. Do not store confidential medical questionnaire answers in the general LMS. |
+| **12. Voluntary Respirator Use** | Employees voluntarily using respirators must receive the applicable Appendix D information; other program elements depend on the respirator and circumstances.  | A separate voluntary-use path. Do not put voluntary dust-mask users into the full required-respirator qualification path without an applicability determination. |
+| **13. Hearing Conservation** | Annual training for employees included in the hearing conservation program, updated for changes in processes and protective equipment.  | Assignment should come from exposure or SEG membership, not job title alone. Link to hearing-protection requirements, audiometric status, and site noise controls without exposing medical details broadly. |
+| **14. Permit-Required Confined Space** | Training must establish proficiency and is required before covered duties, after duty changes, after new hazards or procedural changes, and after deviations or knowledge deficiencies. Training certification must identify employees, trainers, and dates.  | Separate authorized entrant, attendant, entry supervisor, atmospheric tester, permit issuer, and rescue roles. Add site spaces, hazards, permits, meters, ventilation, communication, retrieval, and emergency arrangements. |
+| **15. Electrical Safety — Unqualified Person** | Required for employees exposed to shock risk not reduced to a safe level by installation safeguards. Training must match the employee’s job and risk.  | General recognition, approach restrictions, damaged equipment, extension cords, GFCIs, panels, reporting, and prohibited work. |
+| **16. Electrical Safety — Qualified Person** | Additional task-specific training is required for qualified persons, with classroom or on-the-job delivery determined by risk.  | Qualification history, equipment/voltage scope, demonstrated skills, task restrictions, employer authorization, and any separately licensed NFPA 70E-based content. |
+| **17. Hot Work, Welding, Cutting and Fire Watch** | Welders, cutters, and supervisors must be suitably trained; fire watchers need equipment and alarm-system training. Hot-work authorization and local precautions are site-specific.  | Separate operator, fire watch, area owner, and permit-authorizer paths. Include the actual hot-work permit and combustible-material controls. |
+| **18. Bloodborne Pathogens** | Only for employees with occupational exposure. Required at initial assignment, annually, and when task or exposure changes occur. The course must include an opportunity for interactive questions and answers with a knowledgeable person.  | HSE Informer needs a live or genuinely interactive knowledgeable-person channel, the employer’s exposure-control plan, site exposure response, vaccination workflow, and required records. A static video alone is not enough. |
+| **19. First Aid, CPR and AED** | First-aid capability is required when an appropriate infirmary, clinic, or hospital is not in near proximity.  | Initially, store and verify credentials from recognized external providers rather than claiming a self-paced HSE Informer course makes someone an adequately trained responder. |
+
+## C. Environmental and transportation courses
+
+These are important for chemical and manufacturing clients, but assignment must be driven by facility status, permits, job duties, and jurisdiction.
+
+| Course family | Legal assignment logic | Required HSE Informer design |
+|---|---|---|
+| **20. RCRA Hazardous-Waste Personnel — LQG** | LQG personnel must complete role-relevant training within six months of employment or assignment, may not work unsupervised until trained, and must participate in an annual review. Job descriptions and training records are specifically required.  | Tie training to generator category, job title, waste duties, contingency plan, emergency systems, accumulation areas, inspections, and facility procedures. |
+| **21. Hazardous-Waste Awareness — VSQG/SQG** | Requirements differ by generator status and state adoption. | Do not give every customer an “annual federal RCRA certification.” Determine generator category and state requirements first. |
+| **22. Universal Waste Handler** | Small-quantity handlers must inform relevant workers about proper handling and emergency procedures; large-quantity handlers must ensure employees are thoroughly familiar with responsibilities during normal operations and emergencies.  | Cover only universal-waste streams actually present: lamps, batteries, pesticides, aerosol cans, mercury equipment, and state-added wastes. |
+| **23. SPCC Oil-Handling Personnel** | Applicable oil-handling personnel must be trained on prevention, discharge procedures, applicable requirements, facility operations, and the facility SPCC Plan. A discharge-prevention briefing is required at least annually.  | Must use the customer’s actual SPCC Plan, oil locations, containment, inspection process, spill history, equipment failures, and response contacts. |
+| **24. DOT Hazmat Employee Training** | Requires general awareness, function-specific, safety, and security-awareness training. New or reassigned employees may perform functions only under direct supervision until training is completed within 90 days. Recurrent training is required at least every three years.  | Build function-specific paths for classification, packaging, marking, labeling, placarding, shipping papers, loading, and security—not one generic “DOT course.” Preserve the training materials or their exact location as part of the record. |
+| **25. Stormwater/SWPPP Site Training** | Driven by the applicable industrial stormwater permit and facility SWPPP rather than one uniform federal course and recurrence rule. | Jurisdiction and permit overlay, pollutant sources, BMPs, inspections, sampling, spill response, documentation, and employee responsibilities. |
+
+---
+
+# 3. The most important feature is not another canned course
+
+For manufacturing clients, HSE Informer needs a **Site Qualification Builder**.
+
+That builder should allow the customer to turn a general course into an actual qualification package:
+
+> **PIT Operator Qualification**  
+> Formal course  
+> + truck-specific module  
+> + site traffic plan  
+> + hands-on exercises  
+> + workplace evaluation  
+> + evaluator approval  
+> = Authorized operator
+
+The same pattern should support:
+
+- Machine-specific LOTO procedures.
+- Equipment operating procedures and OJT.
+- Confined-space permits and individual spaces.
+- Respirator makes, models, sizes, and cartridges.
+- Chemical and work-area HazCom addenda.
+- Task-specific PPE.
+- Hot-work permits.
+- Safe-work permits.
+- Process operating procedures.
+- Emergency roles and evacuation assignments.
+
+Without this layer, HSE Informer is merely a video library.
+
+---
+
+# 4. Courses that should be specialty packs, not early generic products
+
+## HAZWOPER
+
+Do not launch a self-paced “40-hour HAZWOPER certification” and imply it fully qualifies someone. HAZWOPER obligations differ for cleanup-site workers, treatment/storage/disposal personnel, and emergency responders. OSHA has specifically stated that required programs may need actual hands-on components and that computer-based instruction alone is insufficient for several HAZWOPER roles. 
+
+The safer initial product is:
+
+- HAZWOPER credential import.
+- Annual refresher tracking.
+- Site-specific emergency-response-plan training.
+- Role and competency tracking.
+- Practical drill records.
+- Provider and instructor records.
+
+## PSM and EPA RMP
+
+Add this for covered chemical-process facilities. Operators need training on the actual process and operating procedures, including specific hazards, emergency shutdown, and safe-work practices. OSHA PSM operator refresher training is required at least every three years and more often when necessary. EPA RMP contains comparable process-operator training requirements for covered processes. 
+
+This should not be a generic “PSM Awareness certificate.” It should manage:
+
+- Process and unit assignment.
+- Operating-procedure versions.
+- Initial operator qualification.
+- Refresher qualification.
+- MOC-related training.
+- Pre-startup training.
+- Contractor orientation.
+- Emergency shutdown competency.
+
+## Substance-specific standards
+
+Build configurable packs for exposure-triggered subjects such as:
+
+- Respirable crystalline silica.
+- Lead.
+- Hexavalent chromium.
+- Asbestos.
+- Benzene.
+- Formaldehyde.
+- Cadmium.
+- Beryllium.
+- Methylene chloride.
+- Laboratory chemical hygiene.
+
+These should be activated by an exposure or applicability assessment, not assigned to every worker merely because the customer bought the library.
+
+## Separate industry packs
+
+Do not reuse general-industry course mappings and call them construction-compliant. Eventually, maintain separate packs for:
+
+- Construction.
+- Agriculture and pesticide handling.
+- Healthcare.
+- Laboratories.
+- Grain handling.
+- Maritime.
+- Utilities.
+- State-specific programs.
+
+---
+
+# 5. Non-negotiable platform controls
+
+## Applicability engine
+
+Every assignment rule should be able to use:
+
+- Country and state.
+- Federal OSHA or State Plan.
+- Industry and establishment type.
+- Site and work area.
+- Employee, contractor, or temporary-worker status.
+- Job and role.
+- Task.
+- Equipment and equipment type.
+- Chemical and exposure group.
+- Written-program applicability.
+- Permit applicability.
+- Emergency posture: evacuate, incidental response, or emergency response.
+- Generator or facility status.
+
+A customer should never need to assign “all courses to all employees” because the product lacks proper applicability logic.
+
+## Legal-status labeling
+
+Every course should visibly identify itself as one of:
+
+- **Federal regulatory requirement**
+- **State-specific requirement**
+- **Permit-specific requirement**
+- **Employer-program requirement**
+- **Consensus-standard-based**
+- **Recommended practice**
+- **General awareness**
+
+This prevents best practice from being falsely represented as law and prevents actual legal requirements from being treated as optional suggestions.
+
+## Correct recurrence engine
+
+Do not use a blanket “everything expires annually” setting.
+
+Examples:
+
+- **Annual:** required respirator training, hearing-conservation training, bloodborne-pathogens training, extinguisher education when applicable, LQG RCRA review, and SPCC briefing. 
+- **At least every three years:** PIT performance evaluation, DOT hazmat recurrent training, and PSM operator refresher training. 
+- **Event-driven:** HazCom, PPE, EAP, LOTO, fall protection, and confined-space training. 
+
+Also, do not confuse an annual LOTO procedure inspection with an automatic federal requirement for annual LOTO retraining.
+
+## Immutable course versioning
+
+The system must preserve:
+
+- The exact course version.
+- Effective and retired dates.
+- Applicable regulatory citations.
+- Content and assessment presented to the learner.
+- Site addendum version.
+- Change history.
+- Reviewer and approval history.
+- Reason for revision.
+
+Never silently update an old completion record to point at new course content.
+
+## Audit-ready records
+
+At minimum, capture:
+
+- Employee identity.
+- Employer, site, department, job, and role at time of training.
+- Assignment reason.
+- Course ID and exact version.
+- Applicable standard or employer-program requirement.
+- Date, duration, delivery method, and language.
+- Assessment score and retained answer history.
+- Trainer and evaluator identity and qualifications.
+- Practical evaluation checklist and result.
+- Equipment, process, respirator, truck, machine, or space involved.
+- Site-specific plan or procedure version.
+- Retraining trigger.
+- Employee and evaluator attestations.
+- Authorization status and restrictions.
+- External credential evidence.
+
+Some standards specify exact record elements. DOT, for example, requires the employee name, completion date, description/copy/location of materials, provider information, and certification that training and testing occurred. Bloodborne-pathogens records include dates, content or summary, trainer qualifications, and attendee names and job titles. 
+
+## Worker comprehension
+
+Track:
+
+- Training language.
+- Captions and audio availability.
+- Literacy-appropriate content.
+- Translation version.
+- Failed-attempt patterns.
+- Supervisor or trainer verification when necessary.
+- Availability of a knowledgeable person for questions.
+
+OSHA-required training must be presented in language and vocabulary employees understand. 
+
+---
+
+# 6. Claims HSE Informer should not make
+
+**Do not advertise ordinary HSE Informer courses as:**
+
+- “OSHA approved.”
+- “OSHA certified.”
+- “Guaranteed OSHA compliant.”
+- “Automatically qualifies the employee.”
+- “Valid in all 50 states.”
+- “Replaces all employer-specific training.”
+- “Forklift certified” after an online-only course.
+- “Confined-space certified” without role and site qualification.
+- “Respirator certified” without medical clearance and fit testing.
+
+OSHA states that it generally does not approve, certify, or endorse individual trainers or training programs. OSHA Outreach 10- and 30-hour courses are voluntary orientation programs, and Outreach trainers are described as authorized rather than certified. 
+
+A defensible product claim would be:
+
+> “HSE Informer helps employers administer, document, and verify regulatory and employer-required training. Employers remain responsible for determining applicability, providing workplace-specific instruction, conducting required practical evaluations, and authorizing employees.”
+
+---
+
+# 7. Severity-rated product risks
+
+| Severity | Risk |
+|---|---|
+| **Critical** | Treating course completion as employee qualification or authorization. |
+| **Critical** | Issuing PIT, confined-space, LOTO, respiratory, electrical, or emergency-response qualifications without required site-specific and practical components. |
+| **Critical** | Making unsupported “OSHA approved,” “certified,” or guaranteed-compliance claims. |
+| **Critical** | Overwriting historical course versions or losing evidence of what the worker actually received. |
+| **High** | Assigning every course annually regardless of the actual regulatory trigger. |
+| **High** | Having no state, permit, facility-status, job, task, chemical, or equipment applicability engine. |
+| **High** | Failing to distinguish federal requirements, employer policies, consensus standards, and best practices. |
+| **High** | Allowing unqualified trainers or evaluators to approve practical qualifications. |
+| **High** | Providing English-only training without verifying comprehension. |
+| **Medium** | Building 40-hour HAZWOPER, CPR certification, or complex PSM content before establishing competent-provider and practical-evaluation workflows. |
+| **Medium** | Spending heavily on animation and course volume before completing the regulatory assignment model and evidence architecture. |
+| **Low** | Certificate appearance, badges, gamification, and leaderboard features. Those are cosmetic until the compliance foundation exists. |
+
+---
+
+# 8. Recommended implementation order
+
+## Phase 0 — Compliance architecture
+
+**Objective:** Build the regulation-to-training data model before producing course presentations.
+
+**Acceptance criteria:**
+
+- Every requirement has an authority, legal status, applicability rule, audience, delivery constraint, recurrence rule, retraining triggers, record requirements, and site-overlay requirement.
+- The system distinguishes knowledge completion from qualification.
+- Historical versions cannot be overwritten.
+- State and permit overlays are supported.
+
+## Phase 1 — Defensible general-industry core
+
+Build these course families first:
+
+1. Employee HSE Orientation.
+2. Emergency Action Plan.
+3. Hazard Communication.
+4. PPE.
+5. Fire Extinguisher.
+6. Walking-Working Surfaces and Fall Protection.
+7. LOTO.
+8. Powered Industrial Trucks.
+9. Respiratory Protection.
+10. Hearing Conservation.
+11. Permit-Required Confined Space.
+12. Electrical Safety.
+13. Hot Work and Fire Watch.
+14. Bloodborne Pathogens.
+15. RCRA Hazardous Waste.
+16. SPCC.
+17. DOT Hazmat.
+
+Each must support national content, a site-specific addendum, assignment logic, assessments, event-based retraining, and practical signoff where applicable.
+
+## Phase 2 — Environmental and specialty integration
+
+Add:
+
+- Universal waste.
+- Stormwater/SWPPP.
+- First-aid/CPR/AED credential verification.
+- HAZWOPER provider and competency integration.
+- PSM and EPA RMP.
+- Substance-specific exposure standards.
+- Contractor and temporary-worker qualification.
+- Machine-specific SOP/OJT builder.
+
+## Phase 3 — Jurisdiction and industry packs
+
+Add State Plan overlays, construction, agriculture, healthcare, laboratories, grain handling, maritime, and customer-specific regulatory packs.
+
+---
+
+The blunt product decision is this:
+
+> **Do not begin by building dozens of polished course presentations. Build the course-to-regulation matrix, applicability engine, site-addendum system, practical-evaluation workflow, and immutable evidence record first.**
+
+Without those components, HSE Informer would be a safety-content website. With them, it becomes a defensible HSE training-management system.
