@@ -2,6 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   courses,
+  courseIds,
+  legalStatuses,
+  reasons,
+  cadences,
+  defaultCadence,
+  STORAGE_KEY,
   sites,
   learners,
   seedAssignments,
@@ -13,7 +19,8 @@ import {
   isAssignment,
 } from '../lib/training.ts';
 
-test('launch library contains exactly the five approved syllabi', () => {
+test('library contains ten mapped course outlines', () => {
+  assert.equal(STORAGE_KEY, 'hse-informer-admin-preview-v2');
   assert.deepEqual(
     courses.map((c) => c.name),
     [
@@ -22,11 +29,113 @@ test('launch library contains exactly the five approved syllabi', () => {
       'Confined Space',
       'Chemical Hygiene',
       'Hazard Communication',
+      'Electrical Safety',
+      'Heat and Thermal Stress',
+      'Powered Industrial Trucks',
+      'Bloodborne Pathogens',
+      'Walking-Working Surfaces',
     ],
   );
   assert.deepEqual(
     courses.map((c) => c.lessons.length),
-    [9, 9, 10, 10, 10],
+    [7, 9, 10, 10, 10, 9, 9, 10, 10, 10],
+  );
+  const respiratory = courses.find((course) => course.id === 'respiratory');
+  assert.equal(respiratory.unitLabel, 'modules');
+  assert.deepEqual(respiratory.lessons, [
+    'Respiratory hazards and program scope',
+    'Assigned respirators, selection, and limitations',
+    'Donning, doffing, inspection, and user seal checks',
+    'Routine use and work practices',
+    'Maintenance, cleaning, storage, and replacement',
+    'Emergency response and respirator malfunction',
+    'Medical signs, training requirements, and retraining',
+  ]);
+  assert.equal(respiratory.authorizationPrerequisites.length, 5);
+  assert.match(
+    respiratory.authorizationPrerequisites.at(-1),
+    /course completion alone does not authorize wear/,
+  );
+  assert.ok(
+    ['(c)', '(d)', '(e)', '(f)', '(g)', '(h)', '(k)', '(l)', '(m)'].every(
+      (paragraph) => respiratory.regulatory.paragraphs.includes(paragraph),
+    ),
+  );
+  assert.ok(
+    respiratory.regulatory.retrainingTriggers.some((trigger) =>
+      trigger.includes('annually'),
+    ),
+  );
+  assert.ok(
+    respiratory.regulatory.retrainingTriggers.some((trigger) =>
+      trigger.includes('Workplace or respirator-type changes'),
+    ),
+  );
+  assert.ok(
+    respiratory.regulatory.references.some(({ href }) => href.endsWith('AppA')),
+  );
+  assert.ok(
+    respiratory.regulatory.references.some(({ href }) => href.endsWith('AppB1')),
+  );
+  assert.ok(
+    respiratory.regulatory.references.some(({ href }) => href.endsWith('AppD')),
+  );
+  assert.deepEqual(
+    courses.map((c) => c.id),
+    courseIds,
+  );
+  assert.ok(courses.every((course) => course.local.length === 3));
+});
+test('regulatory summaries have valid status, recurrence, and source links', () => {
+  const kinds = [
+    'annual',
+    'three-year-evaluation',
+    'event-driven',
+    'employer-defined',
+  ];
+  for (const course of courses) {
+    assert.equal(
+      Boolean(course.regulatory) !== Boolean(course.reviewNote),
+      true,
+      course.id,
+    );
+    assert.ok(cadences.includes(defaultCadence(course)), course.id);
+    if (!course.regulatory) continue;
+    assert.ok(legalStatuses.includes(course.regulatory.legalStatus), course.id);
+    assert.ok(kinds.includes(course.regulatory.recurrence.kind), course.id);
+    assert.ok(course.regulatory.references.length > 0, course.id);
+    for (const { href } of course.regulatory.references) {
+      const url = new URL(href);
+      assert.equal(url.protocol, 'https:', course.id);
+      assert.ok(
+        ['osha.gov', 'ecfr.gov', 'cdc.gov'].some(
+          (domain) =>
+            url.hostname === domain || url.hostname.endsWith(`.${domain}`),
+        ),
+        href,
+      );
+    }
+  }
+  assert.ok(
+    seedAssignments.every((assignment) => reasons.includes(assignment.reason)),
+  );
+  assert.equal(reasons.length, 9);
+  assert.deepEqual(
+    Object.fromEntries(
+      courses.map((course) => [course.id, defaultCadence(course)]),
+    ),
+    {
+      respiratory: 'Annual (required)',
+      loto: 'Event-driven',
+      confined: 'Event-driven',
+      hygiene: 'Interval to be determined',
+      hazcom: 'Event-driven',
+      electrical: 'Event-driven',
+      heat: 'Interval to be determined',
+      pit: 'Every three years (evaluation)',
+      bbp: 'Annual (required)',
+      walking: 'Event-driven',
+    },
   );
 });
 test('site scopes partition all assignments and preserve totals', () => {

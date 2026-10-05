@@ -767,6 +767,23 @@ h1:focus {
   color: #c18053;
   border-color: #f1ded1;
 }
+.course-icon.gold { background: #fff8dc; color: #98751d; border-color: #f0e1a5; }
+.course-icon.coral { background: #fff0e9; color: #bb6849; border-color: #f2d4c6; }
+.course-icon.slate { background: #eef2f6; color: #5c7288; border-color: #d7e0e9; }
+.course-icon.rose { background: #fff0f3; color: #ae627a; border-color: #f2d5df; }
+.course-icon.moss { background: #eff5e9; color: #637f48; border-color: #dbe9cf; }
+.course-icon.practice { background: #f4efff; color: #6b3ac7; border-color: #e3d8f8; }
+.library-card-practice {
+  border-style: dashed;
+  border-color: #cdbdf0;
+  background: #fcfaff;
+}
+.library-card-practice > div:last-child {
+  border-top-color: #e9dff9;
+}
+a.text-action {
+  text-decoration: none;
+}
 .assigned-number {
   font-size: 15px;
   font-weight: 500;
@@ -1273,6 +1290,14 @@ button.status-pill {
   color: #7d8ba0;
   margin-top: 16px;
 }
+.regulatory-basis .status-pill { display: inline-flex; margin: 4px 0 16px; }
+.regulatory-basis dl { display: grid; gap: 12px; margin-bottom: 16px; }
+.regulatory-basis dt { color: #536985; font-weight: 600; margin-bottom: 3px; }
+.regulatory-basis dd { margin: 0; line-height: 1.5; overflow-wrap: anywhere; }
+.regulatory-basis h4 { font-weight: 600; margin: 12px 0 6px; }
+.regulatory-basis ul { padding-left: 18px; margin-bottom: 16px; }
+.regulatory-basis a { display: inline-flex; gap: 4px; align-items: center; text-decoration: underline; text-underline-offset: 3px; }
+.regulatory-basis a:focus-visible { outline: 2px solid var(--hse-color-focus, #3973c5); outline-offset: 3px; }
 [data-slot='dialog-overlay'],
 [data-slot='sheet-overlay'] {
   background: #19334a3d;

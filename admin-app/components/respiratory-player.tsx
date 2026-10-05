@@ -51,6 +51,7 @@ import { RadioGroup } from '@/components/ui/radio-group';
 import { courses } from '@/lib/training';
 import {
   initialPreviewState,
+  lessonReferences,
   paginateBlocks,
   previewSteps,
   reducePreview,
@@ -157,7 +158,7 @@ export default function RespiratoryPlayer() {
         <span>
           <Eye size={14} />
           <strong>Admin preview</strong>
-          <span className="rp-draft-label">Draft · Opening lesson</span>
+            <span className="rp-draft-label">Draft · Module 1</span>
         </span>
         <span>Preview activity does not affect training records.</span>
       </div>
@@ -189,7 +190,7 @@ export default function RespiratoryPlayer() {
             <span>
               {state.step === 0
                 ? 'Course introduction'
-                : `Lesson 01 · Section ${state.step} of 5`}
+                  : `Module 01 · Section ${state.step} of 5`}
             </span>
             <Dialog>
               <DialogTrigger
@@ -209,25 +210,24 @@ export default function RespiratoryPlayer() {
                   These sources support the opening draft. Technical review,
                   worker testing, and course approval are still pending.
                 </DialogDescription>
+                <h3>Regulatory basis</h3>
+                <p>
+                  {course.regulatory?.authority} ·{' '}
+                  {course.regulatory?.paragraphs.join(', ')}
+                </p>
                 <ul className="rp-source-links">
-                  {[
-                    [
-                      'OSHA · Industrial Hygiene',
-                      'https://www.osha.gov/publications/OSHA3143',
-                    ],
-                    [
-                      'NIOSH · A Guide to Air-Purifying Respirators',
-                      'https://www.cdc.gov/niosh/docs/2018-176/',
-                    ],
-                    [
-                      'OSHA · Respiratory protection standard',
-                      'https://www.osha.gov/laws-regs/regulations/standardnumber/1910/1910.134',
-                    ],
-                    [
-                      'NIOSH · Confined-space hazards',
-                      'https://archive.cdc.gov/www_cdc_gov/niosh/topics/emres/confined.html',
-                    ],
-                  ].map(([label, href]) => (
+                  {course.regulatory?.references.map(({ label, href }) => (
+                    <li key={href}>
+                      <a href={href} target="_blank" rel="noopener noreferrer">
+                        {label}
+                        <ArrowUpRight size={14} />
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+                <h3>Supporting sources for this lesson</h3>
+                <ul className="rp-source-links">
+                  {lessonReferences.map(({ label, href }) => (
                     <li key={href}>
                       <a href={href} target="_blank" rel="noopener noreferrer">
                         {label}
@@ -258,7 +258,7 @@ export default function RespiratoryPlayer() {
             continueDisabled={state.step === 4 && !state.checked}
             continueLabel={
               state.step === 0
-                ? 'Start lesson 1'
+                ? 'Start module 1'
                 : state.step === 4 && state.checked && !correct
                   ? 'Try again'
                   : state.step === 5
@@ -290,7 +290,7 @@ function CourseOutline({
     <>
       <div className="rp-outline-heading">
         <h2>Respiratory Protection</h2>
-        <p>9 planned lessons</p>
+          <p>7 planned modules</p>
       </div>
       <button
         className={`rp-intro ${state.step === 0 ? 'is-current' : ''}`}
@@ -314,8 +314,8 @@ function CourseOutline({
                       className="rp-expand"
                       aria-label={
                         expanded
-                          ? 'Collapse lesson 1 sections'
-                          : 'Expand lesson 1 sections'
+                          ? 'Collapse module 1 sections'
+                          : 'Expand module 1 sections'
                       }
                       title={expanded ? 'Collapse sections' : 'Expand sections'}
                     >

@@ -1,10 +1,13 @@
 # HSE Informer
 
-Training administration for chemical manufacturing sites, with a shared library of five foundational courses. Respiratory Protection is the first course in development.
+Training administration for chemical manufacturing sites, with a shared library of ten course outlines. Respiratory Protection is the first course in development.
 
 - [Admin app](admin-app/README.md): training programs, site summaries, assignments, and the opening respiratory lesson preview.
 - [Design guidance](docs/coursera-audit/README.md): the Coursera reference audit, HSE design tokens, component contracts, and supporting evidence.
 - [Product direction](docs/vision/phases.txt): planning notes.
+- [Regulatory training source map](docs/regulatory/training-source-map.md): supplied Federal OSHA general-industry planning reference and course mapping.
+- [Respiratory Protection compliance analysis](docs/regulatory/rp-compliance.md): requirements review and LMS/course design boundaries for 29 CFR 1910.134.
+- [Learning player and component library](docs/lms/component-library.md): the reusable course player, the learner-facing [PBJ-101 practice course](admin-app/app/training/pb-and-j/page.tsx), and a separate author component lab.
 
 ## Run locally
 
@@ -31,7 +34,7 @@ npm run build
 
 ## Current scope
 
-The app is an administrator preview with fictional organizations, sites, learners, and assignments. Assignment edits are stored in the browser. Respiratory Protection contains a draft opening lesson; the remaining lessons and final assessment are still in development. Preview progress does not create a training completion or grant workplace authorization.
+The app is an administrator preview with fictional organizations, sites, learners, and assignments. Assignment edits are stored in the browser. Respiratory Protection contains a draft opening lesson; the remaining lessons and final assessment are still in development. Preview progress does not create a training completion or grant workplace authorization. Course regulatory metadata is a planning summary, not legal advice; Chemical Hygiene remains under domain review.
 
 The [private hosted app](https://hse-informer-training.clgibso91.chatgpt.site/) is published through Sites. The build and hosting metadata are in `admin-app`. Browser interaction and assistive-technology acceptance testing remain pending; automated checks are described in the app README.
 

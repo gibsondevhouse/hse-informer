@@ -23,55 +23,60 @@ export function lessonBlocks(
           <h1>Respiratory Protection</h1>
         </div>,
         <p key="block-11" className="rp-lead">
-          Understand what can harm your breathing, how protection works, and
-          what you need to do at work.
+          Learn how your employer&apos;s respiratory-protection program applies to
+          your task, and what to do when conditions change.
         </p>,
         <p key="block-12" className="rp-context">
-          Chemical manufacturing teams · 9-lesson course in development
+          Chemical manufacturing teams · 7-module course in development
         </p>,
         <div key="block-13">
-          <h2>Start with the hazard</h2>
-          <p>In this opening lesson, you will learn to:</p>
+          <h2>Module 1: hazards and program scope</h2>
+          <p>In this opening module, you will learn to:</p>
         </div>,
         <p key="block-14" className="rp-objective">
           <Check size={17} />
-          Recognize particles, gases, and vapors in familiar work activities.
+          Recognize breathing hazards in familiar chemical-plant tasks.
         </p>,
         <p key="block-15" className="rp-objective">
           <Check size={17} />
-          Explain why clear air and no unusual smell do not prove an area is
-          safe.
+          Distinguish employer-required respirator use from voluntary use.
         </p>,
         <p key="block-16" className="rp-objective">
           <Check size={17} />
-          Recognize a changed condition and follow the site’s response
-          instructions.
+          Find the site program and follow its stop-work and reporting rules.
+        </p>,
+        <p key="block-18" className="rp-note">
+          This preview has no site chemical inventory, exposure assessment,
+          written program, respirator assignment, emergency contacts, or
+          equipment. Your employer must supply and teach those worksite-specific
+          details.
         </p>,
         <p key="block-17" className="rp-note">
-          <strong>You’re viewing an early lesson draft.</strong>Only the opening
-          lesson is available here. Full instruction, demonstrations, narration,
-          and assessment will be developed and reviewed before release.
+          <strong>You’re viewing an early lesson draft.</strong>Only opening
+          sections of Module 1 are available. Full instruction, demonstrations,
+          narration, practical checks, and assessment remain in development.
         </p>,
       ];
     case 1:
       return [
-        <h1 key="block-20">
-          Breathing hazards can be part of an ordinary task.
-        </h1>,
+        <h1 key="block-20">Start with the task and the site program.</h1>,
         <p key="block-21" className="rp-lead">
-          Airborne contamination can reach your lungs when you breathe. A
-          familiar job can still create a harmful exposure.
+          Respiratory hazards depend on the material, process, task, controls,
+          and conditions. Your employer evaluates those hazards and identifies
+          the respirator, if any, for the work.
         </p>,
         <div key="block-22" className="rp-example">
           <h2>Production and packaging</h2>
           <p>
-            Opening bags, charging a mixer, or filling containers can release
-            material into the air.
+            Opening bags, charging a mixer, sampling, or filling containers can
+            release dust, mist, vapor, or gas. The actual site assessment and
+            work instructions determine the exposure and controls.
           </p>
         </div>,
         <p key="block-23">
-          A visible cloud is a warning sign; smaller particles may remain after
-          it clears.
+          Engineering and work-practice controls are addressed first where
+          feasible. A respirator is selected as part of the employer&apos;s program,
+          not as a worker-selected substitute when a control fails.
         </p>,
         <div key="block-24" className="rp-example">
           <h2>Cleaning and maintenance</h2>
@@ -89,12 +94,13 @@ export function lessonBlocks(
           </p>
         </div>,
         <p key="block-26">
-          Previous experience with the task is not a substitute for checking the
-          current instructions.
+          A familiar task, clear-looking air, or lack of immediate symptoms does
+          not replace the current hazard assessment and site instructions.
         </p>,
         <p key="block-27" className="rp-note">
-          <strong>What this means for you</strong>Before work, know which
-          hazards and controls the site has identified for your task.
+          <strong>Before work</strong>Know the task-specific hazards, required
+          controls, assigned respirator (if applicable), and where the current
+          written program and procedures are available.
         </p>,
         <p key="block-28">
           If the material, equipment, or conditions do not match the
@@ -129,6 +135,20 @@ export function lessonBlocks(
           The employer must evaluate the hazard and select suitable respiratory
           protection within its program. Do not substitute equipment yourself.
         </p>,
+        <div key="block-36" className="rp-example">
+          <h2>Required use and voluntary use are different</h2>
+          <p>
+            If the employer requires a respirator for a task or area, it is
+            required use even when exposure measurements are below a limit. The
+            applicable written program and its safeguards apply.
+          </p>
+          <p>
+            When a worker chooses a filtering facepiece and neither the
+            employer nor a standard requires it, Appendix D information applies.
+            Voluntary use of other respirators also requires the employer to
+            address medical ability and safe cleaning, storage, and maintenance.
+          </p>
+        </div>,
       ];
     case 3:
       return [
@@ -170,14 +190,15 @@ export function lessonBlocks(
           </strong>
         </p>,
         <p key="block-45">
-          Stay out, keep clear, and follow the site’s reporting or emergency
-          instructions. Do not enter to investigate or attempt an unplanned
-          rescue.
+          OSHA treats oxygen-deficient atmospheres as IDLH, subject to a narrow
+          exception. If conditions are unknown or suspected, stay out, keep
+          clear, and follow the site’s reporting or emergency instructions. Do
+          not enter to investigate or attempt an unplanned rescue.
         </p>,
         <p key="block-46" className="rp-note">
-          Later lessons will cover respirator types and their limitations.
           Respirator selection and atmospheric evaluation are assigned
-          responsibilities, not decisions to improvise during a task.
+          responsibilities, not decisions to improvise during a task. Never
+          use an air-purifying respirator for an unknown or IDLH atmosphere.
         </p>,
       ];
     case 4: {
@@ -245,39 +266,49 @@ export function lessonBlocks(
           Recognize the hazard before relying on protection.
         </h1>,
         <p key="block-66" className="rp-lead">
-          The first step is knowing what may be in the air and recognizing when
-          conditions have changed.
+          Know the task, the employer&apos;s program, and the site response before
+          relying on respiratory protection.
         </p>,
         <p key="block-67" className="rp-recap">
-          <strong>Know what the task can release.</strong>Dust, mist, and fume
-          are particles. Gases and vapors need different consideration.
+          <strong>Know what the task can release.</strong>{' '}
+          Dust, mist, and fume are particles. Gases and vapors need different
+          consideration; the employer assesses the actual workplace hazard.
         </p>,
         <p key="block-68" className="rp-recap">
-          <strong>Do not use your senses as a safety test.</strong>Clear air, no
-          smell, and no immediate symptoms do not establish safe conditions.
+          <strong>Do not use your senses as a safety test.</strong>{' '}
+          Clear air, no smell, and no immediate symptoms do not establish safe
+          conditions.
         </p>,
         <p key="block-69" className="rp-recap">
-          <strong>Know a critical protection limit.</strong>Air-purifying
-          respirators do not supply oxygen. Stay out of unknown or suspected
-          oxygen-deficient atmospheres.
+          <strong>Know a critical protection limit.</strong>{' '}
+          Air-purifying respirators do not supply oxygen. Stay out of unknown or
+          suspected oxygen-deficient or IDLH atmospheres.
         </p>,
         <p key="block-70" className="rp-recap">
-          <strong>Respond to a changed condition.</strong>Follow the site’s
-          stop-work, reporting, and emergency instructions. Do not improvise a
-          replacement for a failed control.
+          <strong>Respond to a changed condition.</strong>{' '}
+          Follow the site’s stop-work, reporting, and emergency instructions.
+          Do not improvise a replacement for a failed control.
+        </p>,
+        <p key="block-73" className="rp-recap">
+          <strong>Training is not authorization.</strong>{' '}
+          Required users need training before use and at least annually.
+          Medical evaluation, a tight-fitting respirator’s fit test, correct
+          equipment issuance, and task authorization are separate
+          employer-program checks.
         </p>,
         <div key="block-71" className="rp-note">
           <span className="rp-kicker">Next in development</span>
-          <h2>How the workplace controls exposure</h2>
+          <h2>Assigned respirators, selection, and limitations</h2>
           <p>
-            Source controls, ventilation, work practices, and the role of
-            respirators.
+            How employer hazard assessment, respirator selection, fit, and
+            limits connect to the task.
           </p>
         </div>,
         <p key="block-72" className="rp-note">
-          <strong>End of this draft preview</strong>This has not completed the
-          course, created a learning record, or established qualification. The
-          remaining lessons and full assessment are still in development.
+          <strong>End of this draft preview</strong>{' '}
+          This has not completed the
+          course, created a learning record, or established qualification. Six
+          modules and the full assessment are still in development.
         </p>,
       ];
   }
