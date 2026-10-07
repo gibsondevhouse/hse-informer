@@ -174,6 +174,26 @@ export type AttestationBlock = Annotated & {
   required?: boolean;
 };
 
+export type OptionSelectItem = {
+  id: string;
+  title: string;
+  subtitle?: string;
+  badge?: string;
+  content: string;
+  bullets?: string[];
+  caution?: string;
+  tip?: string;
+};
+
+export type OptionSelectBlock = Annotated & {
+  type: 'optionSelect';
+  id: string;
+  title?: string;
+  instruction?: string;
+  options: OptionSelectItem[];
+  required?: boolean;
+};
+
 type Question = Annotated & {
   id: string;
   prompt: string;
@@ -250,7 +270,8 @@ export type ActivityBlock =
   | ChecklistBlock
   | ReflectionBlock
   | SurveyBlock
-  | AttestationBlock;
+  | AttestationBlock
+  | OptionSelectBlock;
 export type InteractionBlock =
   | MultipleChoiceBlock
   | MultipleResponseBlock

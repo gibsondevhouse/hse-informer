@@ -13,6 +13,7 @@ export type BlockEnv = {
   reflections: Record<string, string>;
   surveys: Record<string, string>;
   attestations: Record<string, Attestation>;
+  optionSelects: Record<string, string[]>;
   onAnswer: (blockId: string, response: LearnerResponse) => void;
   onCheck: (blockId: string) => void;
   onRetry: (blockId: string) => void;
@@ -20,6 +21,7 @@ export type BlockEnv = {
   onSetReflection: (blockId: string, text: string) => void;
   onSetSurvey: (blockId: string, value: string) => void;
   onAttest: (blockId: string, name: string) => void;
+  onSelectOption: (blockId: string, optionId: string) => void;
 };
 
 /** Small stable hash so per-block shuffles do not change between renders or sessions. */

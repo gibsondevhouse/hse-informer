@@ -350,6 +350,9 @@
   flex-wrap: wrap;
   gap: 12px;
 }
+.lms-player[data-author-mode='false'] .lms-interaction:not([data-state='open']) .lms-interaction-actions {
+  display: none;
+}
 .lms-exam-status {
   margin: 0;
 }

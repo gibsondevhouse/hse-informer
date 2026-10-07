@@ -2,7 +2,7 @@
 
 **Status:** learner practice course and separate author lab · **Learner route:** `/training/pb-and-j` · **Author lab:** `/training/pb-and-j/component-lab` · **Code:** `admin-app/lib/lms/`, `admin-app/components/lms/`
 
-The library is a reusable shell for course playback. A course is plain serializable data; the player renders it, grades interactions, tracks progress, and persists state. PBJ-101 presents a complete 15-lesson learner path with a printable job aid. The separate author lab retains the component catalog and media placeholders to exercise all 33 block types. Neither route is part of the assignable HSE course library or creates a training record.
+The library is a reusable shell for course playback. A course is plain serializable data; the player renders it, grades interactions, tracks progress, and persists state. PBJ-101 presents a complete 15-lesson learner path with a printable job aid. The separate author lab retains the component catalog and media placeholders to exercise all 34 block types. Neither route is part of the assignable HSE course library or creates a training record.
 
 ## Research basis
 
@@ -56,6 +56,7 @@ Every block carries an optional `devNote`. In the author lab, the **Component no
 | `reflection` | Free text | Required only when `required: true`; then `minLength` (default 1) applies. xAPI analogue: `long-fill-in`. |
 | `survey` | Selected scale point | Never required; never graded. xAPI analogue: `likert`. |
 | `attestation` | Trimmed name and ISO timestamp | Required by default; `requiresName` demands a non-empty name. Stored in the browser only and labelled as not a training record. |
+| `optionSelect` | Visited option ids | Required by default; every option must be explored before continuing. |
 
 ### Interaction blocks (graded)
 
@@ -75,11 +76,11 @@ A result is **correct** only at full credit. Partial scores feed the assessment 
 
 ## Player contracts
 
-**Slides.** A lesson is presented one slide at a time. `lessonSlides(lesson)` derives the slides from the flat block list, so authors never maintain two structures: a `heading` starts a new slide, a `divider` forces a break, every interaction or activity stands on its own slide (keeping a heading placed directly above it), and other content fills a slide up to a visual budget of 5 (paragraph, callout, definition, resource, references = 1; lists, objectives, key takeaways, glossary, figure, media, steps, accordion, tabs, flashcards = 2; table, timeline, hotspots = 3). Block order is preserved. Next and Back step through slides and cross lesson boundaries; the completion control appears on the last slide, where the requirements panel links to any slide that still needs attention. The current slide index is part of `PlayerState` so a learner resumes where they stopped.
+**Slides.** A lesson is presented one slide at a time. `lessonSlides(lesson)` derives the slides from the flat block list, so authors never maintain two structures: a `heading` starts a new slide, a `divider` forces a break, every interaction or activity stands on its own slide (keeping a heading placed directly above it), and other content fills a slide up to a visual budget of 3 (paragraph, callout, definition, resource, references = 1; lists, objectives, key takeaways, glossary, figure, media, steps, accordion, tabs, flashcards = 2; table, timeline, hotspots = 3). Block order is preserved. Next and Back step through slides and cross lesson boundaries; required activities on the current slide must be satisfied before continuing. The completion control appears on the last slide, where the requirements panel links to any slide that still needs attention. The current slide index is part of `PlayerState` so a learner resumes where they stopped.
 
 **Modes.** Interactions render in one of three modes: `lesson` (formative: Check answer, feedback, Try again), `exam` (inputs only, no feedback), and `review` (read-only with feedback and correct answers revealed).
 
-**Lesson completion** requires engagement, not correctness. Each interaction with `required !== false` must be checked; required checklists, reflections, and attestations must be satisfied. The requirements panel lists each item and its state.
+**Lesson completion** requires engagement, not correctness. Each interaction with `required !== false` must be checked; required checklists, reflections, attestations, and option selections must be satisfied. The requirements panel lists each item and its state.
 
 **Linear navigation** (default on) locks a lesson until every earlier lesson is complete and locks the assessment until every lesson is complete. The author lab can turn it off to inspect any block; the learner course follows the lesson order.
 

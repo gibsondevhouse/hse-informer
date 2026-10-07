@@ -37,7 +37,7 @@ const findBlock = (id) =>
 
 test('every block type has an xAPI mapping where graded and a stable catalog order', () => {
   assert.equal(new Set(blockTypes).size, blockTypes.length);
-  assert.equal(blockTypes.length, 33);
+  assert.equal(blockTypes.length, 34);
   for (const type of Object.keys(xapiInteractionType))
     assert.ok(blockTypes.includes(type), type);
   assert.equal(storageKeyFor(course), 'hse-lms-preview-pbj-101-1.0.0-preview-v2');

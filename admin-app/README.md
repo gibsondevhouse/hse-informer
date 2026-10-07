@@ -4,7 +4,7 @@ The administrator preview for ten course outlines. The first five follow the lau
 
 ## Run
 
-Use Node 22.13+ and npm. Run `npm install`, then `npm run dev`.
+Use Node 22.13+ and npm. From this directory, run `npm ci`, then `npm run dev`. On Windows PowerShell, use `npm.cmd` if script execution policy blocks `npm`.
 
 ## Included
 
@@ -17,7 +17,7 @@ Use Node 22.13+ and npm. Run `npm install`, then `npm run dev`.
 - The learner player has a fixed viewport, independently scrollable course outline, and lesson pages packed to the available reading height. Oversized reading blocks are subdivided without shrinking text. Expand lesson 1 beneath its number to see the current section and preview completion markers; only finishing a section advances those markers. A dark-mode preference is stored on this device. References open separately, and narrow screens use an outline drawer. The brand and Return to admin links load the admin home directly through native navigation.
 - An assignment form with explicit audience, site selection, purpose, deadline, recurrence metadata, duplicate-open-assignment exclusion, and recipient review.
 - Browser-local preview persistence with storage-change synchronization and stale-snapshot protection.
-- A reusable learning player and block library (`lib/lms`, `components/lms`) with 33 block types across content, disclosure, activity, and graded interaction families, formative and exam modes, partial-credit grading, a seeded-shuffle assessment with attempt limits, requirement-gated lesson completion, and browser-local progress. The polished PBJ-101 practice course is at `/training/pb-and-j`; the full author component lab is at `/training/pb-and-j/component-lab`. See [the component library reference](../docs/lms/component-library.md).
+- A reusable learning player and block library (`lib/lms`, `components/lms`) with 34 block types across content, disclosure, activity, and graded interaction families, formative and exam modes, partial-credit grading, a seeded-shuffle assessment with attempt limits, requirement-gated slide and lesson completion, and browser-local progress. Interactive option cards track which choices have been explored. The polished PBJ-101 practice course is at `/training/pb-and-j`; the full author component lab is at `/training/pb-and-j/component-lab`. See [the component library reference](../docs/lms/component-library.md).
 
 ## Preview boundary
 

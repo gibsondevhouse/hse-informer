@@ -41,6 +41,7 @@ export const activityBlockTypes = [
   'reflection',
   'survey',
   'attestation',
+  'optionSelect',
 ] as const satisfies readonly ActivityBlock['type'][];
 export const interactionBlockTypes = [
   'multipleChoice',
@@ -363,7 +364,7 @@ const slideWeight: Record<
   timeline: 3,
   hotspots: 3,
 };
-export const slideBudget = 5;
+export const slideBudget = 3;
 
 /**
  * Group a lesson's blocks into the slides the player presents one at a time.
@@ -432,6 +433,7 @@ export type PlayerState = {
   reflections: Record<string, string>;
   surveys: Record<string, string>;
   attestations: Record<string, Attestation>;
+  optionSelects: Record<string, string[]>;
   completedLessons: string[];
   assessment: {
     attempts: AssessmentAttempt[];
@@ -463,6 +465,7 @@ export function initialState(course: Course): PlayerState {
     reflections: {},
     surveys: {},
     attestations: {},
+    optionSelects: {},
     completedLessons: [],
     assessment: { attempts: [], current: null, reviewing: false },
     linear: true,
@@ -508,12 +511,44 @@ export function lessonRequirements(
           signed && (!block.requiresName || signed.name.trim().length > 0),
         ),
       });
+    } else if (block.type === 'optionSelect' && block.required !== false) {
+      const visited = state.optionSelects?.[block.id] ?? [];
+      requirements.push({
+        blockId: block.id,
+        label: `Explore every option in “${block.title ?? 'Option selection'}”`,
+        met: block.options.every((opt) => visited.includes(opt.id)),
+      });
     }
   }
   return requirements;
 }
 export function lessonRequirementsMet(lesson: Lesson, state: PlayerState) {
   return lessonRequirements(lesson, state).every((item) => item.met);
+}
+
+/** Whether all required blocks visible on the specified slide have been satisfied. */
+export function slideRequirementsMet(
+  blocks: Block[],
+  state: PlayerState,
+): boolean {
+  for (const block of blocks) {
+    if (isInteractionBlock(block) && block.required !== false) {
+      if (!state.checked.includes(block.id)) return false;
+    } else if (block.type === 'optionSelect' && block.required !== false) {
+      const visited = state.optionSelects?.[block.id] ?? [];
+      if (!block.options.every((opt) => visited.includes(opt.id))) return false;
+    } else if (block.type === 'checklist' && block.required) {
+      const checked = state.checklists[block.id] ?? [];
+      if (checked.length !== block.items.length) return false;
+    } else if (block.type === 'reflection' && block.required) {
+      const minLength = block.minLength ?? 1;
+      if ((state.reflections[block.id] ?? '').trim().length < minLength) return false;
+    } else if (block.type === 'attestation' && block.required !== false) {
+      const signed = state.attestations[block.id];
+      if (!signed || (block.requiresName && !signed.name.trim())) return false;
+    }
+  }
+  return true;
 }
 
 export function isLessonLocked(
@@ -626,6 +661,7 @@ export type PlayerAction =
   | { type: 'set-reflection'; blockId: string; text: string }
   | { type: 'set-survey'; blockId: string; value: string }
   | { type: 'attest'; blockId: string; name: string; at: string }
+  | { type: 'select-option'; blockId: string; optionId: string }
   | { type: 'complete-lesson' }
   | { type: 'open-assessment' }
   | { type: 'start-assessment'; seed: number; at: string }
@@ -763,6 +799,17 @@ export function reducePlayer(
           [action.blockId]: { name: action.name.trim(), at: action.at },
         },
       };
+    case 'select-option': {
+      const current = state.optionSelects?.[action.blockId] ?? [];
+      if (current.includes(action.optionId)) return state;
+      return {
+        ...state,
+        optionSelects: {
+          ...state.optionSelects,
+          [action.blockId]: [...current, action.optionId],
+        },
+      };
+    }
     case 'complete-lesson': {
       const lesson = findLesson(course, state.lessonId);
       if (!lesson || state.view !== 'lesson') return state;
@@ -906,6 +953,9 @@ export function isPlayerState(
         typeof item.name === 'string' &&
         typeof item.at === 'string',
     ) &&
+    (state.optionSelects === undefined ||
+      (isPlainObject(state.optionSelects) &&
+        Object.values(state.optionSelects).every(isStringArray))) &&
     isStringArray(state.completedLessons) &&
     state.completedLessons.every((id) => lessonIds.has(id)) &&
     Array.isArray(attempts) &&

@@ -5,6 +5,7 @@ import type { Block } from '@/lib/lms/schema';
 import {
   AttestationView,
   Checklist,
+  OptionSelectView,
   Reflection,
   Survey,
 } from './activity-blocks';
@@ -106,6 +107,8 @@ function BlockBody({ block, env }: { block: Block; env: BlockEnv }) {
       return <Survey block={block} env={env} />;
     case 'attestation':
       return <AttestationView block={block} env={env} />;
+    case 'optionSelect':
+      return <OptionSelectView block={block} env={env} />;
     case 'multipleChoice':
     case 'multipleResponse':
     case 'trueFalse':

@@ -57,8 +57,10 @@ import {
   courseStatus,
   estimatedMinutes,
   findLesson,
+  gradeInteraction,
   initialState,
   isAssessmentLocked,
+  isInteractionBlock,
   isLessonLocked,
   isPlayerState,
   lessonOrder,
@@ -71,12 +73,13 @@ import {
   questionOrder,
   reducePlayer,
   slideIndexOf,
+  slideRequirementsMet,
   storageKeyFor,
   type PlayerAction,
   type PlayerState,
   type ProgressSegment,
 } from '@/lib/lms/engine';
-import type { AttestationBlock, Course, Lesson } from '@/lib/lms/schema';
+import type { AttestationBlock, Course, InteractionBlock, Lesson, OptionSelectBlock } from '@/lib/lms/schema';
 import { BlockRenderer } from './block-renderer';
 import type { BlockEnv } from './env';
 import { Interaction } from './interaction-blocks';
@@ -128,6 +131,7 @@ export function CoursePlayer({
               type: 'hydrate',
               state: {
                 ...parsed,
+                optionSelects: parsed.optionSelects ?? {},
                 slide: parsed.slide ?? 0,
                 // Only the author lab can turn linear navigation off.
                 linear: authorMode ? parsed.linear : true,
@@ -190,6 +194,7 @@ export function CoursePlayer({
     reflections: state.reflections,
     surveys: state.surveys,
     attestations: state.attestations,
+    optionSelects: state.optionSelects || {},
     onAnswer: (blockId, response) => dispatch({ type: 'answer', blockId, response }),
     onCheck: (blockId) => dispatch({ type: 'check', blockId }),
     onRetry: (blockId) => dispatch({ type: 'retry', blockId }),
@@ -200,6 +205,8 @@ export function CoursePlayer({
     onSetSurvey: (blockId, value) => dispatch({ type: 'set-survey', blockId, value }),
     onAttest: (blockId, name) =>
       dispatch({ type: 'attest', blockId, name, at: new Date().toISOString() }),
+    onSelectOption: (blockId, optionId) =>
+      dispatch({ type: 'select-option', blockId, optionId }),
   };
   const lessons = lessonOrder(course);
   const outline = (
@@ -473,7 +480,9 @@ function Outline({ course, state, go }: Omit<ViewProps, 'heading'>) {
           onClick={() => go({ type: 'open-overview' })}
         >
           <span className="lms-outline-course-code">{course.code} · Overview</span>
-          <span className="lms-outline-course-title">{course.title}</span>
+          <span className="lms-outline-course-title">
+            {course.id === 'pbj-101' ? 'PB&J Sandwich Preparation' : course.title}
+          </span>
         </button>
         <Progress value={percent} aria-label="Lessons completed">
           <span className="lms-progress-label">
@@ -502,7 +511,13 @@ function Outline({ course, state, go }: Omit<ViewProps, 'heading'>) {
               <AccordionTrigger
                 className={`lms-outline-module-trigger ${lessonModule.id === focusModule ? 'is-current' : ''}`}
               >
-                <span className="lms-outline-module-title">{lessonModule.title}</span>
+                <span className="lms-outline-module-title">
+                  {course.id === 'pbj-101' && lessonModule.id === 'm4'
+                    ? 'Workspace & tools'
+                    : course.id === 'pbj-101' && lessonModule.id === 'm6'
+                      ? 'Quality & cleanup'
+                      : lessonModule.title}
+                </span>
                 <span className="lms-outline-module-count">
                   <span aria-hidden="true">
                     {done}/{lessonModule.lessons.length}
@@ -598,7 +613,11 @@ function Outline({ course, state, go }: Omit<ViewProps, 'heading'>) {
           <span className="lms-outline-meta">{statusLabel(status)}</span>
         </button>
       </div>
-      <p className="lms-outline-boundary">{course.boundary}</p>
+      <p className="lms-outline-boundary">
+        {course.id === 'pbj-101'
+          ? 'Practice only. Saved on this device; no training record or workplace authorization.'
+          : course.boundary}
+      </p>
     </>
   );
 }
@@ -633,7 +652,7 @@ function OverviewView({ course, state, go, heading, authorMode }: ViewProps & { 
         </div>
         <Illustration art="sandwich" alt="Illustration of a peanut butter and jelly sandwich on a plate" className="lms-hero-art" />
       </header>
-      <dl className="lms-meta">
+      {authorMode && <dl className="lms-meta">
         <div>
           <dt>Audience</dt>
           <dd>{course.audience}</dd>
@@ -655,27 +674,38 @@ function OverviewView({ course, state, go, heading, authorMode }: ViewProps & { 
             {course.assessment.passingPercent}% · {course.assessment.maxAttempts} attempts
           </dd>
         </div>
-      </dl>
-      <section className="lms-overview-section" aria-labelledby="lms-purpose">
-        <h2 id="lms-purpose">Purpose</h2>
-        <p>{course.purpose}</p>
-      </section>
-      <section className="lms-overview-section" aria-labelledby="lms-objectives">
-        <h2 id="lms-objectives">Objectives</h2>
-        <ul className="lms-objective-list">
-          {course.objectives.map((item) => (
-            <li key={item}>
-              <Check size={16} aria-hidden="true" />
-              <span>{item}</span>
-            </li>
-          ))}
-        </ul>
+      </dl>}
+      <section className="lms-overview-section lms-overview-brief" aria-labelledby="lms-purpose">
+        <div>
+          <span className="lms-section-kicker">The brief</span>
+          <h2 id="lms-purpose">{authorMode ? 'Purpose' : 'One task. A reliable method.'}</h2>
+          <p>{course.purpose}</p>
+        </div>
+        <div>
+          <span className="lms-section-kicker">The outcome</span>
+          <h2 id="lms-objectives">{authorMode ? 'Objectives' : 'What you will practice'}</h2>
+          <ul className="lms-objective-list">
+            {course.objectives.map((item) => (
+              <li key={item}>
+                <Check size={16} aria-hidden="true" />
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
       </section>
       <section className="lms-overview-section" aria-labelledby="lms-modules">
-        <h2 id="lms-modules">Modules</h2>
+        <div className="lms-section-heading">
+          <div>
+            <span className="lms-section-kicker">The learning path</span>
+            <h2 id="lms-modules">{authorMode ? 'Modules' : 'Six stages, from first check to final cleanup'}</h2>
+          </div>
+          <span>{course.assessment.questions.length} questions · {course.assessment.passingPercent}% to pass · {course.assessment.maxAttempts} attempts</span>
+        </div>
         <ol className="lms-module-list">
-          {course.modules.map((module) => (
+          {course.modules.map((module, index) => (
             <li key={module.id}>
+              <span className="lms-module-number">{String(index + 1).padStart(2, '0')}</span>
               <strong>{module.title}</strong>
               <p>{module.description}</p>
               <span className="lms-muted">
@@ -723,6 +753,23 @@ function LessonView({
   const slideHeading = blocks.find((block) => block.type === 'heading');
   const requirements = lessonRequirements(lesson, state);
   const met = requirements.every((item) => item.met);
+  const slideMet = slideRequirementsMet(blocks, state);
+  const checkedInteraction = blocks.find(
+    (block): block is InteractionBlock =>
+      isInteractionBlock(block) && state.checked.includes(block.id),
+  );
+  const feedback = checkedInteraction
+    ? gradeInteraction(checkedInteraction, state.responses[checkedInteraction.id])
+    : null;
+  const retryBlockId = feedback && !feedback.correct ? checkedInteraction?.id : null;
+  const feedbackTone = feedback ? (feedback.correct ? 'correct' : 'incorrect') : undefined;
+  const currentOptionBlock = blocks.find(
+    (b): b is OptionSelectBlock => b.type === 'optionSelect',
+  );
+  const optionHint =
+    currentOptionBlock && !slideMet
+      ? `Select each option to continue (${(state.optionSelects?.[currentOptionBlock.id] ?? []).length}/${currentOptionBlock.options.length})`
+      : null;
   const completed = state.completedLessons.includes(lesson.id);
   const next = lessons[index + 1];
   const title = lesson.title;
@@ -738,6 +785,7 @@ function LessonView({
   return (
     <article className="lms-view lms-lesson">
       <header className="lms-view-header">
+        <span className="lms-lesson-index">Lesson {String(index + 1).padStart(2, '0')} <span aria-hidden="true">/</span> {String(lessons.length).padStart(2, '0')}</span>
         <h1 ref={heading} tabIndex={-1}>
           {lesson.title}
         </h1>
@@ -779,22 +827,41 @@ function LessonView({
           <ArrowLeft size={16} aria-hidden="true" />
           Back
         </Button>
-        <SlidePosition index={slideIndex} total={slides.length} />
+        <div className="lms-view-nav-center">
+          <SlidePosition index={slideIndex} total={slides.length} />
+          {optionHint && (
+            <span className="lms-slide-hint" aria-live="polite">
+              {optionHint}
+            </span>
+          )}
+        </div>
         {lastSlide ? (
-          <Button disabled={!completed && !met} onClick={advance}>
-            {completed
-              ? next
-                ? 'Continue'
-                : 'Go to assessment'
-              : next
-                ? 'Mark complete and continue'
-                : 'Mark complete and finish'}
-            <ArrowRight size={16} aria-hidden="true" />
+          <Button
+            data-feedback={feedbackTone}
+            disabled={!retryBlockId && ((!completed && !met) || !slideMet)}
+            onClick={() => retryBlockId ? go({ type: 'retry', blockId: retryBlockId }) : advance()}
+          >
+            {retryBlockId
+              ? 'Try again'
+              : completed
+                ? next
+                  ? 'Continue'
+                  : 'Go to assessment'
+                : next
+                  ? 'Mark complete and continue'
+                  : 'Mark complete and finish'}
+            {retryBlockId ? <RotateCcw size={16} aria-hidden="true" /> : <ArrowRight size={16} aria-hidden="true" />}
           </Button>
         ) : (
-          <Button onClick={() => go({ type: 'go-slide', index: slideIndex + 1 })}>
-            Next
-            <ArrowRight size={16} aria-hidden="true" />
+          <Button
+            data-feedback={feedbackTone}
+            disabled={!retryBlockId && !slideMet}
+            onClick={() => retryBlockId
+              ? go({ type: 'retry', blockId: retryBlockId })
+              : go({ type: 'go-slide', index: slideIndex + 1 })}
+          >
+            {retryBlockId ? 'Try again' : 'Next'}
+            {retryBlockId ? <RotateCcw size={16} aria-hidden="true" /> : <ArrowRight size={16} aria-hidden="true" />}
           </Button>
         )}
       </nav>
