@@ -1,10 +1,35 @@
 # HSE Informer admin workspace
 
-The administrator preview for ten course outlines. The first five follow the launch syllabus; five additional outlines follow the [regulatory training source map](../docs/regulatory/training-source-map.md). The HSE Informer reference package remains in `docs/coursera-audit`.
+The app includes a sample administrator preview and a protected pilot workspace. The preview shows ten course outlines; the first five follow the launch syllabus and five more follow the [regulatory training source map](../docs/regulatory/training-source-map.md). The HSE Informer reference package remains in `docs/coursera-audit`.
 
 ## Run
 
 Use Node 22.13+ and npm. From this directory, run `npm ci`, then `npm run dev`. On Windows PowerShell, use `npm.cmd` if script execution policy blocks `npm`.
+
+## Pilot server setup
+
+The protected `/api/admin/*` and `/api/learner/*` routes use Cloudflare D1 and Cloudflare Access. They fail closed when either service is absent. This checkout's `.openai/hosting.json` currently has `d1: null`; the sample records in the UI are not a shared pilot database. An operator must attach a real D1 database to the deployed worker as binding **`DB`**, then apply `migrations/0001_core.sql` followed by `migrations/0002_qualification.sql` to that same database. With a Wrangler configuration that maps `DB` to the real database ID, the commands are `npx wrangler d1 execute DB --remote --config <wrangler-config> --file migrations/0001_core.sql` and then the same command for `0002_qualification.sql`. The local Vite binding uses `DB` when the hosting manifest enables D1, but its placeholder database ID is only for local emulation. For a custom Cloudflare deployment, configure the real D1 database ID in the deployment configuration. For Sites hosting, allocate/attach D1 in the hosting project and verify that the deployed worker exposes it as `DB` before changing `.openai/hosting.json` from `null` to `"DB"`.
+
+Configure a Cloudflare Access application in front of the admin, learner, and API paths. Set `HSE_ACCESS_TEAM_DOMAIN` to the team domain (for example `example.cloudflareaccess.com`) and `HSE_ACCESS_AUD` to that Access application's audience. The server verifies the Access JWT signature, issuer, audience, expiry, and email; it never trusts an unsigned email header. Access must be enforced at the public edge too. The job endpoint also needs an Access service-token policy if the Access application covers `/api/admin/jobs`.
+
+Provision admin users explicitly in D1: `users.sub` and `users.email` must match the signed Access identity, with one of `admin`, `site_manager`, `evaluator`, or `auditor`. An `admin` has organization scope; other roles need `user_sites` rows for each permitted site. `site_manager` can manage people and assignments in granted sites, `evaluator` can record qualification evidence there, and `auditor` has read access. Worker sign-in matches the verified Access email to an active `workers.email` row. A roster entry alone cannot log in without a valid Access identity.
+
+The first admin and site grants are an operator provisioning step because the UI cannot grant itself access. For example, after confirming the Access subject and creating a site, execute parameterized equivalents of:
+
+```sql
+INSERT INTO users (sub,email,role) VALUES ('<Access subject>','admin@example.com','admin');
+INSERT INTO user_sites (user_sub,site_id) VALUES ('<Access subject>','<site id>');
+```
+
+An organization admin can register an immutable package through `POST /api/admin/releases` with `courseId`, `version`, `action: "approve"`, and a reason. The server only approves versions present in `lib/lms/recorded-courses.ts`. Approval and revocation are audited. Currently that map contains only PBJ-101, a **practice sandbox**; no HSE course is approved or deliverable. PBJ completion must not be treated as workplace qualification. Shipping a full HSE package and obtaining domain approval are release prerequisites.
+
+Set `HSE_JOB_TOKEN` to a secret of at least 24 characters and schedule authenticated `POST /api/admin/jobs` calls. That endpoint creates due recurring assignments and processes the durable notification outbox. To actually send assignments and reminders, also set `HSE_NOTIFICATION_WEBHOOK` and `HSE_NOTIFICATION_TOKEN` for a provider that accepts the JSON request and honors its `Idempotency-Key` header. Without a provider, delivery stays `configuration_required`; a saved assignment is never described as delivered. Without an external scheduler, recurrence and dispatch do not run automatically. Keep the scheduler's Access service-token credentials separate from `HSE_JOB_TOKEN`.
+
+After setup, an authenticated admin should receive a live `asOf` from `GET /api/admin/bootstrap`. Verify that an unprovisioned identity cannot read it, that a site-scoped account cannot read another site's assignment, and that a worker can see only their own assignment. Verify notification acceptance and learner completion against the same assignment ID before entering real records.
+
+The pilot is ready for operational acceptance only after D1, Access, user grants, notification delivery, a scheduler, and an approved HSE course package are configured and verified end to end. The October 7, 2026 dependency audit still reports nine production advisories (six high, three moderate) in the Vinext dependency chain; resolve or formally assess them before a pilot release.
+
+When D1 and Access are configured, `/` switches to the live pilot workspace. It shows site-scoped assignments, workers, sites, course releases, and audit history with a live `asOf` time. An admin can approve or revoke a packaged release, select a role/site cohort plus individual exceptions, review recipients, create assignments, queue reminders, and make reasoned due-date, cancellation, or reassignment changes. Workers use `/learn` to open their own assignments and save server-scored progress. Evaluators use `/qualifications` to record separate local instruction, prerequisite, practical evaluation, and employer authorization evidence. The worklists and CSV report expose the supporting records and later corrections.
 
 ## Included
 
@@ -21,11 +46,11 @@ Use Node 22.13+ and npm. From this directory, run `npm ci`, then `npm run dev`. 
 
 ## Preview boundary
 
-All organizations, sites, learners, and records are fictional. The reporting date is fixed at September 9, 2026. Browser-local records are not a production database and do not synchronize across devices or administrators. No notifications, recurring jobs, real learner delivery, or authorization decisions occur. Course content, assessments, approved versions, tenant authentication, server-enforced site permissions, and local/practical evidence records remain future integrations. The foundation preview is a syllabus, not a released course.
+The original sample organizations, sites, learners, and records are fictional. Browser-local preview data is not a production database and does not synchronize across devices. Protected server routes, audit tables, delivery outbox, and qualification records now provide a pilot integration path, but are inactive until the services above are provisioned. The foundation course outlines remain syllabi, not released courses.
 
 The course library contains the five original syllabi and five source-map-derived outlines. Regulatory metadata is a planning summary, not legal advice or an applicability decision. Chemical Hygiene's production scope does not match the laboratory-only 1910.1450 citation and remains under domain review. Knowledge completion never changes authorization. Recurrence suggestions do not create recurring jobs or establish qualification.
 
-PBJ-101 is an unassigned practice course for refining the learner experience. It is not an HSE compliance course or part of assignment records. Its progress, acknowledgements, and assessment attempts stay in this browser and are not training records. The author component lab remains separate from the learner course.
+PBJ-101 at `/training/pb-and-j` remains unassigned browser-local practice. If an admin explicitly approves and assigns its recorded sandbox package, the separate `/learn/assignments/[id]` path saves server-side practice evidence for workflow testing. Neither path is HSE compliance training or workplace authorization. The author component lab remains separate from the learner course.
 
 ## Checks
 
@@ -37,7 +62,7 @@ PBJ-101 is an unassigned practice course for refining the learner experience. It
 
 `npm run build`
 
-Lint excludes the generated Shadcn component catalog and its generated mobile hook, which have inherited rule incompatibilities; application code uses the original strict rules. Generated primitives are unmodified. No browser interaction, screenshot, or assistive-technology audit has been performed in this task.
+Lint excludes the generated Shadcn component catalog and its generated mobile hook, which have inherited rule incompatibilities; application code uses the original strict rules. Generated primitives are unmodified. The sample admin was visually checked at 390 × 844 and at desktop width, including assignment-table scrolling; a filtered worklist was checked across a browser refresh. The live protected workspace and assistive-technology behavior still need acceptance testing with configured services.
 
 The locally bundled Source Sans 3 font uses the SIL Open Font License in `public/OFL.txt`.
 

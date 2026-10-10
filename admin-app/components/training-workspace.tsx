@@ -129,6 +129,46 @@ const courseIcons: Record<CourseId, LucideIcon> = {
 };
 type View = 'programs' | 'assignments' | 'sites' | 'library';
 type StatusFilter = 'all' | 'due' | 'open' | AssignmentStatusKey;
+const workspaceQueryKeys = ['view', 'site', 'status', 'course', 'q', 'panel', 'sort', 'direction'] as const;
+
+function readWorkspaceQuery() {
+  const params = new URLSearchParams(window.location.search);
+  const requestedView = params.get('view');
+  const view: View =
+    requestedView === 'assignments' || requestedView === 'sites' || requestedView === 'library'
+      ? requestedView
+      : 'programs';
+  const requestedSite = params.get('site');
+  const requestedStatus = params.get('status');
+  const requestedCourse = params.get('course');
+  const requestedSort = params.get('sort');
+  const filter: StatusFilter =
+    view === 'programs'
+      ? requestedStatus === 'overdue' || requestedStatus === 'open'
+        ? requestedStatus
+        : 'all'
+      : requestedStatus === 'due' ||
+          requestedStatus === 'open' ||
+          assignmentStatuses.some((item) => item.key === requestedStatus)
+        ? requestedStatus as StatusFilter
+        : 'all';
+  return {
+    view,
+    site: sites.some((item) => item.id === requestedSite) ? requestedSite! : 'all',
+    filter,
+    courseFilter: courses.some((item) => item.id === requestedCourse)
+      ? requestedCourse!
+      : 'all',
+    query: params.get('q') ?? '',
+    assignmentPanel: params.get('panel') === 'completion' ? 'completion' as const : 'records' as const,
+    assignmentSort: {
+      key: (requestedSort && requestedSort in assignmentSortLabels
+        ? requestedSort
+        : 'due') as AssignmentSortKey,
+      direction: params.get('direction') === 'desc' ? 'desc' as const : 'asc' as const,
+    },
+  };
+}
 
 const assignmentSortLabels: Record<AssignmentSortKey, string> = {
   learner: 'Learner',
@@ -347,6 +387,7 @@ export default function TrainingWorkspace() {
   const [site, setSite] = useState('all');
   const [records, setRecords] = useState<Assignment[]>(seedAssignments);
   const [loaded, setLoaded] = useState(false);
+  const [urlReady, setUrlReady] = useState(false);
   const [notice, setNotice] = useState('');
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<StatusFilter>('all');
@@ -367,6 +408,39 @@ export default function TrainingWorkspace() {
   const returnFocus = useRef<HTMLElement | null>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const storageSnapshot = useRef<string | null>(null);
+
+  useEffect(() => {
+    const restoreQuery = () => {
+      const state = readWorkspaceQuery();
+      setView(state.view);
+      setSite(state.site);
+      setFilter(state.filter);
+      setCourseFilter(state.courseFilter);
+      setQuery(state.query);
+      setAssignmentPanel(state.assignmentPanel);
+      setAssignmentSort(state.assignmentSort);
+      setLimit(20);
+      setUrlReady(true);
+    };
+    restoreQuery();
+    window.addEventListener('popstate', restoreQuery);
+    return () => window.removeEventListener('popstate', restoreQuery);
+  }, []);
+
+  useEffect(() => {
+    if (!urlReady) return;
+    const url = new URL(window.location.href);
+    for (const key of workspaceQueryKeys) url.searchParams.delete(key);
+    if (view !== 'programs') url.searchParams.set('view', view);
+    if (site !== 'all' && view !== 'library') url.searchParams.set('site', site);
+    if (filter !== 'all') url.searchParams.set('status', filter);
+    if (courseFilter !== 'all' && view === 'assignments') url.searchParams.set('course', courseFilter);
+    if (query) url.searchParams.set('q', query);
+    if (assignmentPanel === 'completion' && view === 'assignments') url.searchParams.set('panel', assignmentPanel);
+    if (assignmentSort.key !== 'due' && view === 'assignments') url.searchParams.set('sort', assignmentSort.key);
+    if (assignmentSort.direction !== 'asc' && view === 'assignments') url.searchParams.set('direction', assignmentSort.direction);
+    window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
+  }, [urlReady, view, site, filter, courseFilter, query, assignmentPanel, assignmentSort]);
 
   useEffect(() => {
     function restore() {
@@ -434,6 +508,7 @@ export default function TrainingWorkspace() {
   };
   function navigate(next: View) {
     setView(next);
+    if (next === 'library') setSite('all');
     setAssignmentPanel('records');
     setQuery('');
     setFilter('all');
@@ -529,20 +604,26 @@ export default function TrainingWorkspace() {
             </strong>
           </div>
           <div className="topbar-actions">
-            <span className="scope-label">Viewing</span>
-            <Building2 size={17} className="scope-building" />
-            <Picker
-              value={site}
-              label="Site scope"
-              onChange={(value) => {
-                setSite(value);
-                setLimit(20);
-              }}
-              options={[
-                { value: 'all', label: 'All sites (3)' },
-                ...sites.map((s) => ({ value: s.id, label: s.name })),
-              ]}
-            />
+            {view === 'library' ? (
+              <span className="library-scope-label">Shared across all sites</span>
+            ) : (
+              <>
+                <span className="scope-label">Viewing</span>
+                <Building2 size={17} className="scope-building" />
+                <Picker
+                  value={site}
+                  label="Site scope"
+                  onChange={(value) => {
+                    setSite(value);
+                    setLimit(20);
+                  }}
+                  options={[
+                    { value: 'all', label: `All sites (${sites.length})` },
+                    ...sites.map((s) => ({ value: s.id, label: s.name })),
+                  ]}
+                />
+              </>
+            )}
           </div>
         </header>
         <main id="main" className="main-content">
@@ -570,20 +651,34 @@ export default function TrainingWorkspace() {
                       : 'Ten course outlines for chemical manufacturing teams.'}
               </p>
             </div>
-            <Button
-              className="primary-button"
-              onClick={() => openAssign()}
-              disabled={!loaded}
-            >
-              <Plus size={18} /> Assign training
-            </Button>
+            {view === 'programs' || view === 'assignments' ? (
+              <Button
+                className="primary-button"
+                onClick={() => openAssign()}
+                disabled={!loaded}
+              >
+                <Plus size={18} /> {view === 'programs' ? 'Assign training' : 'New assignment'}
+              </Button>
+            ) : view === 'sites' ? (
+              <Button className="primary-button" onClick={() => showAssignments()}>
+                <ClipboardList size={18} /> View assignments
+              </Button>
+            ) : (
+              <Button className="primary-button" onClick={() => navigate('programs')}>
+                <GraduationCap size={18} /> View programs
+              </Button>
+            )}
           </div>
           <div className="workspace-context">
             <span>
               <Building2 size={15} />
-              {scopeName}
-              <span className="context-divider" />
-              {siteCount} {siteCount === 1 ? 'site' : 'sites'} in view
+              {view === 'library' ? 'Shared course library · All sites' : scopeName}
+              {view !== 'library' && (
+                <>
+                  <span className="context-divider" />
+                  {siteCount} {siteCount === 1 ? 'site' : 'sites'} in view
+                </>
+              )}
             </span>
             <span>
               <span className="demo-badge">SAMPLE DATA</span>
@@ -603,7 +698,7 @@ export default function TrainingWorkspace() {
             </output>
           )}
 
-          {view !== 'library' && (
+          {(view === 'programs' || view === 'assignments') && (
             <section className="stats-grid" aria-label="Training summary">
               <button className="stat-card" onClick={() => showAssignments()}>
                 <span className="stat-label">
@@ -631,7 +726,7 @@ export default function TrainingWorkspace() {
                   <small>%</small>
                 </strong>
                 <span className="stat-detail">
-                  {stats.incompletePeople}{' '}
+                  {stats.complete} of {stats.total} assignments complete · {stats.incompletePeople}{' '}
                   {stats.incompletePeople === 1 ? 'person' : 'people'} with
                   incomplete assignments
                 </span>
@@ -666,6 +761,7 @@ export default function TrainingWorkspace() {
               <button
                 className="stat-card"
                 onClick={() => showAssignments('due')}
+                disabled={stats.dueSoon === 0}
               >
                 <span className="stat-label">
                   Due in the next 30 days
@@ -676,7 +772,8 @@ export default function TrainingWorkspace() {
                   <small>assignments</small>
                 </strong>
                 <span className="stat-detail">
-                  Keep your team on track <ArrowRight size={15} />
+                  {stats.dueSoon ? 'Review upcoming assignments' : 'No assignments due soon'}
+                  {stats.dueSoon > 0 && <ArrowRight size={15} />}
                 </span>
               </button>
             </section>
@@ -796,14 +893,16 @@ export default function TrainingWorkspace() {
                                   No overdue
                                 </span>
                               )}
-                              <button
-                                className="due-link"
-                                onClick={() =>
-                                  showAssignments('due', course.id)
-                                }
-                              >
-                                {summary.dueSoon} due soon
-                              </button>
+                              {summary.dueSoon > 0 ? (
+                                <button
+                                  className="due-link"
+                                  onClick={() => showAssignments('due', course.id)}
+                                >
+                                  {summary.dueSoon} due soon
+                                </button>
+                              ) : (
+                                <span className="due-link due-link-static">None due soon</span>
+                              )}
                             </div>
                           </TableCell>
                           <TableCell>
@@ -811,9 +910,9 @@ export default function TrainingWorkspace() {
                               variant="ghost"
                               className="manage-button"
                               onClick={() => openCourse(course)}
-                              aria-label={`Manage ${course.name}`}
+                              aria-label={`View ${course.name} details`}
                             >
-                              Manage
+                              View details
                               <ChevronRight size={15} />
                             </Button>
                           </TableCell>
@@ -829,6 +928,7 @@ export default function TrainingWorkspace() {
                             onClear={() => {
                               setQuery('');
                               setFilter('all');
+                              setSite('all');
                             }}
                           />
                         </TableCell>
@@ -1021,6 +1121,7 @@ export default function TrainingWorkspace() {
                   ]}
                 />
               </div>
+              <p className="mobile-table-hint">Swipe the table for status, due date, and actions.</p>
               <Table className="assignment-table">
                 <colgroup>
                   <col style={{ width: '28%' }} />
@@ -1118,6 +1219,7 @@ export default function TrainingWorkspace() {
                             setQuery('');
                             setFilter('all');
                             setCourseFilter('all');
+                            setSite('all');
                           }}
                         />
                       </TableCell>
@@ -1204,7 +1306,7 @@ export default function TrainingWorkspace() {
                             navigate('programs');
                           }}
                         >
-                          Manage site training
+                          View site programs
                           <ArrowRight size={16} />
                         </Button>
                       </section>

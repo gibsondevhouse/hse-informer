@@ -287,6 +287,9 @@ h1:focus {
 .nav-item:hover {
   background: #f1f5fb;
 }
+a.nav-item {
+  text-decoration: none;
+}
 .nav-item.active:hover {
   background: #e3eeff;
 }
@@ -430,6 +433,11 @@ h1:focus {
   font-size: 14px;
   padding-left: 3px;
   background: none;
+}
+.library-scope-label {
+  color: #64738b;
+  font-size: 13px;
+  white-space: nowrap;
 }
 .mobile-menu {
   display: none !important;
@@ -876,6 +884,26 @@ button.status-pill {
 .due-link:hover {
   color: #0056d2;
   text-decoration: underline;
+}
+.due-link-static {
+  display: inline-flex;
+  align-items: center;
+  cursor: default;
+}
+.due-link-static:hover {
+  color: var(--hse-color-muted);
+  text-decoration: none;
+}
+.mobile-table-hint {
+  display: none;
+}
+@media (max-width: 767px) {
+  .mobile-table-hint {
+    display: block;
+    padding: 0 16px 8px;
+    color: var(--hse-color-muted);
+    font-size: 12px;
+  }
 }
 .manage-button {
   color: #607493 !important;
@@ -1792,8 +1820,7 @@ fieldset {
     font-size: 13px;
   }
   .main-content {
-    padding: 24px 24px 0;
-    max-width: 1536px;
+    padding: 20px 16px 0;
   }
   .page-heading {
     align-items: flex-start;
@@ -1814,7 +1841,6 @@ fieldset {
     margin-top: 1px;
   }
   .workspace-context {
-    margin-top: 16px;
     gap: 6px;
     flex-wrap: wrap;
     margin: 20px 0 12px;
@@ -1967,13 +1993,10 @@ fieldset {
 }
 @media (max-width: 390px) {
   .main-content {
-    padding-inline: 8px;
-    padding: 24px 24px 0;
-    max-width: 1536px;
+    padding: 20px 8px 0;
   }
   .topbar {
-    padding-inline: 6px;
-    height: 52px;
+    padding-inline: 8px;
   }
   .filter-control {
     width: 100%;
@@ -3160,15 +3183,6 @@ fieldset {
   }
 }
 @media (max-width: 767px) {
-  .main-content {
-    padding: 20px 16px 0;
-  }
-  .page-heading h1 {
-    font-size: var(--hse-text-xl);
-  }
-  .topbar {
-    padding-inline: 16px;
-  }
   .program-sheet-header {
     padding-inline: 20px;
   }

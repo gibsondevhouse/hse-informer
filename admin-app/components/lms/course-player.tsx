@@ -93,21 +93,89 @@ type Dispatch = (action: PlayerAction) => void;
 export function CoursePlayer({
   course,
   homeHref = '/',
+  homeLabel = 'Return to admin',
   authorMode = false,
+  recorded,
 }: {
   course: Course;
   homeHref?: string;
+  homeLabel?: string;
   authorMode?: boolean;
+  recorded?: {
+    assignmentId: string;
+    state: PlayerState;
+    revision: number;
+    practice: boolean;
+  };
 }) {
   const [state, rawDispatch] = useReducer(
     (current: PlayerState, action: UiAction) =>
       action.type === 'hydrate'
         ? action.state
         : reducePlayer(course, current, action),
-    course,
-    initialState,
+    recorded?.state ?? course,
+    () => recorded?.state ?? initialState(course),
   );
-  const dispatch: Dispatch = rawDispatch;
+  const pendingActions = useRef<PlayerAction[]>([]);
+  const sending = useRef(false);
+  const revision = useRef(recorded?.revision ?? 0);
+  const [saveMessage, setSaveMessage] = useState('');
+  const [saving, setSaving] = useState(false);
+  const blocked = useRef(false);
+  async function sendRecordedActions() {
+    if (!recorded || sending.current || blocked.current) return;
+    sending.current = true;
+    setSaving(true);
+    try {
+      let latest: PlayerState | null = null;
+      while (pendingActions.current.length) {
+        const action = pendingActions.current[0];
+        const response = await fetch(
+          `/api/learner/assignments/${encodeURIComponent(recorded.assignmentId)}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action, expectedRevision: revision.current }),
+          },
+        );
+        if (!response.ok) throw new Error('Progress could not be saved.');
+        const payload: { state: PlayerState; revision: number } = await response.json();
+        revision.current = payload.revision;
+        latest = payload.state;
+        pendingActions.current.shift();
+      }
+      if (latest) rawDispatch({ type: 'hydrate', state: latest });
+      setSaveMessage('');
+    } catch {
+      blocked.current = true;
+      pendingActions.current = [];
+      setSaveMessage('Progress could not be saved. Reload this assignment before continuing.');
+      try {
+        const response = await fetch(
+          `/api/learner/assignments/${encodeURIComponent(recorded.assignmentId)}`,
+          { cache: 'no-store' },
+        );
+        if (response.ok) {
+          const payload: { state: PlayerState; revision: number } = await response.json();
+          revision.current = payload.revision;
+          rawDispatch({ type: 'hydrate', state: payload.state });
+        }
+      } catch {
+        /* Keep the explicit reload notice when the network is unavailable. */
+      }
+    } finally {
+      sending.current = false;
+      setSaving(false);
+    }
+  }
+  const dispatch: Dispatch = (action) => {
+    if (recorded && blocked.current) return;
+    rawDispatch(action);
+    if (recorded) {
+      pendingActions.current.push(action);
+      void sendRecordedActions();
+    }
+  };
   const [hydrated, setHydrated] = useState(false);
   const [direction, setDirection] = useState<Direction>('forward');
   const [outlineOpen, setOutlineOpen] = useState(false);
@@ -121,6 +189,10 @@ export function CoursePlayer({
   const storageKey = storageKeyFor(course);
 
   useEffect(() => {
+    if (recorded) {
+      const timer = window.setTimeout(() => setHydrated(true), 0);
+      return () => window.clearTimeout(timer);
+    }
     const timer = window.setTimeout(() => {
       try {
         const saved = localStorage.getItem(storageKey);
@@ -144,16 +216,26 @@ export function CoursePlayer({
       setHydrated(true);
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [course, storageKey, authorMode]);
+  }, [course, storageKey, authorMode, recorded]);
 
   useEffect(() => {
-    if (!hydrated) return;
+    if (!hydrated || recorded) return;
     try {
       localStorage.setItem(storageKey, JSON.stringify(state));
     } catch {
       /* Storage is optional. */
     }
-  }, [state, hydrated, storageKey]);
+  }, [state, hydrated, storageKey, recorded]);
+
+  useEffect(() => {
+    if (!recorded) return;
+    const warnBeforeLeaving = (event: BeforeUnloadEvent) => {
+      if (!sending.current && pendingActions.current.length === 0) return;
+      event.preventDefault();
+    };
+    window.addEventListener('beforeunload', warnBeforeLeaving);
+    return () => window.removeEventListener('beforeunload', warnBeforeLeaving);
+  }, [recorded]);
 
   const focusKey = `${state.view}:${state.lessonId}:${
     state.assessment.current ? 'exam' : state.assessment.reviewing ? 'review' : 'intro'
@@ -227,7 +309,7 @@ export function CoursePlayer({
         Skip to course content
       </a>
       <header className="lms-header">
-        <a href={homeHref} className="lms-brand" aria-label="HSE Informer admin home">
+        <a href={homeHref} className="lms-brand" aria-label="HSE Informer home">
           <ShieldCheck size={18} aria-hidden="true" />
           <span>HSE Informer</span>
         </a>
@@ -238,11 +320,17 @@ export function CoursePlayer({
           {!authorMode && (
             <span className="lms-practice">
               <span className="lms-practice-detail">
-                Progress saves on this device · No training record is created
+                {recorded
+                  ? saving
+                    ? 'Saving progress…'
+                    : recorded.practice
+                      ? 'Practice assignment · No safety qualification'
+                      : 'Progress saved to your assignment record'
+                  : 'Progress saves on this device · No training record is created'}
               </span>
               <span className="lms-practice-pill">
                 <Eye size={13} aria-hidden="true" />
-                Practice course
+                {recorded && !recorded.practice ? 'Assigned training' : 'Practice course'}
               </span>
             </span>
           )}
@@ -253,7 +341,7 @@ export function CoursePlayer({
             data-variant="ghost"
           >
             <ArrowLeft size={16} aria-hidden="true" />
-            <span>Return to admin</span>
+            <span>{homeLabel}</span>
           </a>
         </div>
       </header>
@@ -371,7 +459,7 @@ export function CoursePlayer({
                   </ul>
                 </DialogContent>
               </Dialog>
-              {!authorMode && <Dialog>
+              {!authorMode && !recorded && <Dialog>
                 <DialogTrigger render={<Button variant="ghost" size="sm" />}>
                   <RotateCcw size={15} aria-hidden="true" />
                   <span className="lms-toolbar-label">Reset</span>
@@ -387,6 +475,11 @@ export function CoursePlayer({
             </div>
           </div>
           <output className="sr-only lms-announcer">{announcement}</output>
+          {saveMessage && (
+            <div role="alert" className="lms-save-error">
+              {saveMessage} <button type="button" onClick={() => window.location.reload()}>Reload assignment</button>
+            </div>
+          )}
         <main id="lms-content" className="lms-main" ref={main}>
           {state.view === 'overview' && (
             <OverviewView course={course} state={state} go={go} heading={heading} authorMode={authorMode} />

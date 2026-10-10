@@ -959,3 +959,18 @@
     display: none;
   }
 }
+.lms-save-error {
+  padding: 12px 20px;
+  background: #fff4ef;
+  border-bottom: 1px solid #d89072;
+  color: #9d341f;
+}
+.lms-save-error button {
+  margin-left: 8px;
+  padding: 4px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+}
