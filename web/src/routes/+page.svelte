@@ -2,6 +2,9 @@
   import { onMount } from 'svelte';
   import { courseOutlines } from '../lib/preview/courses';
   import { endOfSiteDay, localDate } from '../lib/site-date';
+  import { focusDialog } from '../lib/ui/focus-dialog';
+  import StatusBadge from '../lib/ui/StatusBadge.svelte';
+  import NavigationIcon from '../lib/ui/NavigationIcon.svelte';
   import './workspace.css';
 
   type Ref = { id: string; name?: string; displayName?: string; title?: string };
@@ -19,11 +22,14 @@
   type View = 'overview' | 'programs' | 'assignments' | 'sites';
   type Bucket = 'all' | 'not_started' | 'in_progress' | 'knowledge_complete' | 'overdue' | 'needs_review' | 'closed' | 'authorized' | 'due_soon' | 'open_knowledge';
   type Sort = 'person' | 'site' | 'course' | 'reason' | 'status' | 'due';
-  const labels: Record<string, string> = { not_started: 'Not started', in_progress: 'In progress', knowledge_complete: 'Knowledge Complete', overdue: 'Overdue', needs_review: 'Needs review', closed: 'Closed', authorized: 'Active authorization', due_soon: 'Due in 30 days', open_knowledge: 'Open knowledge steps' };
+  const labels: Record<string, string> = { not_started: 'Not started', in_progress: 'In progress', knowledge_complete: 'Knowledge complete', overdue: 'Overdue', needs_review: 'Needs review', closed: 'Closed', authorized: 'Active authorization', due_soon: 'Due in 30 days', open_knowledge: 'Open knowledge steps' };
+  const humanLabel = (value: string) => value.replaceAll('_', ' ').replaceAll('-', ' ').replace(/^./, (first) => first.toUpperCase());
+  const reviewLabel = (value: string) => value === 'approved' ? 'Approved' : value === 'unapproved' ? 'Unapproved' : humanLabel(value);
+  const deliveryLabel = (value: string) => value === 'draft' ? 'Draft · not released' : value === 'queued' ? 'Pending enrollment' : value === 'enrolled' ? 'Enrolled' : humanLabel(value);
   const reasons = ['Onboarding', 'Company recurring policy', 'Required recurring training', 'Change in work or hazards', 'Knowledge or performance gap'];
-  const navigation: { key: View; label: string; icon: string }[] = [
-    { key: 'overview', label: 'Overview', icon: '◫' }, { key: 'programs', label: 'Programs', icon: '▦' },
-    { key: 'assignments', label: 'Assignments', icon: '☷' }, { key: 'sites', label: 'Sites', icon: '⌂' }
+  const navigation: { key: View; label: string }[] = [
+    { key: 'overview', label: 'Overview' }, { key: 'programs', label: 'Programs' },
+    { key: 'assignments', label: 'Assignments' }, { key: 'sites', label: 'Sites' }
   ];
 
   let loading = $state(true);
@@ -108,7 +114,7 @@
   };
   const authorizationLabel = (row: Assignment) => row.authorizationDecision === 'restricted' ? 'Restricted authorization' : 'Authorized';
   const statusLabel = (row: Assignment) => row.authorized && row.authorizationDecision === 'restricted' && status(row) === 'authorized'
-    ? authorizationLabel(row) : labels[status(row)] || row.state;
+    ? authorizationLabel(row) : labels[status(row)] || humanLabel(row.state);
   const percent = (part: number, whole: number) => whole ? Math.round(100 * part / whole) : 0;
   let approved = $derived(requirements.filter((item) => item.reviewStatus === 'approved'));
   let canManage = $derived(actor?.role === 'tenant_admin' || actor?.role === 'site_admin');
@@ -286,12 +292,12 @@
 {:else if error}
   <div class="center-state"><span class="mark">H</span><h1>Workspace unavailable</h1><p>{error}</p><div class="center-actions"><button onclick={() => void load()}>Try again</button><a href="/auth/login">Sign in</a></div></div>
 {:else}
-  <a class="skip-link" href="#workspace-main">Skip to main content</a>
-  <div class="shell">
+  <div class="shell" inert={detail || personDetail || assignOpen || edit ? true : undefined}>
+    <a class="skip-link" href="#workspace-main">Skip to main content</a>
     <aside class="sidebar">
       <div class="brand"><span class="mark">H</span><div><strong>HSE Informer</strong><small>Training management</small></div></div>
       <div class="tenant-card"><span class="eyebrow">WORKSPACE</span><strong>{tenant?.name}</strong><small>{tenant?.synthetic ? 'Synthetic data · no production evidence' : 'Training operations'}</small></div>
-      <nav aria-label="Workspace"><span class="nav-heading">MANAGE</span>{#each navigation as item}<button class:active={view === item.key} aria-current={view === item.key ? 'page' : undefined} onclick={() => navigate(item.key)}><span aria-hidden="true">{item.icon}</span>{item.label}</button>{/each}</nav>
+      <nav aria-label="Workspace"><span class="nav-heading">MANAGE</span>{#each navigation as item}<button class:active={view === item.key} aria-current={view === item.key ? 'page' : undefined} onclick={() => navigate(item.key)}><span><NavigationIcon name={item.key} /></span>{item.label}</button>{/each}</nav>
       <div class="sidebar-bottom"><span class="avatar">{actor?.displayName?.slice(0, 1) || 'H'}</span><div><strong>{actor?.displayName}</strong><small>{actor?.role}</small></div>{#if !tenant?.synthetic}<form method="POST" action="/auth/logout"><button aria-label="Sign out">Sign out</button></form>{/if}</div>
     </aside>
     <main id="workspace-main">
@@ -324,14 +330,14 @@
             <div class="breakdown">{#each (['not_started', 'in_progress', 'knowledge_complete', 'overdue', 'authorized'] as const) as key}<button onclick={() => showAssignments(key)}><span class="ring" style={'--fill:' + percent(counts[key], counts.total) + '%'}><strong>{percent(counts[key], counts.total)}%</strong></span><b>{labels[key]}</b><small>{counts[key]} assignment{counts[key] === 1 ? '' : 's'}</small></button>{/each}</div>
           {:else}
             <div class="toolbar"><label>Search<input type="search" placeholder="Learner, course, or reason" bind:value={query} oninput={() => page = 1} /></label><label>Status<select bind:value={bucket} onchange={() => page = 1}><option value="all">All statuses</option>{#each Object.entries(labels) as [key, label]}<option value={key}>{label}</option>{/each}</select></label><label>Program<select bind:value={courseFilter} onchange={() => page = 1}><option value="all">All programs</option>{#each requirements as item}<option value={item.id}>{item.title}</option>{/each}</select></label></div>
-            <div class="table-wrap"><table><colgroup><col class="col-learner" /><col class="col-site" /><col class="col-program" /><col class="col-reason" /><col class="col-status" /><col class="col-due" /><col class="col-actions" /></colgroup><thead><tr><th aria-sort={sort === 'person' ? direction === 'asc' ? 'ascending' : 'descending' : undefined}><button aria-label={'Sort by learner, ' + (sort === 'person' && direction === 'asc' ? 'descending' : 'ascending')} onclick={() => sortBy('person')}>Learner {sort === 'person' ? direction === 'asc' ? '↑' : '↓' : ''}</button></th><th aria-sort={sort === 'site' ? direction === 'asc' ? 'ascending' : 'descending' : undefined}><button aria-label={'Sort by site, ' + (sort === 'site' && direction === 'asc' ? 'descending' : 'ascending')} onclick={() => sortBy('site')}>Site {sort === 'site' ? direction === 'asc' ? '↑' : '↓' : ''}</button></th><th aria-sort={sort === 'course' ? direction === 'asc' ? 'ascending' : 'descending' : undefined}><button aria-label={'Sort by program, ' + (sort === 'course' && direction === 'asc' ? 'descending' : 'ascending')} onclick={() => sortBy('course')}>Program {sort === 'course' ? direction === 'asc' ? '↑' : '↓' : ''}</button></th><th aria-sort={sort === 'reason' ? direction === 'asc' ? 'ascending' : 'descending' : undefined}><button aria-label={'Sort by reason, ' + (sort === 'reason' && direction === 'asc' ? 'descending' : 'ascending')} onclick={() => sortBy('reason')}>Reason {sort === 'reason' ? direction === 'asc' ? '↑' : '↓' : ''}</button></th><th aria-sort={sort === 'status' ? direction === 'asc' ? 'ascending' : 'descending' : undefined}><button aria-label={'Sort by training status, ' + (sort === 'status' && direction === 'asc' ? 'descending' : 'ascending')} onclick={() => sortBy('status')}>Training status {sort === 'status' ? direction === 'asc' ? '↑' : '↓' : ''}</button></th><th aria-sort={sort === 'due' ? direction === 'asc' ? 'ascending' : 'descending' : undefined}><button aria-label={'Sort by due date, ' + (sort === 'due' && direction === 'asc' ? 'descending' : 'ascending')} onclick={() => sortBy('due')}>Due {sort === 'due' ? direction === 'asc' ? '↑' : '↓' : ''}</button></th><th>Actions</th></tr></thead><tbody>{#each visible as item (item.id)}<tr><td><button class="learner-link" onclick={() => personDetail = people.find((person) => person.id === item.person.id) || null}>{name(item.person)}</button></td><td>{name(item.site)}</td><td>{name(item.requirement)}</td><td>{item.reason}</td><td><span class={'status ' + (item.authorized && item.authorizationDecision === 'restricted' ? 'restricted' : status(item))}>{statusLabel(item)}</span>{#if item.knowledgeComplete && status(item) !== 'knowledge_complete'}<span class="status knowledge_complete authorization-badge">Knowledge Complete</span>{/if}{#if item.authorized && status(item) !== 'authorized'}<span class={'status authorization-badge ' + (item.authorizationDecision === 'restricted' ? 'restricted' : 'authorized')}>{authorizationLabel(item)}</span>{/if}{#if item.authorized && item.authorizationRestrictions}<small class="delivery">Restrictions: {item.authorizationRestrictions}</small>{/if}{#if item.deliveryState !== 'enrolled'}<small class="delivery">Delivery: {item.deliveryState}</small>{/if}</td><td>{siteDate(item.dueAt, item.site.id)}</td><td>{#if canManage}<button class="link-button" onclick={() => { edit = item; editDue = inputDate(item.dueAt, item.site.id); actionError = ''; }}>Edit due</button>{/if}{#if item.launchUrl}<a href={item.launchUrl} target="_blank" rel="noopener noreferrer">Launch ↗</a>{/if}</td></tr>{:else}<tr><td class="empty" colspan="7">No assignments match these filters.</td></tr>{/each}</tbody></table></div>
+            <div class="table-wrap"><table><colgroup><col class="col-learner" /><col class="col-site" /><col class="col-program" /><col class="col-reason" /><col class="col-status" /><col class="col-due" /><col class="col-actions" /></colgroup><thead><tr><th aria-sort={sort === 'person' ? direction === 'asc' ? 'ascending' : 'descending' : undefined}><button aria-label={'Sort by learner, ' + (sort === 'person' && direction === 'asc' ? 'descending' : 'ascending')} onclick={() => sortBy('person')}>Learner {sort === 'person' ? direction === 'asc' ? '↑' : '↓' : ''}</button></th><th aria-sort={sort === 'site' ? direction === 'asc' ? 'ascending' : 'descending' : undefined}><button aria-label={'Sort by site, ' + (sort === 'site' && direction === 'asc' ? 'descending' : 'ascending')} onclick={() => sortBy('site')}>Site {sort === 'site' ? direction === 'asc' ? '↑' : '↓' : ''}</button></th><th aria-sort={sort === 'course' ? direction === 'asc' ? 'ascending' : 'descending' : undefined}><button aria-label={'Sort by program, ' + (sort === 'course' && direction === 'asc' ? 'descending' : 'ascending')} onclick={() => sortBy('course')}>Program {sort === 'course' ? direction === 'asc' ? '↑' : '↓' : ''}</button></th><th aria-sort={sort === 'reason' ? direction === 'asc' ? 'ascending' : 'descending' : undefined}><button aria-label={'Sort by reason, ' + (sort === 'reason' && direction === 'asc' ? 'descending' : 'ascending')} onclick={() => sortBy('reason')}>Reason {sort === 'reason' ? direction === 'asc' ? '↑' : '↓' : ''}</button></th><th aria-sort={sort === 'status' ? direction === 'asc' ? 'ascending' : 'descending' : undefined}><button aria-label={'Sort by training status, ' + (sort === 'status' && direction === 'asc' ? 'descending' : 'ascending')} onclick={() => sortBy('status')}>Training status {sort === 'status' ? direction === 'asc' ? '↑' : '↓' : ''}</button></th><th aria-sort={sort === 'due' ? direction === 'asc' ? 'ascending' : 'descending' : undefined}><button aria-label={'Sort by due date, ' + (sort === 'due' && direction === 'asc' ? 'descending' : 'ascending')} onclick={() => sortBy('due')}>Due {sort === 'due' ? direction === 'asc' ? '↑' : '↓' : ''}</button></th><th>Actions</th></tr></thead><tbody>{#each visible as item (item.id)}<tr><td><button class="learner-link" onclick={() => personDetail = people.find((person) => person.id === item.person.id) || null}>{name(item.person)}</button></td><td>{name(item.site)}</td><td>{name(item.requirement)}</td><td>{item.reason}</td><td><StatusBadge state={item.authorized && item.authorizationDecision === 'restricted' ? 'restricted' : status(item)} label={statusLabel(item)} />{#if item.knowledgeComplete && status(item) !== 'knowledge_complete'}<StatusBadge state="knowledge_complete" label="Knowledge complete" additionalClass="authorization-badge" />{/if}{#if item.authorized && status(item) !== 'authorized'}<StatusBadge state={item.authorizationDecision === 'restricted' ? 'restricted' : 'authorized'} label={authorizationLabel(item)} additionalClass="authorization-badge" />{/if}{#if item.authorized && item.authorizationRestrictions}<small class="delivery">Restrictions: {item.authorizationRestrictions}</small>{/if}{#if item.deliveryState !== 'enrolled'}<small class="delivery">Delivery: {deliveryLabel(item.deliveryState)}</small>{/if}</td><td>{siteDate(item.dueAt, item.site.id)}</td><td>{#if canManage}<button class="link-button" onclick={() => { edit = item; editDue = inputDate(item.dueAt, item.site.id); actionError = ''; }}>Edit due</button>{/if}{#if item.launchUrl}<a href={item.launchUrl} target="_blank" rel="noopener noreferrer">Launch ↗</a>{/if}</td></tr>{:else}<tr><td class="empty" colspan="7">No assignments match these filters.</td></tr>{/each}</tbody></table></div>
             <div class="pagination"><span>Showing {filtered.length ? (page - 1) * 20 + 1 : 0}–{Math.min(page * 20, filtered.length)} of {filtered.length}</span><div><button disabled={page <= 1} onclick={() => page--}>Previous</button><span>Page {page} of {pageCount}</span><button disabled={page >= pageCount} onclick={() => page++}>Next</button></div></div>
           {/if}
         {/if}
         {#if view === 'programs'}
           <div class="section-head"><div><h2>Requirement library</h2><p>Draft syllabi remain unapproved until HSE review.</p></div></div>
           <div class="toolbar"><label>Search programs<input type="search" placeholder="Title or code" bind:value={programQuery} /></label><label>Review status<select bind:value={programStatus}><option value="all">All statuses</option><option value="approved">Approved</option><option value="unapproved">Unapproved</option></select></label><label>Assignment progress<select bind:value={programProgress}><option value="all">All programs</option><option value="overdue">Has overdue assignments</option><option value="open_knowledge">Has open knowledge steps</option></select></label><label>Site<select bind:value={siteFilter}><option value="all">All sites</option>{#each sites as site}<option value={site.id}>{site.name}</option>{/each}</select></label></div>
-          <div class="course-grid">{#each visibleRequirements as item}{@const course = courseStats(item.id)}<button class="course-card" onclick={() => detail = item}><span class="monogram">{item.code.slice(0, 2)}</span><strong>{item.title}</strong><small>{item.code} · Version {item.version}</small><span class={'review ' + item.reviewStatus}>{item.reviewStatus}</span><span class="course-metrics">{course.assignedPeople} learners · {percent(course.knowledgeComplete, course.total)}% knowledge complete · {course.overdue} overdue · {course.dueSoon} due soon</span><span class="card-bottom">{legalLabel(item)} <b>Details →</b></span></button>{:else}<p class="empty-card">No programs match these filters.</p>{/each}</div>
+          <div class="course-grid">{#each visibleRequirements as item}{@const course = courseStats(item.id)}<button class="course-card" onclick={() => detail = item}><span class="monogram">{item.code.slice(0, 2)}</span><strong>{item.title}</strong><small>{item.code} · Version {item.version}</small><StatusBadge kind="review" state={item.reviewStatus} label={reviewLabel(item.reviewStatus)} /><span class="course-metrics">{course.assignedPeople} learners · {percent(course.knowledgeComplete, course.total)}% knowledge complete · {course.overdue} overdue · {course.dueSoon} due soon</span><span class="card-bottom">{legalLabel(item)} <b>Details →</b></span></button>{:else}<p class="empty-card">No programs match these filters.</p>{/each}</div>
         {/if}
         {#if view === 'sites'}
           <div class="section-head"><div><h2>Locations</h2><p>Site cohorts remain within the company’s Moodle instance.</p></div></div>
@@ -342,10 +348,10 @@
   </div>
   {#if detail}
     {@const outline = outlineFor(detail.code)}
-    <div class="scrim"><div class="drawer" role="dialog" aria-modal="true" aria-label={detail.title}>
+    <div class="scrim"><div class="drawer" role="dialog" aria-modal="true" aria-label={detail.title} tabindex="-1" use:focusDialog>
       <button class="close" aria-label="Close program details" onclick={() => detail = null}>×</button>
       <span class="eyebrow">PROGRAM DETAILS</span><h2>{detail.title}</h2><p class="muted">{detail.code} · Version {detail.version}</p>
-      <div class="detail-row"><strong>Review status</strong><span class={'review ' + detail.reviewStatus}>{detail.reviewStatus}</span></div>
+      <div class="detail-row"><strong>Review status</strong><StatusBadge kind="review" state={detail.reviewStatus} label={reviewLabel(detail.reviewStatus)} /></div>
       <div class="detail-row"><strong>Legal status</strong><span>{legalLabel(detail)}</span></div>
       <div class="detail-row"><strong>Recurrence</strong><span>{recurrenceLabel(detail.recurrence)}</span></div>
       {#if outline}
@@ -357,7 +363,7 @@
     </div></div>
   {/if}
   {#if personDetail}
-    <div class="scrim"><div class="drawer" role="dialog" aria-modal="true" aria-label={'Learner record for ' + personDetail.displayName}>
+    <div class="scrim"><div class="drawer" role="dialog" aria-modal="true" aria-label={'Learner record for ' + personDetail.displayName} tabindex="-1" use:focusDialog>
       <button class="close" aria-label="Close learner record" onclick={() => personDetail = null}>×</button>
       <span class="eyebrow">LEARNER RECORD</span><h2>{personDetail.displayName}</h2>
       <p class="muted">{personDetail.department} · {personDetail.jobTitle}</p>
@@ -370,7 +376,7 @@
   {/if}
   {#if assignOpen}
     <div class="scrim">
-      <div class="modal" role="dialog" aria-modal="true" aria-label="New assignment">
+      <div class="modal" role="dialog" aria-modal="true" aria-label="New assignment" tabindex="-1" use:focusDialog>
         <button class="close" aria-label="Close assignment form" onclick={() => assignOpen = false}>×</button>
         <span class="eyebrow">NEW ASSIGNMENT</span>
         <h2>{reviewAssignment ? 'Review recipients' : 'Assign training'}</h2>
@@ -412,5 +418,5 @@
       </div>
     </div>
   {/if}
-  {#if edit}<div class="scrim"><div class="modal small-modal" role="dialog" aria-modal="true" aria-label="Edit assignment deadline"><button class="close" aria-label="Close deadline editor" onclick={() => edit = null}>×</button><span class="eyebrow">ASSIGNMENT</span><h2>Edit deadline</h2><p class="muted">{name(edit.person)} · {name(edit.requirement)}</p><label>New due date<input type="date" bind:value={editDue} /></label>{#if actionError}<p class="form-alert" role="alert">{actionError}</p>{/if}<div class="modal-actions"><button onclick={() => edit = null}>Cancel</button><button class="primary" disabled={saving || !editDue} onclick={() => void saveDeadline()}>{saving ? 'Saving…' : 'Save deadline'}</button></div></div></div>{/if}
+  {#if edit}<div class="scrim"><div class="modal small-modal" role="dialog" aria-modal="true" aria-label="Edit assignment deadline" tabindex="-1" use:focusDialog><button class="close" aria-label="Close deadline editor" onclick={() => edit = null}>×</button><span class="eyebrow">ASSIGNMENT</span><h2>Edit deadline</h2><p class="muted">{name(edit.person)} · {name(edit.requirement)}</p><label>New due date<input type="date" bind:value={editDue} /></label>{#if actionError}<p class="form-alert" role="alert">{actionError}</p>{/if}<div class="modal-actions"><button onclick={() => edit = null}>Cancel</button><button class="primary" disabled={saving || !editDue} onclick={() => void saveDeadline()}>{saving ? 'Saving…' : 'Save deadline'}</button></div></div></div>{/if}
 {/if}

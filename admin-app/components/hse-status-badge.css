@@ -1,0 +1,43 @@
+.hse-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--hse-space-1);
+  max-width: 100%;
+  padding: 2px var(--hse-space-2);
+  border: 1px solid var(--hse-color-border);
+  border-radius: var(--hse-radius-pill);
+  background: var(--hse-color-surface-subtle);
+  color: var(--hse-color-muted);
+  font-size: var(--hse-text-xs);
+  font-weight: var(--hse-weight-semibold);
+  line-height: var(--hse-leading-sm);
+  white-space: nowrap;
+}
+
+.hse-status-badge--info {
+  border-color: var(--hse-color-info);
+  background: var(--hse-color-info-bg);
+  color: var(--hse-color-info);
+}
+
+.hse-status-badge--success {
+  border-color: var(--hse-color-success);
+  background: var(--hse-color-success-bg);
+  color: var(--hse-color-success);
+}
+
+.hse-status-badge--warning {
+  border-color: var(--hse-color-warning);
+  background: var(--hse-color-warning-bg);
+  color: var(--hse-color-warning);
+}
+
+.hse-status-badge--danger {
+  border-color: var(--hse-color-danger);
+  background: var(--hse-color-danger-bg);
+  color: var(--hse-color-danger);
+}
+
+@media (forced-colors: active) {
+  .hse-status-badge { border-color: CanvasText; }
+}

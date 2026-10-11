@@ -17,6 +17,15 @@ DATABASE_URL=postgres://localhost:5432/hse_informer_refactor_dev DEV_AUTH=synthe
 
 `DEV_AUTH=synthetic` signs in as the seeded synthetic Company A administrator for a local UI preview. It is blocked when `NODE_ENV=production`. Remove it to test actual Keycloak sign-in. The development realm in `infra/` uses issuer `http://auth.localhost:8080/realms/hse-dev`, HSE client `hse-web`, and callback `http://localhost:5173/auth/callback`. Set `APP_ORIGIN`, `OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, and a 32-character or longer `SESSION_SECRET` server-side. The seeded realm subjects map a Company A administrator and Company A/B workers by **issuer plus subject**; an ambiguous mapping is rejected. The Moodle instances have separate OIDC clients.
 
+The browser UI suite also launches the React preview from `../admin-app`. Install its dependencies before `npm run test:e2e`:
+
+```sh
+npm ci --prefix ../admin-app
+npx playwright install chromium
+```
+
+Screenshot baselines are stored per Chromium platform. A changed screen requires an intentional baseline review on that platform; the suite also checks mobile overflow, dialog keyboard behavior, and automated WCAG A/AA rules.
+
 Site records have an optional IANA `time_zone`. The synthetic sites explicitly use `America/New_York`; the admin form refuses a new deadline when the site's time zone is missing. A selected date ends at 23:59:59 in that site, including across daylight-saving changes. Real site time zones must be confirmed before date-based scheduling.
 
 The versioned SQL migrator runs each file in `migrations/` once in a transaction. Use a fresh isolated database when re-running a changed development migration; never run the synthetic seed against real data. The seed is also blocked in production.
@@ -28,7 +37,7 @@ The versioned SQL migrator runs each file in `migrations/` once in a transaction
 | `npm run check` | TypeScript and Svelte checks |
 | `npm test` | Applicability/status and mocked Moodle service tests |
 | `npm run test:integration` | PostgreSQL tenant isolation, immutable evidence, attestation, reassignment, and atomic multi-site assignment tests; requires `TEST_DATABASE_URL` pointing to a migrated disposable database |
-| `npm run test:e2e` | Chromium checks for admin preview parity, multi-site recipient review, cross-browser PostgreSQL persistence, measured learner pagination, and read-only draft lesson behavior; requires a migrated and synthetic-seeded `DATABASE_URL` and Playwright Chromium |
+| `npm run test:e2e` | Chromium checks for admin preview parity, multi-site recipient review, cross-browser PostgreSQL persistence, measured learner pagination, read-only draft lesson behavior, cross-app UI screenshots, keyboard dialogs, and WCAG A/AA rules; requires a migrated and synthetic-seeded `DATABASE_URL`, both apps' dependencies, and Playwright Chromium |
 | `npm run build` | Build the Node server with `adapter-node` |
 | `npm run db:migrate` | Apply numbered migrations using `DATABASE_URL` |
 | `npm run db:seed:synthetic` | Add clearly labeled demonstration tenants and unapproved drafts |

@@ -8,6 +8,7 @@ Training administration for chemical manufacturing sites. This repository curren
 - [React admin and learner pilot](admin-app/README.md): sample preview, protected Cloudflare D1 pilot routes, and course player.
 - [Local integration fixture](infra/README.md): PostgreSQL, Keycloak, and two isolated Moodle instances for synthetic tests.
 - [Design guidance](docs/coursera-audit/README.md): reference audit, HSE design tokens, and component contracts.
+- [UI standard](docs/ui-standard.md): maintained visual tokens, shared patterns, status language, and stability checks.
 - [Product direction](docs/vision/phases.txt): planning notes and evidence boundaries.
 - [B0 beta administration plan](docs/vision/B0-beta-admin-system.md): pilot acceptance proposal.
 - [Regulatory training source map](docs/regulatory/training-source-map.md) and [Respiratory Protection analysis](docs/regulatory/rp-compliance.md): unapproved content and applicability planning.

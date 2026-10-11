@@ -21,9 +21,9 @@ html:has([data-slot='sidebar-wrapper']) {
   min-width: 0;
   min-block-size: 7rem;
   text-align: left;
-  background: #fff;
-  border: 1px solid #dfe5ef;
-  border-radius: 7px;
+  background: var(--hse-color-surface);
+  border: 1px solid var(--hse-color-border);
+  border-radius: var(--hse-radius-card);
   padding: 12px 16px;
   position: relative;
   transition:
@@ -31,8 +31,8 @@ html:has([data-slot='sidebar-wrapper']) {
     box-shadow 0.15s;
 }
 .stat-card:hover {
-  border-color: #9ab7e2;
-  box-shadow: 0 3px 10px #25395c08;
+  border-color: var(--hse-color-brand);
+  box-shadow: 0 3px 10px rgb(13 15 18 / .04);
 }
 .stat-card:disabled {
   cursor: default;
@@ -40,12 +40,12 @@ html:has([data-slot='sidebar-wrapper']) {
   opacity: 1;
 }
 .stat-card:disabled:hover {
-  border-color: #dfe5ef;
+  border-color: var(--hse-color-border);
   box-shadow: none;
 }
 .stat-card[aria-pressed='true'] {
-  border-color: #0056d2;
-  background: #f4f8ff;
+  border-color: var(--hse-color-brand);
+  background: var(--hse-color-brand-subtle);
 }
 .stat-label {
   display: flex;
@@ -58,7 +58,7 @@ html:has([data-slot='sidebar-wrapper']) {
   line-height: var(--hse-leading-sm);
 }
 .stat-label svg {
-  color: #8495ad;
+  color: var(--hse-color-muted);
   flex-shrink: 0;
   width: 18px;
   height: 18px;
@@ -76,7 +76,7 @@ html:has([data-slot='sidebar-wrapper']) {
 }
 .stat-card > strong small {
   font-size: 0.75rem;
-  color: #65758d;
+  color: var(--hse-color-muted);
   letter-spacing: 0;
   font-weight: 400;
 }
@@ -86,7 +86,7 @@ html:has([data-slot='sidebar-wrapper']) {
   gap: 4px;
   font-size: 0.75rem;
   line-height: 1.25rem;
-  color: #63728a;
+  color: var(--hse-color-muted);
   flex-wrap: wrap;
 }
 .stat-card.overdue-card::before {
@@ -94,14 +94,14 @@ html:has([data-slot='sidebar-wrapper']) {
   position: absolute;
   inset: 0 0 auto;
   height: 2px;
-  border-radius: 7px 7px 0 0;
-  background: #e2ad6b;
+  border-radius: var(--hse-radius-card) var(--hse-radius-card) 0 0;
+  background: var(--hse-color-warning);
 }
 .overdue-card .stat-label svg {
-  color: #b47725;
+  color: var(--hse-color-warning);
 }
 .overdue-card > strong {
-  color: #a75b17;
+  color: var(--hse-color-warning);
 }
 .stat-meter {
   position: absolute;
@@ -109,16 +109,16 @@ html:has([data-slot='sidebar-wrapper']) {
   left: 0;
   right: 0;
   height: 3px;
-  border-radius: 0 0 7px 7px;
+  border-radius: 0 0 var(--hse-radius-card) var(--hse-radius-card);
   overflow: hidden;
-  background: #ebf1f8;
+  background: var(--hse-color-surface-subtle);
 }
 .stat-meter::after {
   content: '';
   display: block;
   width: var(--completion);
   height: 100%;
-  background: #41947a;
+  background: var(--hse-color-success);
 }
 @media (max-width: 1199px) {
   .stats-grid {
@@ -185,18 +185,18 @@ html:has([data-slot='sidebar-wrapper']) {
 }
 .assignment-sort-button > svg {
   flex-shrink: 0;
-  color: #71839c;
+  color: var(--hse-color-muted);
 }
 .assignment-sort-button.is-sorted,
 .assignment-sort-button.is-sorted > svg {
-  color: #0056d2;
+  color: var(--hse-color-brand);
 }
 .assignment-sort-button:hover {
-  background: #eaf1fb;
-  color: #0056d2;
+  background: var(--hse-color-brand-subtle);
+  color: var(--hse-color-brand);
 }
 .sort-heading-divider {
-  color: #8190a5;
+  color: var(--hse-color-muted);
 }
 .completion-panel > .panel-heading {
   flex-wrap: wrap;
@@ -216,18 +216,18 @@ html:has([data-slot='sidebar-wrapper']) {
   gap: 14px;
   min-width: 0;
   padding: 16px 12px;
-  border: 1px solid #dfe5ef;
-  border-radius: 7px;
-  background: #fff;
+  border: 1px solid var(--hse-color-border);
+  border-radius: var(--hse-radius-card);
+  background: var(--hse-color-surface);
   font-size: var(--hse-text-sm);
   text-align: center;
 }
 .completion-status:hover {
   border-color: var(--status-color);
-  background: #f7f9fc;
+  background: var(--hse-color-canvas);
 }
 .completion-status.status-in-progress {
-  --status-color: #0056d2;
+  --status-color: var(--hse-color-brand);
 }
 .completion-status.status-complete {
   --status-color: var(--hse-color-success);
@@ -257,7 +257,7 @@ html:has([data-slot='sidebar-wrapper']) {
   stroke-width: 7;
 }
 .completion-ring-track {
-  stroke: #e9eef5;
+  stroke: var(--hse-color-surface-subtle);
 }
 .completion-ring-value {
   stroke: var(--status-color);

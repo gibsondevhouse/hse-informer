@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import Link from 'next/link';
 import './training-summary.css';
 import { CompletionBreakdown } from '@/components/completion-breakdown';
+import { assignmentStatusLabel } from '@/components/hse-status-badge';
 import {
   ArrowDown,
   ArrowUp,
@@ -1183,11 +1184,11 @@ export default function TrainingWorkspace() {
                             {record.status === 'Knowledge Complete' && (
                               <Check size={13} />
                             )}
-                            {isOverdue(record) ? 'Overdue' : record.status}
+                            {isOverdue(record) ? 'Overdue' : assignmentStatusLabel(record.status)}
                           </span>
                           {isOverdue(record) && (
                             <span className="cell-secondary">
-                              {record.status}
+                              {assignmentStatusLabel(record.status)}
                             </span>
                           )}
                         </TableCell>

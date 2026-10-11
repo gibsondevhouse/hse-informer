@@ -31,6 +31,7 @@
     "zod": "^4.1.12"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "@playwright/test": "^1.58.2",
     "@sveltejs/vite-plugin-svelte": "^7.3.1",
     "@types/node": "^22.15.0",

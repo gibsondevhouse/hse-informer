@@ -1,21 +1,25 @@
 .learner-inbox {
   max-width: 900px;
   margin: 0 auto;
-  padding: 32px 24px;
+  padding: var(--hse-space-8) var(--hse-space-6);
+  color: var(--hse-color-ink);
+  font-family: var(--hse-font-sans);
+  color-scheme: light;
 }
 .learner-inbox-header {
-  margin-bottom: 28px;
+  margin-bottom: var(--hse-space-8);
 }
 .learner-inbox-header > span {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  color: #0056d2;
+  color: var(--hse-color-brand);
   font-weight: 700;
 }
 .learner-inbox h1 {
-  margin-top: 18px;
-  font-size: 28px;
+  margin-top: var(--hse-space-5);
+  font-size: var(--hse-text-2xl);
+  line-height: var(--hse-leading-2xl);
 }
 .learner-inbox-header p,
 .learner-inbox-boundary {
@@ -23,23 +27,27 @@
 }
 .learner-inbox-list {
   display: grid;
-  gap: 12px;
+  gap: var(--hse-space-3);
 }
 .learner-inbox-card {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 24px;
-  padding: 20px;
+  gap: var(--hse-space-6);
+  padding: var(--hse-space-5);
+  border-color: var(--hse-color-border);
+  border-radius: var(--hse-radius-card);
 }
 .learner-inbox-card h2 {
-  font-size: 18px;
-  margin: 4px 0;
+  font-size: var(--hse-text-lg);
+  line-height: var(--hse-leading-lg);
+  margin: var(--hse-space-1) 0;
 }
 .learner-inbox-card small,
 .learner-inbox-card p {
   color: var(--hse-color-muted);
 }
+.learner-inbox-card .hse-status-badge { margin-top: var(--hse-space-2); }
 .learner-inbox-action,
 .learner-inbox-unavailable {
   display: inline-flex;
@@ -48,18 +56,19 @@
   white-space: nowrap;
 }
 .learner-inbox-action {
-  color: #0056d2;
-  font-weight: 600;
-  min-height: 44px;
+  color: var(--hse-color-brand);
+  font-weight: var(--hse-weight-semibold);
+  min-height: var(--hse-control-default);
 }
 .learner-inbox-unavailable {
   color: var(--hse-color-muted);
 }
 .learner-inbox-boundary {
-  margin-top: 24px;
-  font-size: 14px;
+  margin-top: var(--hse-space-6);
+  font-size: var(--hse-text-sm);
 }
-@media (max-width: 600px) {
-  .learner-inbox { padding: 24px 16px; }
-  .learner-inbox-card { align-items: flex-start; flex-direction: column; gap: 12px; }
+@media (max-width: 539px) {
+  .learner-inbox { padding: var(--hse-space-6) var(--hse-space-4); }
+  .learner-inbox-card { align-items: flex-start; flex-direction: column; gap: var(--hse-space-3); }
 }
+@media (pointer: coarse) { .learner-inbox-action { min-height: var(--hse-control-touch); } }
