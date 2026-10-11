@@ -147,7 +147,8 @@ async function perform(job: Job): Promise<void> {
   if (!completion.completedAt) {
     await resolveDrifts(job, ['completion_missing', 'completion_time_missing', 'completion_changed']);
     await recordDrift(job, 'completion_timestamp_unverified', { userId, courseId,
-      reason: 'Moodle course-completion response has no canonical course completion timestamp' });
+      reason: 'Moodle course-completion response has no canonical course completion timestamp',
+      scormObservation: completion.scormObservation });
     return;
   }
   if (completion.completedAt < assignment.assigned_at) {
