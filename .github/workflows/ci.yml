@@ -37,7 +37,7 @@ jobs:
 
   moodle-synthetic-isolation:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
       - name: Start separate Moodle sites and Keycloak
@@ -81,6 +81,53 @@ jobs:
         with:
           name: synthetic-moodle-rest-evidence
           path: infra/moodle-pilot-evidence.json
+          retention-days: 7
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Install pinned browser tooling
+        run: |
+          npm ci --prefix web
+          ./web/node_modules/.bin/playwright install --with-deps chromium
+      - name: Launch synthetic SCORM in Moodle browser and read tracking
+        shell: bash
+        run: |
+          set -euo pipefail
+          set -a
+          source infra/.env
+          set +a
+          python3 infra/scorm/build.py --output infra/scorm/synthetic-scorm-1.2.zip
+          docker compose --env-file infra/.env -f infra/compose.yaml cp \
+            infra/scorm/synthetic-scorm-1.2.zip moodle-a:/tmp/synthetic-scorm-1.2.zip
+          A="$(docker compose --env-file infra/.env -f infra/compose.yaml exec -T -u www-data moodle-a php /opt/hse/bootstrap-pilot.php)"
+          echo "::add-mask::$(jq -r .token <<<"$A")"
+          SCORM="$(docker compose --env-file infra/.env -f infra/compose.yaml exec -T -u www-data \
+            -e SCORM_LEARNER_PASSWORD="$DEV_WORKER_PASSWORD" moodle-a php /opt/hse/bootstrap-scorm.php)"
+          MOODLE_SCORM_FIXTURE="$SCORM" SCORM_LEARNER_PASSWORD="$DEV_WORKER_PASSWORD" \
+            node infra/scripts/verify-scorm-browser.cjs
+          docker compose --env-file infra/.env -f infra/compose.yaml exec -T -u www-data \
+            moodle-a php /var/www/moodle/admin/cli/cron.php
+          MOODLE_A_PILOT="$A" MOODLE_SCORM_FIXTURE="$SCORM" \
+            MOODLE_SCORM_EVIDENCE=infra/scorm-browser-evidence.json \
+            python3 infra/scripts/verify-scorm-read.py
+      - name: Upload synthetic SCORM browser evidence
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: synthetic-scorm-browser-evidence
+          path: infra/scorm-browser-evidence.json
+          retention-days: 7
+      - name: Upload SCORM failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: synthetic-scorm-failure
+          path: |
+            infra/scorm-browser-failure.png
+            infra/scorm-browser-evidence.json
+          if-no-files-found: ignore
           retention-days: 7
       - name: Show stack logs on failure
         if: failure()
