@@ -69,20 +69,28 @@ if (!$service) {
         'uploadfiles' => 0,
     ];
     $service->id = $manager->add_external_service($service);
-    foreach ([
-        'core_webservice_get_site_info',
-        'core_user_get_users_by_field',
-        'core_user_create_users',
-        'enrol_manual_enrol_users',
-        'core_enrol_get_users_courses',
-        'core_completion_get_course_completion_status',
-    ] as $function) {
-        $manager->add_external_function_to_service($function, $service->id);
-    }
     $manager->add_ws_authorised_user((object) [
         'externalserviceid' => $service->id,
         'userid' => $USER->id,
     ]);
+}
+$existing = array_map(static fn($function) => $function->name,
+    $manager->get_external_functions([$service->id]));
+foreach ([
+    'core_webservice_get_site_info',
+    'core_user_get_users_by_field',
+    'core_user_create_users',
+    'enrol_manual_enrol_users',
+    'core_enrol_get_users_courses',
+    'core_completion_get_course_completion_status',
+    'core_cohort_create_cohorts',
+    'core_cohort_get_cohorts',
+    'core_cohort_add_cohort_members',
+    'core_cohort_get_cohort_members',
+] as $function) {
+    if (!in_array($function, $existing, true)) {
+        $manager->add_external_function_to_service($function, $service->id);
+    }
 }
 
 $token = \core_external\util::generate_token(

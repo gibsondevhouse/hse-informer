@@ -94,7 +94,50 @@ def verify_site(label: str, base_url: str, fixture: dict[str, object],
     if "timecompleted" in status:
         raise RuntimeError(f"{label} course completion response gained a timestamp; review adapter semantics")
 
-    print(f"OK {label}: OAuth2-auth Moodle account, HSE-ID lookup, manual enrollment, enrolled-course read, incomplete completion read")
+    site_names = ("Tifton", "Ocilla", "Vernon") if label == "A" else ("Isolation",)
+    idnumbers = {site: f"HSE-SYNTHETIC-{label}-{site.upper()}" for site in site_names}
+    create_fields = {}
+    for index, site in enumerate(site_names):
+        prefix = f"cohorts[{index}]"
+        create_fields[f"{prefix}[categorytype][type]"] = "system"
+        create_fields[f"{prefix}[categorytype][value]"] = "0"
+        create_fields[f"{prefix}[name]"] = f"{site} synthetic site"
+        create_fields[f"{prefix}[idnumber]"] = idnumbers[site]
+        create_fields[f"{prefix}[description]"] = "SYNTHETIC ONLY - no real workers or training credit"
+    created_cohorts = ws("core_cohort_create_cohorts", **create_fields)
+    if not isinstance(created_cohorts, list) or len(created_cohorts) != len(site_names):
+        raise RuntimeError(f"{label} Moodle did not create the expected synthetic site cohorts: {created_cohorts}")
+    cohort_ids = {}
+    for site, cohort in zip(site_names, created_cohorts):
+        if not isinstance(cohort, dict) or cohort.get("idnumber") != idnumbers[site]:
+            raise RuntimeError(f"{label} site cohort idnumber mismatch: {created_cohorts}")
+        cohort_ids[site] = positive_id(cohort.get("id"), f"{label} {site} cohort ID")
+
+    all_cohorts = ws("core_cohort_get_cohorts")
+    if not isinstance(all_cohorts, list) or {
+            item.get("idnumber") for item in all_cohorts if isinstance(item, dict)
+    } != set(idnumbers.values()):
+        raise RuntimeError(f"{label} Moodle cohort inventory was not company-scoped: {all_cohorts}")
+
+    target = site_names[0]
+    membership = ws("core_cohort_add_cohort_members", **{
+        "members[0][cohorttype][type]": "id",
+        "members[0][cohorttype][value]": cohort_ids[target],
+        "members[0][usertype][type]": "id",
+        "members[0][usertype][value]": user_id,
+    })
+    if not isinstance(membership, dict) or membership.get("warnings") != []:
+        raise RuntimeError(f"{label} Moodle did not confirm site cohort membership: {membership}")
+    members = ws("core_cohort_get_cohort_members", **{
+        f"cohortids[{index}]": cohort_ids[site] for index, site in enumerate(site_names)
+    })
+    expected_members = {cohort_ids[site]: ([user_id] if site == target else []) for site in site_names}
+    if not isinstance(members, list) or {
+            item.get("cohortid"): item.get("userids") for item in members if isinstance(item, dict)
+    } != expected_members:
+        raise RuntimeError(f"{label} site cohort membership read did not match: {members}")
+
+    print(f"OK {label}: OAuth2-auth account, HSE-ID lookup, enrollment, incomplete completion read, site cohorts and membership")
     return {
         "courseId": course_id,
         "userId": user_id,
@@ -102,6 +145,9 @@ def verify_site(label: str, base_url: str, fixture: dict[str, object],
         "authMethod": found[0].get("auth"),
         "enrolledCourseRead": next(item for item in courses if item.get("id") == course_id),
         "completionRead": completion,
+        "siteCohorts": {site: {"id": cohort_ids[site],
+                               "idnumber": idnumbers[site],
+                               "memberIds": expected_members[cohort_ids[site]]} for site in site_names},
     }
 
 
@@ -127,7 +173,7 @@ def main() -> None:
 
     evidence = {
         "fixture": "SYNTHETIC ONLY - no training credit or production evidence",
-        "scope": "Moodle 5.3.0 REST provisioning, enrollment, and incomplete completion read",
+        "scope": "Moodle 5.3.0 REST provisioning, enrollment, site cohorts, and incomplete completion read",
         "limitations": [
             "Moodle browser OAuth issuer and subject linking were not configured or tested",
             "The synthetic SCORM ZIP was validated as an artifact but not imported or launched",
