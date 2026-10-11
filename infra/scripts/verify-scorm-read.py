@@ -41,6 +41,19 @@ def main() -> None:
     user_id = positive_id(fixture["userid"], "SCORM learner ID")
     output = Path(os.environ.get("MOODLE_SCORM_EVIDENCE", "scorm-browser-evidence.json"))
 
+    sco_list = call(base, token, "mod_scorm_get_scorm_scoes", {"scormid": scorm_id})
+    items = sco_list.get("scoes") if isinstance(sco_list, dict) else None
+    matches = [item for item in items if isinstance(item, dict) and item.get("id") == sco_id] \
+        if isinstance(items, list) else []
+    if not isinstance(sco_list, dict) or sco_list.get("warnings") != [] or len(matches) != 1 \
+            or matches[0].get("scorm") != scorm_id or matches[0].get("scormtype") != "sco":
+        output.write_text(json.dumps({
+            "fixture": "SYNTHETIC ONLY - SCORM SCO metadata read failed",
+            "packageSha256": fixture["packageSha256"],
+            "observed": {"scoListRead": sco_list},
+        }, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        raise RuntimeError(f"Moodle SCO metadata did not match the parsed synthetic package: {sco_list}")
+
     last = None
     for _ in range(18):
         attempts = call(base, token, "mod_scorm_get_scorm_attempt_count",
@@ -51,7 +64,7 @@ def main() -> None:
                           {"courseid": course_id, "userid": user_id})
         completion = call(base, token, "core_completion_get_course_completion_status",
                           {"courseid": course_id, "userid": user_id})
-        last = {"attemptCountRead": attempts, "scoTracksRead": tracks,
+        last = {"scoListRead": sco_list, "attemptCountRead": attempts, "scoTracksRead": tracks,
                 "activityCompletionRead": activities, "courseCompletionRead": completion}
 
         track_data = tracks.get("data", {}) if isinstance(tracks, dict) else {}

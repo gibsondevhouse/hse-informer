@@ -154,6 +154,7 @@ $existing = array_map(static fn($function) => $function->name,
     $manager->get_external_functions([$service->id]));
 foreach ([
     'mod_scorm_get_scorm_attempt_count',
+    'mod_scorm_get_scorm_scoes',
     'mod_scorm_get_scorm_sco_tracks',
     'core_completion_get_activities_completion_status',
 ] as $function) {
