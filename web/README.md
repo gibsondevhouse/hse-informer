@@ -27,8 +27,8 @@ The versioned SQL migrator runs each file in `migrations/` once in a transaction
 |---|---|
 | `npm run check` | TypeScript and Svelte checks |
 | `npm test` | Applicability/status and mocked Moodle service tests |
-| `npm run test:integration` | PostgreSQL tenant isolation, immutable evidence, attestation, and reassignment tests; requires `TEST_DATABASE_URL` pointing to a migrated disposable database |
-| `npm run test:e2e` | Chromium checks for admin preview parity, cross-browser PostgreSQL persistence, measured learner pagination, and read-only draft lesson behavior; requires a migrated and synthetic-seeded `DATABASE_URL` and Playwright Chromium |
+| `npm run test:integration` | PostgreSQL tenant isolation, immutable evidence, attestation, reassignment, and atomic multi-site assignment tests; requires `TEST_DATABASE_URL` pointing to a migrated disposable database |
+| `npm run test:e2e` | Chromium checks for admin preview parity, multi-site recipient review, cross-browser PostgreSQL persistence, measured learner pagination, and read-only draft lesson behavior; requires a migrated and synthetic-seeded `DATABASE_URL` and Playwright Chromium |
 | `npm run build` | Build the Node server with `adapter-node` |
 | `npm run db:migrate` | Apply numbered migrations using `DATABASE_URL` |
 | `npm run db:seed:synthetic` | Add clearly labeled demonstration tenants and unapproved drafts |
@@ -44,7 +44,7 @@ An HSE reviewer can record an append-only person context and change event, then 
 
 User provisioning additionally needs an explicit, **verified** Moodle `authMethod` and a worker email; accounts without email require a reviewed provisioning path. The adapter uses documented REST web services to look up users by HSE ID, optionally create users, enroll them, read course completion, and check enrollment. It fails closed on duplicate HSE IDs or ambiguous active IDs for an instance. Historical HSI aliases can coexist for a person; superseded mappings stay in the database. Tokens and credentials never go to the browser.
 
-Moodle 5.3's `core_completion_get_course_completion_status` reports whether course criteria are complete and timestamps for individual criteria, but **does not provide a canonical course completion timestamp**. The adapter does not treat a criterion timestamp as course completion, so its live response has `completedAt: null`. `course_versions.completion_criteria_verified` is a reserved gate for a reviewed course and SCORM success policy; setting it alone does not overcome the missing timestamp. The reconciliation job records `completion_timestamp_unverified` and does not create knowledge evidence from this response. A documented, tested exact activity completion read or equivalent canonical source, mapped to the pinned `moodle_activity_id` and course version, is required before this gate can pass. Score remains `null`; SCORM `attemptscount` is read only when configured. These live behaviors remain unverified until the pinned Moodle fixture and real export are tested.
+Moodle 5.3's `core_completion_get_course_completion_status` reports whether course criteria are complete and timestamps for individual criteria, but **does not provide a canonical course completion timestamp**. Hosted synthetic Moodle 5.3.0 CI observed this shape after a browser-run SCORM completion. The adapter reads the pinned SCORM attempt, SCO status and score, and activity state timestamp into `scormObservation`; these are diagnostic observations, not promoted course evidence. Its response keeps `completedAt` and the evidence `score` null. `course_versions.completion_criteria_verified` is a reserved gate for a reviewed course and SCORM success policy; setting it alone does not overcome the missing timestamp. The reconciliation job records `completion_timestamp_unverified`, including the separate observation, and does not create knowledge evidence from this response. Gate B must validate the real DeepHow course's exact criteria, timestamp source, reset behavior, and pinned version before any observation can become evidence.
 
 ## Server routes
 
@@ -52,7 +52,8 @@ Moodle 5.3's `core_completion_get_course_completion_status` reports whether cour
 |---|---|
 | `/auth/login`, `/auth/callback`, `/auth/logout` | OIDC authorization code flow and signed session |
 | `GET /api/me`, `/api/sites`, `/api/people`, `/api/requirements` | Tenant and role scoped context |
-| `GET /api/assignments`, `POST /api/assignments`, `PATCH /api/assignments/:id` | Assignment list, approved assignment creation, audited due date edit |
+| `GET /api/assignments`, `POST /api/assignments`, `PATCH /api/assignments/:id` | Assignment list, approved single-site creation, audited due date edit |
+| `POST /api/assignments/bulk` | Atomic approved manual assignments for selected person/site pairs, each due at the end of its site-local date; duplicate open pairs are skipped |
 | `GET /api/summary` | Counts, courses, and sites; knowledge completion and authorization are independent |
 | `GET /api/integration-health` | Tenant-scoped failed or aged outbox jobs, unresolved drift, and reassignment failure counts for administrators |
 | `POST /api/training-contexts`, `POST /api/reassignment-events` | HSE-reviewed person context and site change-event records |
@@ -69,6 +70,6 @@ The draft Respiratory Protection lesson at `/preview/respiratory-protection` is 
 
 - A qualified HSE reviewer and owner must approve regulatory content, applicability, recurrence, addenda, and course mappings.
 - A real DeepHow export and exact format are needed for Gate A. The synthetic SCORM package under `infra/` tests plumbing only.
-- Moodle 5.3.0 is pinned in `infra/`, but its web-service payloads/permissions, Keycloak account linking, site cohorts, exact completion timing, score/attempt behavior, and two-instance isolation still need a running Moodle/Keycloak fixture and a real pilot for Gate B. Docker is unavailable on this machine. Current course-completion reads intentionally stop at review drift because the response lacks a canonical timestamp.
+- Moodle 5.3.0 is pinned in `infra/`. Hosted CI has exercised synthetic REST provisioning, enrollment, cohorts, SCORM attempt/score/activity reads, Keycloak realm boundaries, and two-instance token isolation. The real pilot still needs least-privilege service permissions, Keycloak browser account linking, learner UI isolation, the DeepHow export, and re-enrollment/reset/content-version behavior. Docker is unavailable on this machine. Current course-completion reads intentionally stop at review drift because the response lacks a canonical timestamp.
 - Reviewed context entry is API-only; a production event source, scheduled invocation and alerting, approved site-local recurrence policy, manual-enrollment discovery, full Phase 2 browser parity, and Phase 3 practical flow demonstration remain unfinished. The tested runner is a foundation, not an approved live reassignment service.
 - A real HSI sample, a reviewed one-time Moodle importer, row-by-row reconciliations, two clean rehearsals, and HSE signoff are needed for Gate C. HSI remains authoritative for historical records; no cutover or production deployment is authorized by this foundation.
