@@ -55,24 +55,18 @@ jobs:
           source infra/.env
           set +a
           python3 infra/scripts/verify-keycloak-isolation.py
-      - name: Verify web-service tokens cannot cross companies
-        shell: bash
-        run: |
-          set -euo pipefail
-          A="$(docker compose --env-file infra/.env -f infra/compose.yaml exec -T -u www-data moodle-a php /opt/hse/bootstrap-isolation.php)"
-          B="$(docker compose --env-file infra/.env -f infra/compose.yaml exec -T -u www-data moodle-b php /opt/hse/bootstrap-isolation.php)"
-          [[ "$A" =~ ^[a-f0-9]{32}$ && "$B" =~ ^[a-f0-9]{32}$ ]]
-          echo "::add-mask::$A"
-          echo "::add-mask::$B"
-          MOODLE_A_TOKEN="$A" MOODLE_B_TOKEN="$B" python3 infra/scripts/verify-moodle-isolation.py
-      - name: Exercise synthetic Moodle provisioning, enrollment, and completion reads
+      - name: Exercise synthetic Moodle token isolation, provisioning, enrollment, and completion reads
         shell: bash
         run: |
           set -euo pipefail
           A="$(docker compose --env-file infra/.env -f infra/compose.yaml exec -T -u www-data moodle-a php /opt/hse/bootstrap-pilot.php)"
           B="$(docker compose --env-file infra/.env -f infra/compose.yaml exec -T -u www-data moodle-b php /opt/hse/bootstrap-pilot.php)"
-          echo "::add-mask::$(jq -r .token <<<"$A")"
-          echo "::add-mask::$(jq -r .token <<<"$B")"
+          A_TOKEN="$(jq -er .token <<<"$A")"
+          B_TOKEN="$(jq -er .token <<<"$B")"
+          echo "::add-mask::$A_TOKEN"
+          echo "::add-mask::$B_TOKEN"
+          MOODLE_A_TOKEN="$A_TOKEN" MOODLE_B_TOKEN="$B_TOKEN" \
+            python3 infra/scripts/verify-moodle-isolation.py
           MOODLE_A_PILOT="$A" MOODLE_B_PILOT="$B" \
             MOODLE_PILOT_EVIDENCE=infra/moodle-pilot-evidence.json \
             python3 infra/scripts/verify-moodle-pilot.py
