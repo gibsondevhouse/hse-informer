@@ -13,7 +13,7 @@ jobs:
         run: |
           cp infra/.env.example infra/.env
           docker compose --env-file infra/.env -f infra/compose.yaml config --quiet
-          python3 -m json.tool infra/keycloak/hse-dev-realm.json > /dev/null
+          python3 infra/scripts/verify-keycloak-isolation.py --config-only
       - name: Verify synthetic SCORM 1.2 package
         run: python3 -m unittest discover -s infra/scorm -p 'test_*.py'
       - name: Verify synthetic HSI reconciliation
@@ -47,6 +47,14 @@ jobs:
           docker compose --env-file infra/.env -f infra/compose.yaml up -d --build keycloak moodle-a moodle-b
       - name: Check Moodle and issuer readiness
         run: python3 infra/scripts/check-stack.py
+      - name: Verify company sign-in realm boundaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          set -a
+          source infra/.env
+          set +a
+          python3 infra/scripts/verify-keycloak-isolation.py
       - name: Verify web-service tokens cannot cross companies
         shell: bash
         run: |
@@ -104,4 +112,9 @@ jobs:
       - run: npm test
       - run: npm run db:migrate
       - run: npm run test:integration
+      - run: npm run db:seed:synthetic
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+        env:
+          DEV_AUTH: synthetic
       - run: npm run build
