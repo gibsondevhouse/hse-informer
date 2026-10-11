@@ -65,6 +65,23 @@ jobs:
           echo "::add-mask::$A"
           echo "::add-mask::$B"
           MOODLE_A_TOKEN="$A" MOODLE_B_TOKEN="$B" python3 infra/scripts/verify-moodle-isolation.py
+      - name: Exercise synthetic Moodle provisioning, enrollment, and completion reads
+        shell: bash
+        run: |
+          set -euo pipefail
+          A="$(docker compose --env-file infra/.env -f infra/compose.yaml exec -T -u www-data moodle-a php /opt/hse/bootstrap-pilot.php)"
+          B="$(docker compose --env-file infra/.env -f infra/compose.yaml exec -T -u www-data moodle-b php /opt/hse/bootstrap-pilot.php)"
+          echo "::add-mask::$(jq -r .token <<<"$A")"
+          echo "::add-mask::$(jq -r .token <<<"$B")"
+          MOODLE_A_PILOT="$A" MOODLE_B_PILOT="$B" \
+            MOODLE_PILOT_EVIDENCE=infra/moodle-pilot-evidence.json \
+            python3 infra/scripts/verify-moodle-pilot.py
+      - name: Upload synthetic Moodle REST evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: synthetic-moodle-rest-evidence
+          path: infra/moodle-pilot-evidence.json
+          retention-days: 7
       - name: Show stack logs on failure
         if: failure()
         run: docker compose --env-file infra/.env -f infra/compose.yaml logs --tail=100

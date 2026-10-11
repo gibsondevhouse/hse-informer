@@ -27,8 +27,10 @@ COPY moodle.ini /usr/local/etc/php/conf.d/moodle.ini
 COPY config.php /var/www/moodle/config.php
 COPY entrypoint.sh /usr/local/bin/hse-moodle-entrypoint
 COPY bootstrap-isolation.php /opt/hse/bootstrap-isolation.php
+COPY bootstrap-pilot.php /opt/hse/bootstrap-pilot.php
 RUN chmod 0644 /var/www/moodle/config.php \
     && chmod 0644 /opt/hse/bootstrap-isolation.php \
+    && chmod 0644 /opt/hse/bootstrap-pilot.php \
     && chmod 0755 /usr/local/bin/hse-moodle-entrypoint
 
 WORKDIR /var/www/moodle
