@@ -129,6 +129,8 @@ Every phase ends with an **exit criterion**: a result someone can observe or rep
 - An automated test shows a tenant-B account cannot read tenant-A users, enrollments, or completions through Moodle or HSE Informer.
 - Gate A, Gate B, exact Moodle patch, and the Keycloak account-linking result, with evidence, are recorded in this document. A synthetic SCORM test can prove the plumbing but does not pass the DeepHow gate.
 
+**Synthetic infrastructure evidence (2026-10-11).** The development fixture pins the official Moodle **5.3.0** archive by SHA-256 (`7e5edf110555956571f40e42acffde0eb23681ebebd212a2fec0fe7d795dd511`). In [hosted CI run 38167948532](https://github.com/gibsondevhouse/hse-informer/actions/runs/38167948532), two instances installed and served their login pages. Three Keycloak issuers responded; synthetic workers authenticated only to their own company realms; and each Moodle web-service probe token was rejected by the other company's instance. This is a fixture smoke test, not Gate A or B: SCORM import/tracking, actual Moodle OAuth account linking, enrollment/completion round trips, and the real DeepHow pilot remain unverified. The pinned release is not yet accepted as the pilot's tested patch.
+
 ### Phase 2: SvelteKit alongside the preview; server-owned data
 
 **Objective.** Replace browser-local state with server-owned records in the new stack, without disrupting the reference preview.
