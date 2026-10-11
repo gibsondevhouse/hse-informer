@@ -30,7 +30,8 @@ async function takeJob(tenantId?: string): Promise<Job | null> {
 
 async function assignmentForJob(job: Job, instanceKey: string) {
   const rows = await query<{ id: string; tenant_id: string; hse_id: string; moodle_user_ids: string[];
-    moodle_course_id: string | null; moodle_scorm_id: string | null; course_version_id: string | null;
+    moodle_course_id: string | null; moodle_scorm_id: string | null; moodle_activity_id: string | null;
+    course_version_id: string | null;
     display_name: string; email: string | null; synthetic: boolean; person_synthetic: boolean; assigned_at: Date;
     course_review_status: string | null; completion_criteria_verified: boolean | null;
     site_id: string; moodle_cohort_id: string | null }>(`SELECT a.id, a.tenant_id, p.hse_id,
@@ -38,7 +39,7 @@ async function assignmentForJob(job: Job, instanceKey: string) {
       ARRAY(SELECT external_id FROM person_external_ids x WHERE x.tenant_id = p.tenant_id
         AND x.person_id = p.id AND x.source = 'moodle' AND x.instance_key = $3
         AND x.superseded_at IS NULL ORDER BY x.created_at) AS moodle_user_ids,
-      cv.moodle_course_id, cv.moodle_scorm_id, cv.id AS course_version_id,
+      cv.moodle_course_id, cv.moodle_scorm_id, cv.moodle_activity_id, cv.id AS course_version_id,
       cv.review_status AS course_review_status, cv.completion_criteria_verified,
       a.site_id, smc.moodle_cohort_id, a.assigned_at, t.synthetic
       FROM assignments a JOIN people p ON p.tenant_id = a.tenant_id AND p.id = a.person_id
@@ -119,7 +120,8 @@ async function perform(job: Job): Promise<void> {
   }
   await resolveDrifts(job, ['completion_criteria_unverified']);
   const completion = await readCompletion(job.tenant_id, courseId, userId,
-    assignment.moodle_scorm_id ? Number(assignment.moodle_scorm_id) : null);
+    assignment.moodle_scorm_id ? Number(assignment.moodle_scorm_id) : null,
+    assignment.moodle_activity_id ? Number(assignment.moodle_activity_id) : null);
   const previous = await query<{ moodle_timecompleted: Date; course_version_id: string;
     moodle_course_id: string; moodle_user_id: string }>(`SELECT moodle_timecompleted,
       course_version_id, moodle_course_id, moodle_user_id FROM knowledge_evidence
