@@ -20,34 +20,6 @@
       "serviceAccountsEnabled": false,
       "redirectUris": ["http://localhost:5173/auth/callback"],
       "webOrigins": ["http://localhost:5173"]
-    },
-    {
-      "clientId": "moodle-company-a",
-      "name": "Moodle synthetic company A",
-      "enabled": true,
-      "protocol": "openid-connect",
-      "publicClient": false,
-      "clientAuthenticatorType": "client-secret",
-      "secret": "${MOODLE_A_OIDC_CLIENT_SECRET}",
-      "standardFlowEnabled": true,
-      "directAccessGrantsEnabled": false,
-      "serviceAccountsEnabled": false,
-      "redirectUris": ["http://localhost:8081/admin/oauth2callback.php"],
-      "webOrigins": ["http://localhost:8081"]
-    },
-    {
-      "clientId": "moodle-company-b",
-      "name": "Moodle synthetic company B",
-      "enabled": true,
-      "protocol": "openid-connect",
-      "publicClient": false,
-      "clientAuthenticatorType": "client-secret",
-      "secret": "${MOODLE_B_OIDC_CLIENT_SECRET}",
-      "standardFlowEnabled": true,
-      "directAccessGrantsEnabled": false,
-      "serviceAccountsEnabled": false,
-      "redirectUris": ["http://localhost:8082/admin/oauth2callback.php"],
-      "webOrigins": ["http://localhost:8082"]
     }
   ],
   "roles": {

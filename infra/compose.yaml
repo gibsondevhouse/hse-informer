@@ -54,6 +54,8 @@ services:
           - auth.localhost
     volumes:
       - ./keycloak/hse-dev-realm.json:/opt/keycloak/data/import/hse-dev-realm.json:ro
+      - ./keycloak/moodle-company-a-realm.json:/opt/keycloak/data/import/moodle-company-a-realm.json:ro
+      - ./keycloak/moodle-company-b-realm.json:/opt/keycloak/data/import/moodle-company-b-realm.json:ro
     depends_on:
       auth-db:
         condition: service_healthy

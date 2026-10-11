@@ -38,14 +38,16 @@ def wait_for(label: str, check) -> None:
 
 
 def main() -> None:
-    issuer = "http://auth.localhost:8080/realms/hse-dev"
-    def check_issuer() -> None:
-        discovery = get_json(f"{issuer}/.well-known/openid-configuration")
-        if discovery.get("issuer") != issuer:
-            raise RuntimeError(f"Unexpected OIDC issuer: {discovery.get('issuer')}")
+    for realm in ("hse-dev", "moodle-company-a", "moodle-company-b"):
+        issuer = f"http://auth.localhost:8080/realms/{realm}"
 
-    wait_for("Keycloak", check_issuer)
-    print(f"OK OIDC issuer: {issuer}")
+        def check_issuer() -> None:
+            discovery = get_json(f"{issuer}/.well-known/openid-configuration")
+            if discovery.get("issuer") != issuer:
+                raise RuntimeError(f"Unexpected OIDC issuer: {discovery.get('issuer')}")
+
+        wait_for(f"Keycloak {realm}", check_issuer)
+        print(f"OK OIDC issuer: {issuer}")
     wait_for("company A Moodle", lambda: check_moodle("http://localhost:8081"))
     wait_for("company B Moodle", lambda: check_moodle("http://localhost:8082"))
 
