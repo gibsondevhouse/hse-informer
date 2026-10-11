@@ -26,6 +26,48 @@ test('admin can inspect draft programs and filter site assignments', async ({ pa
   await expect(page.locator('table tbody')).not.toContainText('Jordan Example');
 });
 
+test('multi-site assignment review sends explicit person/site pairs while draft server approval stays guarded', async ({ page, request }) => {
+  let submitted: { recipients: { personId: string; siteId: string }[]; requirementId: string;
+    dueDate: string; reason: string } | null = null;
+  await page.route('**/api/requirements', async (route) => {
+    const response = await route.fetch();
+    const body = await response.json();
+    body.items[0].reviewStatus = 'approved'; // UI contract fixture only; the server still sees an unapproved draft.
+    await route.fulfill({ response, json: body });
+  });
+  await page.route('**/api/assignments/bulk', async (route) => {
+    submitted = route.request().postDataJSON();
+    await route.fulfill({ status: 201, json: { created: [], skipped: [] } });
+  });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'New assignment' }).click();
+  const dialog = page.getByRole('dialog', { name: 'New assignment' });
+  await dialog.getByRole('group', { name: 'Sites' }).getByRole('checkbox', { name: 'Vernon' }).uncheck();
+  await dialog.getByRole('combobox', { name: 'Job title' }).selectOption('Operator');
+  await dialog.getByRole('button', { name: 'Select all at selected sites' }).click();
+  await dialog.getByLabel('Due date').fill('2027-06-15');
+  await dialog.getByRole('button', { name: 'Review recipients' }).click();
+  await expect(dialog).toContainText('Tifton');
+  await expect(dialog).toContainText('Ocilla');
+  await expect(dialog).toContainText('2 site assignments');
+  await expect(dialog).toContainText('Avery Example');
+  await expect(dialog).toContainText('Casey Example');
+  await dialog.getByRole('button', { name: 'Create assignments' }).click();
+
+  const sites = (await (await request.get('/api/sites')).json()).items as { id: string; name: string }[];
+  const people = (await (await request.get('/api/people')).json()).items as { id: string; displayName: string }[];
+  expect(submitted?.dueDate).toBe('2027-06-15');
+  expect(submitted?.recipients).toEqual([
+    { personId: people.find((item) => item.displayName === 'Avery Example')?.id,
+      siteId: sites.find((item) => item.name === 'Tifton')?.id },
+    { personId: people.find((item) => item.displayName === 'Casey Example')?.id,
+      siteId: sites.find((item) => item.name === 'Ocilla')?.id }
+  ]);
+  expect(submitted).not.toBeNull();
+  const realResponse = await request.post('/api/assignments/bulk', { data: submitted });
+  expect(realResponse.status()).toBe(409);
+});
+
 test('summary drilldowns, progress filters, and sorting act on the visible assignment set', async ({ page }) => {
   await page.goto('/');
   const completionCard = page.getByRole('button', { name: /Knowledge completion.*view breakdown/ });

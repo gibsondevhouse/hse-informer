@@ -55,7 +55,7 @@
   let assignOpen = $state(false);
   let edit = $state<Assignment | null>(null);
   let editDue = $state('');
-  let formSite = $state('');
+  let formSites = $state<string[]>([]);
   let formRequirement = $state('');
   let formDue = $state('');
   let formReason = $state(reasons[0]);
@@ -113,11 +113,15 @@
   let approved = $derived(requirements.filter((item) => item.reviewStatus === 'approved'));
   let canManage = $derived(actor?.role === 'tenant_admin' || actor?.role === 'site_admin');
   let canMonitor = $derived(actor?.role === 'tenant_admin' || actor?.role === 'hse_reviewer' || actor?.role === 'auditor');
-  let sitePeople = $derived(people.filter((item) => item.siteIds.includes(formSite)));
+  let sitePeople = $derived(people.filter((item) => item.siteIds.some((id) => formSites.includes(id))));
   let jobOptions = $derived([...new Set(sitePeople.map((item) => item.jobTitle).filter(Boolean))].sort());
   let availablePeople = $derived(sitePeople.filter((item) => formJob === 'all' || item.jobTitle === formJob));
-  let possibleDuplicateIds = $derived(selectedPeople.filter((id) => assignments.some((row) =>
-    row.person.id === id && row.site.id === formSite && row.requirement.id === formRequirement && status(row) !== 'closed')));
+  let recipientPairs = $derived(selectedPeople.flatMap((personId) => {
+    const person = people.find((item) => item.id === personId);
+    return formSites.filter((siteId) => person?.siteIds.includes(siteId)).map((siteId) => ({ personId, siteId }));
+  }));
+  let possibleDuplicatePairs = $derived(recipientPairs.filter(({ personId, siteId }) => assignments.some((row) =>
+    row.person.id === personId && row.site.id === siteId && row.requirement.id === formRequirement && status(row) !== 'closed')));
   let scoped = $derived(assignments.filter((item) => siteFilter === 'all' || item.site.id === siteFilter));
   let visibleRequirements = $derived(requirements.filter((item) =>
     (programStatus === 'all' || item.reviewStatus === programStatus)
@@ -182,7 +186,7 @@
       actor = me.actor; tenant = me.tenant; sites = s.items; people = p.items;
       requirements = r.items; assignments = a.items; summary = sum;
       integrationHealth = canMonitor ? await request<IntegrationHealth>('/api/integration-health').catch(() => null) : null;
-      formSite = sites[0]?.id || '';
+      formSites = sites.map((site) => site.id);
     } catch (cause) { error = cause instanceof Error ? cause.message : 'Unable to load the workspace.'; }
     finally { loading = false; }
   }
@@ -209,7 +213,7 @@
     page = 1;
   }
   function openAssign(requirementId = '') {
-    formSite = siteFilter === 'all' ? sites[0]?.id || '' : siteFilter;
+    formSites = siteFilter === 'all' ? sites.map((site) => site.id) : [siteFilter];
     formRequirement = requirementId || approved[0]?.id || '';
     formDue = ''; formReason = reasons[0]; formJob = 'all'; selectedPeople = []; actionError = ''; reviewAssignment = false; assignOpen = true;
   }
@@ -217,8 +221,8 @@
     selectedPeople = selectedPeople.includes(id) ? selectedPeople.filter((item) => item !== id) : [...selectedPeople, id];
   }
   function reviewRecipients() {
-    if (!formSite || !formRequirement || !formDue || !selectedPeople.length) {
-      actionError = 'Choose a site, approved program, deadline, and learner.';
+    if (!formSites.length || !formRequirement || !formDue || !recipientPairs.length) {
+      actionError = 'Choose sites, an approved program, a deadline, and recipients.';
       return;
     }
     actionError = '';
@@ -232,15 +236,15 @@
     else detail = null;
   }
   async function createAssignment() {
-    if (!formSite || !formRequirement || !formDue || !selectedPeople.length) {
-      actionError = 'Choose a site, approved program, deadline, and learner.'; return;
+    if (!formSites.length || !formRequirement || !formDue || !recipientPairs.length) {
+      actionError = 'Choose sites, an approved program, a deadline, and recipients.'; return;
     }
     saving = true; actionError = '';
     try {
-      const result = await request<{ created: string[]; skipped: string[] }>('/api/assignments', {
+      const result = await request<{ created: { id: string; personId: string; siteId: string }[]; skipped: { personId: string; siteId: string }[] }>('/api/assignments/bulk', {
         method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ siteId: formSite, requirementId: formRequirement, personIds: selectedPeople,
-          dueAt: dueInstant(formDue, formSite), reason: formReason })
+        body: JSON.stringify({ recipients: recipientPairs, requirementId: formRequirement,
+          dueDate: formDue, reason: formReason })
       });
       await refresh(); assignOpen = false; showAssignments();
       notice = result.created.length + ' assignment(s) created; ' + result.skipped.length + ' duplicate open assignment(s) skipped.';
@@ -376,31 +380,31 @@
         {:else if reviewAssignment}
           <dl class="review-list">
             <div><dt>Program</dt><dd>{approved.find((item) => item.id === formRequirement)?.title}</dd></div>
-            <div><dt>Site</dt><dd>{sites.find((item) => item.id === formSite)?.name}</dd></div>
-            <div><dt>Audience</dt><dd>{selectedPeople.length} selected learner{selectedPeople.length === 1 ? '' : 's'}{formJob === 'all' ? '' : ' · ' + formJob}</dd></div>
+            <div><dt>Sites</dt><dd>{sites.filter((item) => formSites.includes(item.id)).map((item) => item.name).join(', ')}</dd></div>
+            <div><dt>Audience</dt><dd>{selectedPeople.length} selected learner{selectedPeople.length === 1 ? '' : 's'} · {recipientPairs.length} site assignment{recipientPairs.length === 1 ? '' : 's'}{formJob === 'all' ? '' : ' · ' + formJob}</dd></div>
             <div><dt>Reason</dt><dd>{formReason}</dd></div>
             <div><dt>Due date</dt><dd>{calendarDate(formDue)}</dd></div>
             <div><dt>Planned recurrence</dt><dd>{recurrenceLabel(approved.find((item) => item.id === formRequirement)?.recurrence || null)}</dd></div>
           </dl>
-          <div class="recipient-review"><strong>Selected people</strong><ul>{#each selectedPeople as id}<li>{people.find((item) => item.id === id)?.displayName || id}{possibleDuplicateIds.includes(id) ? ' · possible existing open assignment' : ''}</li>{/each}</ul></div>
-          {#if possibleDuplicateIds.length}<p class="form-alert">{possibleDuplicateIds.length} selected learner{possibleDuplicateIds.length === 1 ? ' has' : 's have'} an open record for this program and site. The server checks the exact approved version and skips duplicate open assignments.</p>{/if}
+          <div class="recipient-review"><strong>Selected people and sites</strong><ul>{#each recipientPairs as pair}<li>{people.find((item) => item.id === pair.personId)?.displayName || pair.personId} · {sites.find((item) => item.id === pair.siteId)?.name || pair.siteId}{possibleDuplicatePairs.some((item) => item.personId === pair.personId && item.siteId === pair.siteId) ? ' · existing open assignment' : ''}</li>{/each}</ul></div>
+          {#if possibleDuplicatePairs.length}<p class="form-alert">{possibleDuplicatePairs.length} selected site assignment{possibleDuplicatePairs.length === 1 ? ' has' : 's have'} an open record for this program. The server skips duplicate open assignments.</p>{/if}
           <p class="muted">Recurrence is requirement metadata. Creating this assignment does not schedule a new cycle by itself.</p>
           {#if actionError}<p class="form-alert" role="alert">{actionError}</p>{/if}
           <div class="modal-actions"><button onclick={() => reviewAssignment = false}>Back</button><button class="primary" disabled={saving} onclick={() => void createAssignment()}>{saving ? 'Saving…' : 'Create assignments'}</button></div>
         {:else}
           <div class="form-grid">
             <label>Program<select bind:value={formRequirement}>{#each approved as item}<option value={item.id}>{item.title}</option>{/each}</select></label>
-            <label>Site<select bind:value={formSite} onchange={() => { formJob = 'all'; selectedPeople = []; }}>{#each sites as site}<option value={site.id}>{site.name}</option>{/each}</select></label>
+            <fieldset class="site-selection"><legend>Sites</legend>{#each sites as site}<label><input type="checkbox" checked={formSites.includes(site.id)} onchange={() => { formSites = formSites.includes(site.id) ? formSites.filter((id) => id !== site.id) : [...formSites, site.id]; formJob = 'all'; selectedPeople = []; }} />{site.name}</label>{/each}</fieldset>
             <label>Job title<select bind:value={formJob} onchange={() => selectedPeople = []}><option value="all">All job titles</option>{#each jobOptions as job}<option value={job}>{job}</option>{/each}</select></label>
             <label>Reason<select bind:value={formReason}>{#each reasons as reason}<option value={reason}>{reason}</option>{/each}</select></label>
             <label>Due date<input type="date" bind:value={formDue} /></label>
           </div>
           <p class="muted"><strong>Planned recurrence:</strong> {recurrenceLabel(approved.find((item) => item.id === formRequirement)?.recurrence || null)}. The approved requirement controls future reassignment.</p>
-          {#if possibleDuplicateIds.length}<p class="form-alert">{possibleDuplicateIds.length} selected learner{possibleDuplicateIds.length === 1 ? ' has' : 's have'} a possible duplicate open record. The exact version will be checked when saved.</p>{/if}
+          {#if possibleDuplicatePairs.length}<p class="form-alert">{possibleDuplicatePairs.length} site assignment{possibleDuplicatePairs.length === 1 ? ' has' : 's have'} an open record. The server checks again when saved.</p>{/if}
           <fieldset>
-            <legend>Audience · {selectedPeople.length} selected</legend>
-            <div class="select-actions"><button onclick={() => selectedPeople = availablePeople.map((person) => person.id)}>Select all at this site</button><button onclick={() => selectedPeople = []}>Clear</button></div>
-            <div class="person-list">{#each availablePeople as person}<label><input type="checkbox" checked={selectedPeople.includes(person.id)} onchange={() => togglePerson(person.id)} /><span><strong>{person.displayName}</strong><small>{person.department} · {person.jobTitle}</small></span></label>{:else}<p>No learners at this site.</p>{/each}</div>
+            <legend>Audience · {selectedPeople.length} people · {recipientPairs.length} site assignments</legend>
+            <div class="select-actions"><button onclick={() => selectedPeople = availablePeople.map((person) => person.id)}>Select all at selected sites</button><button onclick={() => selectedPeople = []}>Clear</button></div>
+            <div class="person-list">{#each availablePeople as person}<label><input type="checkbox" checked={selectedPeople.includes(person.id)} onchange={() => togglePerson(person.id)} /><span><strong>{person.displayName}</strong><small>{person.department} · {person.jobTitle} · {sites.filter((site) => formSites.includes(site.id) && person.siteIds.includes(site.id)).map((site) => site.name).join(', ')}</small></span></label>{:else}<p>No learners at selected sites.</p>{/each}</div>
           </fieldset>
           {#if actionError}<p class="form-alert" role="alert">{actionError}</p>{/if}
           <div class="modal-actions"><button onclick={() => assignOpen = false}>Cancel</button><button class="primary" onclick={reviewRecipients}>Review recipients</button></div>

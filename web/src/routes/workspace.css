@@ -149,6 +149,9 @@ td:last-child a { margin-left: 9px; }
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 25px 0; }
 .form-grid label { min-width: 0; }
 .form-grid input, .form-grid select, .small-modal input { width: 100%; }
+.form-grid .site-selection { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 10px 20px; }
+.site-selection label { display: inline-flex; align-items: center; gap: 7px; cursor: pointer; }
+.site-selection input { width: auto; min-height: 16px; }
 .modal fieldset { border: 1px solid #405759; border-radius: 9px; padding: 12px; }
 .modal legend { padding: 0 5px; color: #b9d3ce; font-size: 12px; font-weight: 700; }
 .person-list { max-height: 225px; overflow: auto; display: grid; }

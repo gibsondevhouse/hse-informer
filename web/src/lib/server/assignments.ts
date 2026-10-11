@@ -4,6 +4,7 @@ import { query, transaction } from './db';
 import { assignmentState, authorizationCurrent, evidenceSnapshotCurrent, type AssignmentState, type DeliveryState } from './domain';
 import { requireRole, requireSite, type Actor } from './auth';
 import { moodleCourseUrl } from './moodle';
+import { endOfSiteDay } from '../site-date';
 
 const createSchema = z.object({
   personIds: z.array(z.uuid()).min(1),
@@ -13,6 +14,13 @@ const createSchema = z.object({
   triggerRef: z.string().trim().max(200).optional()
 });
 const patchSchema = z.object({ dueAt: z.iso.datetime({ offset: true }) });
+const bulkCreateSchema = z.strictObject({
+  recipients: z.array(z.strictObject({ personId: z.uuid(), siteId: z.uuid() })).min(1).max(500),
+  requirementId: z.uuid(), dueDate: z.iso.date(), reason: z.string().trim().min(3).max(500)
+});
+type Recipient = { personId: string; siteId: string };
+type RecipientResult = Recipient & { id: string };
+type BatchResult = { created: RecipientResult[]; skipped: Recipient[] };
 
 interface AssignmentRow {
   id: string; tenant_id: string; person_id: string; person_name: string; site_id: string; site_name: string;
@@ -149,61 +157,99 @@ export async function createAssignments(actor: Actor, input: unknown): Promise<{
   const parsed = createSchema.safeParse(input);
   if (!parsed.success) throw error(400, parsed.error.message);
   const value = parsed.data;
-  requireSite(actor, value.siteId);
   if (value.triggerKind !== 'manual' && !value.triggerRef?.trim()) {
     throw error(400, 'A stable triggerRef is required for applicability, recurrence, and event assignments');
   }
-  const triggerRef = value.triggerKind === 'manual' ? null : value.triggerRef!.trim();
-  const triggerId = triggerRef ?? `manual:${value.siteId}`;
   const peopleIds = [...new Set(value.personIds)];
   if (peopleIds.length > 500) throw error(400, 'At most 500 recipients per request');
+  const result = await createAssignmentBatch(actor, peopleIds.map((personId) => ({ personId, siteId: value.siteId })),
+    value.requirementId, value.reason, value.triggerKind,
+    value.triggerKind === 'manual' ? null : value.triggerRef!.trim(), () => value.dueAt);
+  return { created: result.created.map((item) => item.id), skipped: result.skipped.map((item) => item.personId) };
+}
+
+/** One reviewed manual decision can cover several sites without a partial save. */
+export async function createBulkAssignments(actor: Actor, input: unknown): Promise<BatchResult> {
+  requireRole(actor, ['tenant_admin','site_admin']);
+  const parsed = bulkCreateSchema.safeParse(input);
+  if (!parsed.success) throw error(400, parsed.error.message);
+  const value = parsed.data;
+  return createAssignmentBatch(actor, value.recipients, value.requirementId, value.reason,
+    'manual', null, (siteTimeZone) => {
+      if (!siteTimeZone) throw error(409, 'Confirm each site time zone before setting a deadline');
+      try { return endOfSiteDay(value.dueDate, siteTimeZone); }
+      catch { throw error(400, 'Choose a valid due date for every selected site'); }
+    });
+}
+
+async function createAssignmentBatch(actor: Actor, requested: Recipient[], requirementId: string,
+  reason: string, triggerKind: 'manual' | 'applicability' | 'recurrence' | 'event', triggerRef: string | null,
+  dueAtForSite: (timeZone: string | null) => string): Promise<BatchResult> {
+  const recipients = [...new Map(requested.map((item) => [`${item.siteId}:${item.personId}`, item])).values()];
+  const siteIds = [...new Set(recipients.map((item) => item.siteId))];
+  for (const siteId of siteIds) requireSite(actor, siteId);
   return transaction(async (client) => {
-    const site = await client.query('SELECT 1 FROM sites WHERE tenant_id = $1 AND id = $2', [actor.tenantId, value.siteId]);
-    if (!site.rowCount) throw error(404, 'Site not found');
+    const sites = await client.query<{ id: string; time_zone: string | null }>(
+      'SELECT id, time_zone FROM sites WHERE tenant_id = $1 AND id = ANY($2::uuid[])', [actor.tenantId, siteIds]);
+    if (sites.rowCount !== siteIds.length) throw error(404, 'Site not found');
+    const dueBySite = new Map(sites.rows.map((site) => [site.id, dueAtForSite(site.time_zone)]));
     const requirement = await client.query<{ version_id: string; review_status: string;
-      course_version_id: string | null; addendum_version_id: string | null;
+      course_version_id: string | null;
       authorization_prerequisites: string[] }>(
       `SELECT rv.id AS version_id, rv.review_status, rv.authorization_prerequisites,
        (SELECT cv.id FROM course_versions cv WHERE cv.tenant_id = r.tenant_id
          AND cv.requirement_version_id = rv.id AND cv.review_status = 'approved'
          AND cv.moodle_course_id IS NOT NULL AND (cv.effective_at IS NULL OR cv.effective_at <= now())
-         ORDER BY cv.effective_at DESC NULLS LAST, cv.created_at DESC LIMIT 1) AS course_version_id,
-       (SELECT sav.id FROM site_addendum_versions sav WHERE sav.tenant_id = r.tenant_id
-         AND sav.requirement_id = r.id AND sav.site_id = $3 AND sav.review_status = 'approved'
-         AND (sav.effective_at IS NULL OR sav.effective_at <= now())
-         ORDER BY sav.effective_at DESC NULLS LAST, sav.created_at DESC LIMIT 1) AS addendum_version_id
+         ORDER BY cv.effective_at DESC NULLS LAST, cv.created_at DESC LIMIT 1) AS course_version_id
        FROM requirements r JOIN requirement_versions rv ON rv.tenant_id = r.tenant_id AND rv.id = r.active_version_id
-       WHERE r.tenant_id = $1 AND r.id = $2`, [actor.tenantId, value.requirementId, value.siteId]);
+       WHERE r.tenant_id = $1 AND r.id = $2`, [actor.tenantId, requirementId]);
     if (!requirement.rowCount) throw error(404, 'Requirement not found');
     if (requirement.rows[0].review_status !== 'approved' || !requirement.rows[0].course_version_id) {
       throw error(409, 'Requirement and Moodle course mapping require HSE approval before assignment');
     }
+    const addenda = await client.query<{ site_id: string; id: string }>(
+      `SELECT DISTINCT ON (site_id) site_id, id FROM site_addendum_versions
+       WHERE tenant_id = $1 AND requirement_id = $2 AND site_id = ANY($3::uuid[])
+         AND review_status = 'approved' AND (effective_at IS NULL OR effective_at <= now())
+       ORDER BY site_id, effective_at DESC NULLS LAST, created_at DESC, id DESC`,
+      [actor.tenantId, requirementId, siteIds]);
+    const addendumBySite = new Map(addenda.rows.map((row) => [row.site_id, row.id]));
     if (requirement.rows[0].authorization_prerequisites.includes('site')
-      && !requirement.rows[0].addendum_version_id) {
+      && siteIds.some((siteId) => !addendumBySite.has(siteId))) {
       throw error(409, 'An approved site addendum is required before this assignment');
     }
-    const eligible = await client.query<{ id: string }>(
-      `SELECT DISTINCT p.id FROM people p JOIN tenants t ON t.id = p.tenant_id
-        JOIN person_site_memberships m
-        ON m.tenant_id = p.tenant_id AND m.person_id = p.id
-       WHERE p.tenant_id = $1 AND p.id = ANY($2::uuid[]) AND p.active
-         AND (t.synthetic OR NOT p.synthetic)
-         AND m.site_id = $3 AND m.ended_at IS NULL`, [actor.tenantId, peopleIds, value.siteId]);
-    if (eligible.rowCount !== peopleIds.length) throw error(400,
+    const eligible = await client.query<{ person_id: string; site_id: string }>(
+      `WITH requested AS (SELECT * FROM unnest($2::uuid[], $3::uuid[]) AS x(person_id, site_id))
+       SELECT p.id AS person_id, m.site_id FROM requested x
+       JOIN people p ON p.tenant_id = $1 AND p.id = x.person_id
+       JOIN tenants t ON t.id = p.tenant_id
+       JOIN person_site_memberships m ON m.tenant_id = p.tenant_id AND m.person_id = p.id
+         AND m.site_id = x.site_id AND m.ended_at IS NULL
+       WHERE p.active AND (t.synthetic OR NOT p.synthetic)
+       FOR SHARE OF p, m`, [actor.tenantId,
+        recipients.map((item) => item.personId), recipients.map((item) => item.siteId)]);
+    const eligibleKeys = new Set(eligible.rows.map((row) => `${row.site_id}:${row.person_id}`));
+    if (eligibleKeys.size !== recipients.length) throw error(400,
       'Every recipient must be active, assigned to the site, and eligible for live assignment');
-    const created: string[] = [];
-    const skipped: string[] = [];
-    for (const personId of peopleIds) {
+    const created: RecipientResult[] = [];
+    const skipped: Recipient[] = [];
+    for (const { personId, siteId } of recipients) {
+      const triggerId = triggerRef ?? `manual:${siteId}`;
       const duplicate = await client.query(`SELECT 1 FROM assignments
-        WHERE tenant_id = $1 AND person_id = $2 AND requirement_version_id = $3
-          AND trigger_id = $4 AND closed_at IS NULL AND cancelled_at IS NULL`,
-      [actor.tenantId, personId, requirement.rows[0].version_id, triggerId]);
-      if (duplicate.rowCount) { skipped.push(personId); continue; }
+        WHERE tenant_id = $1 AND person_id = $2 AND site_id = $3 AND requirement_id = $4
+          AND closed_at IS NULL AND cancelled_at IS NULL
+          AND ($5::boolean OR (requirement_version_id = $6 AND trigger_id = $7))`,
+      [actor.tenantId, personId, siteId, requirementId, triggerKind === 'manual',
+        requirement.rows[0].version_id, triggerId]);
+      if (duplicate.rowCount) { skipped.push({ personId, siteId }); continue; }
       const prior = await client.query<{ id: string }>(`SELECT id FROM assignments
         WHERE tenant_id = $1 AND person_id = $2 AND site_id = $3 AND requirement_id = $4
           AND closed_at IS NULL AND cancelled_at IS NULL
         ORDER BY assigned_at DESC, id DESC LIMIT 1 FOR UPDATE`,
-      [actor.tenantId, personId, value.siteId, value.requirementId]);
+      [actor.tenantId, personId, siteId, requirementId]);
+      if (triggerKind === 'manual' && prior.rowCount) {
+        skipped.push({ personId, siteId }); continue;
+      }
       const supersedes = prior.rows[0]?.id ?? null;
       if (supersedes) {
         await client.query(`UPDATE assignments SET cancelled_at = now() WHERE tenant_id = $1 AND id = $2`,
@@ -219,19 +265,19 @@ export async function createAssignments(actor: Actor, input: unknown): Promise<{
          supersedes_assignment_id)
         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
         ON CONFLICT DO NOTHING RETURNING id`,
-        [actor.tenantId, personId, value.siteId, value.requirementId, requirement.rows[0].version_id,
-          requirement.rows[0].course_version_id, requirement.rows[0].addendum_version_id,
-          value.reason, value.triggerKind, triggerRef, value.dueAt, actor.id, supersedes]);
+        [actor.tenantId, personId, siteId, requirementId, requirement.rows[0].version_id,
+          requirement.rows[0].course_version_id, addendumBySite.get(siteId) ?? null,
+          reason, triggerKind, triggerRef, dueBySite.get(siteId), actor.id, supersedes]);
       if (!result.rowCount) {
         if (supersedes) throw error(409, 'Assignment changed concurrently; retry this trigger');
-        skipped.push(personId); continue;
+        skipped.push({ personId, siteId }); continue;
       }
       const id = result.rows[0].id;
-      created.push(id);
+      created.push({ id, personId, siteId });
       await client.query(`INSERT INTO audit_log (tenant_id, actor_principal_id, action, entity_type, entity_id, after_value)
         VALUES ($1,$2,'assignment.created','assignment',$3,$4::jsonb)`,
-        [actor.tenantId, actor.id, id, JSON.stringify({ personId, siteId: value.siteId,
-          requirementId: value.requirementId, dueAt: value.dueAt, reason: value.reason,
+        [actor.tenantId, actor.id, id, JSON.stringify({ personId, siteId,
+          requirementId, dueAt: dueBySite.get(siteId), reason,
           triggerId, supersedesAssignmentId: supersedes })]);
       await client.query(`INSERT INTO integration_outbox (tenant_id, kind, aggregate_id)
         VALUES ($1,'moodle_enrol',$2) ON CONFLICT DO NOTHING`, [actor.tenantId, id]);
