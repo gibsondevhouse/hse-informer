@@ -30,21 +30,21 @@ const rows = [
     'Avery Morgan',
     'Respiratory Protection',
     '2026-12-01',
-    'Onboarding',
+    'Initial assignment',
   ),
   record(
     'b',
     'Sam Mitchell',
     'Hazard Communication',
     '2026-11-01',
-    'Required recurring training',
+    'Required recurring interval',
   ),
   record(
     'c',
     'Remy Lewis',
     'Chemical Hygiene',
     '2026-10-01',
-    'Change in work or hazards',
+    'Equipment or process change',
   ),
 ];
 

@@ -19,7 +19,10 @@ import {
   CircleHelp,
   ClipboardList,
   Clock3,
+  Droplets,
   FlaskConical,
+  Footprints,
+  Forklift,
   GraduationCap,
   Info,
   Layers3,
@@ -27,12 +30,16 @@ import {
   Pencil,
   Play,
   Plus,
+  Sandwich,
   Search,
   ShieldCheck,
   SlidersHorizontal,
+  Thermometer,
   Users,
   Wind,
   X,
+  Zap,
+  type LucideIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -82,6 +89,8 @@ import {
   sites,
   learners,
   reasons,
+  cadences,
+  defaultCadence,
   seedAssignments,
   summarize,
   scopedAssignments,
@@ -97,14 +106,69 @@ import {
   DEMO_DATE,
   type Assignment,
   type Course,
+  type CourseId,
   type AssignmentSort,
   type AssignmentSortKey,
   type AssignmentStatusKey,
 } from '@/lib/training';
+import { estimatedMinutes, lessonOrder } from '@/lib/lms/engine';
+import { pbjCourse } from '@/lib/lms/pbj-course';
 
-const courseIcons = [Wind, LockKeyhole, Layers3, FlaskConical, BookOpen];
+const practiceLessons = lessonOrder(pbjCourse);
+const courseIcons: Record<CourseId, LucideIcon> = {
+  respiratory: Wind,
+  loto: LockKeyhole,
+  confined: Layers3,
+  hygiene: FlaskConical,
+  hazcom: BookOpen,
+  electrical: Zap,
+  heat: Thermometer,
+  pit: Forklift,
+  bbp: Droplets,
+  walking: Footprints,
+};
 type View = 'programs' | 'assignments' | 'sites' | 'library';
 type StatusFilter = 'all' | 'due' | 'open' | AssignmentStatusKey;
+const workspaceQueryKeys = ['view', 'site', 'status', 'course', 'q', 'panel', 'sort', 'direction'] as const;
+
+function readWorkspaceQuery() {
+  const params = new URLSearchParams(window.location.search);
+  const requestedView = params.get('view');
+  const view: View =
+    requestedView === 'assignments' || requestedView === 'sites' || requestedView === 'library'
+      ? requestedView
+      : 'programs';
+  const requestedSite = params.get('site');
+  const requestedStatus = params.get('status');
+  const requestedCourse = params.get('course');
+  const requestedSort = params.get('sort');
+  const filter: StatusFilter =
+    view === 'programs'
+      ? requestedStatus === 'overdue' || requestedStatus === 'open'
+        ? requestedStatus
+        : 'all'
+      : requestedStatus === 'due' ||
+          requestedStatus === 'open' ||
+          assignmentStatuses.some((item) => item.key === requestedStatus)
+        ? requestedStatus as StatusFilter
+        : 'all';
+  return {
+    view,
+    site: sites.some((item) => item.id === requestedSite) ? requestedSite! : 'all',
+    filter,
+    courseFilter: courses.some((item) => item.id === requestedCourse)
+      ? requestedCourse!
+      : 'all',
+    query: params.get('q') ?? '',
+    assignmentPanel: params.get('panel') === 'completion' ? 'completion' as const : 'records' as const,
+    assignmentSort: {
+      key: (requestedSort && requestedSort in assignmentSortLabels
+        ? requestedSort
+        : 'due') as AssignmentSortKey,
+      direction: params.get('direction') === 'desc' ? 'desc' as const : 'asc' as const,
+    },
+  };
+}
 
 const assignmentSortLabels: Record<AssignmentSortKey, string> = {
   learner: 'Learner',
@@ -209,7 +273,7 @@ function CourseIcon({
   course: Course;
   small?: boolean;
 }) {
-  const Icon = courseIcons[courses.findIndex((c) => c.id === course.id)];
+  const Icon = courseIcons[course.id];
   return (
     <span className={`course-icon ${course.accent} ${small ? 'small' : ''}`}>
       <Icon aria-hidden="true" size={small ? 19 : 23} strokeWidth={1.7} />
@@ -282,14 +346,14 @@ function Navigation({
             onClick={() => nav('library')}
           >
             <BookOpen size={19} />
-            Course library<span className="nav-count">5</span>
+            Course library<span className="nav-count">{courses.length}</span>
           </button>
         </nav>
         <div className="sidebar-note">
-          <span className="mini-label">THE LAUNCH LIBRARY</span>
+          <span className="mini-label">COURSE LIBRARY</span>
           <h3>One strong foundation.</h3>
           <p>
-            Five comprehensive courses.
+            {courses.length} course foundations.
             <br />
             Consistent training across every site.
           </p>
@@ -323,6 +387,7 @@ export default function TrainingWorkspace() {
   const [site, setSite] = useState('all');
   const [records, setRecords] = useState<Assignment[]>(seedAssignments);
   const [loaded, setLoaded] = useState(false);
+  const [urlReady, setUrlReady] = useState(false);
   const [notice, setNotice] = useState('');
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<StatusFilter>('all');
@@ -343,6 +408,39 @@ export default function TrainingWorkspace() {
   const returnFocus = useRef<HTMLElement | null>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const storageSnapshot = useRef<string | null>(null);
+
+  useEffect(() => {
+    const restoreQuery = () => {
+      const state = readWorkspaceQuery();
+      setView(state.view);
+      setSite(state.site);
+      setFilter(state.filter);
+      setCourseFilter(state.courseFilter);
+      setQuery(state.query);
+      setAssignmentPanel(state.assignmentPanel);
+      setAssignmentSort(state.assignmentSort);
+      setLimit(20);
+      setUrlReady(true);
+    };
+    restoreQuery();
+    window.addEventListener('popstate', restoreQuery);
+    return () => window.removeEventListener('popstate', restoreQuery);
+  }, []);
+
+  useEffect(() => {
+    if (!urlReady) return;
+    const url = new URL(window.location.href);
+    for (const key of workspaceQueryKeys) url.searchParams.delete(key);
+    if (view !== 'programs') url.searchParams.set('view', view);
+    if (site !== 'all' && view !== 'library') url.searchParams.set('site', site);
+    if (filter !== 'all') url.searchParams.set('status', filter);
+    if (courseFilter !== 'all' && view === 'assignments') url.searchParams.set('course', courseFilter);
+    if (query) url.searchParams.set('q', query);
+    if (assignmentPanel === 'completion' && view === 'assignments') url.searchParams.set('panel', assignmentPanel);
+    if (assignmentSort.key !== 'due' && view === 'assignments') url.searchParams.set('sort', assignmentSort.key);
+    if (assignmentSort.direction !== 'asc' && view === 'assignments') url.searchParams.set('direction', assignmentSort.direction);
+    window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
+  }, [urlReady, view, site, filter, courseFilter, query, assignmentPanel, assignmentSort]);
 
   useEffect(() => {
     function restore() {
@@ -410,6 +508,7 @@ export default function TrainingWorkspace() {
   };
   function navigate(next: View) {
     setView(next);
+    if (next === 'library') setSite('all');
     setAssignmentPanel('records');
     setQuery('');
     setFilter('all');
@@ -505,20 +604,26 @@ export default function TrainingWorkspace() {
             </strong>
           </div>
           <div className="topbar-actions">
-            <span className="scope-label">Viewing</span>
-            <Building2 size={17} className="scope-building" />
-            <Picker
-              value={site}
-              label="Site scope"
-              onChange={(value) => {
-                setSite(value);
-                setLimit(20);
-              }}
-              options={[
-                { value: 'all', label: 'All sites (3)' },
-                ...sites.map((s) => ({ value: s.id, label: s.name })),
-              ]}
-            />
+            {view === 'library' ? (
+              <span className="library-scope-label">Shared across all sites</span>
+            ) : (
+              <>
+                <span className="scope-label">Viewing</span>
+                <Building2 size={17} className="scope-building" />
+                <Picker
+                  value={site}
+                  label="Site scope"
+                  onChange={(value) => {
+                    setSite(value);
+                    setLimit(20);
+                  }}
+                  options={[
+                    { value: 'all', label: `All sites (${sites.length})` },
+                    ...sites.map((s) => ({ value: s.id, label: s.name })),
+                  ]}
+                />
+              </>
+            )}
           </div>
         </header>
         <main id="main" className="main-content">
@@ -543,23 +648,37 @@ export default function TrainingWorkspace() {
                     ? 'Manage who needs training, why it is assigned, and when it is due.'
                     : view === 'sites'
                       ? 'See how foundational training is progressing at each location.'
-                      : 'Five comprehensive foundations for chemical manufacturing teams.'}
+                      : 'Ten course outlines for chemical manufacturing teams.'}
               </p>
             </div>
-            <Button
-              className="primary-button"
-              onClick={() => openAssign()}
-              disabled={!loaded}
-            >
-              <Plus size={18} /> Assign training
-            </Button>
+            {view === 'programs' || view === 'assignments' ? (
+              <Button
+                className="primary-button"
+                onClick={() => openAssign()}
+                disabled={!loaded}
+              >
+                <Plus size={18} /> {view === 'programs' ? 'Assign training' : 'New assignment'}
+              </Button>
+            ) : view === 'sites' ? (
+              <Button className="primary-button" onClick={() => showAssignments()}>
+                <ClipboardList size={18} /> View assignments
+              </Button>
+            ) : (
+              <Button className="primary-button" onClick={() => navigate('programs')}>
+                <GraduationCap size={18} /> View programs
+              </Button>
+            )}
           </div>
           <div className="workspace-context">
             <span>
               <Building2 size={15} />
-              {scopeName}
-              <span className="context-divider" />
-              {siteCount} {siteCount === 1 ? 'site' : 'sites'} in view
+              {view === 'library' ? 'Shared course library · All sites' : scopeName}
+              {view !== 'library' && (
+                <>
+                  <span className="context-divider" />
+                  {siteCount} {siteCount === 1 ? 'site' : 'sites'} in view
+                </>
+              )}
             </span>
             <span>
               <span className="demo-badge">SAMPLE DATA</span>
@@ -579,7 +698,7 @@ export default function TrainingWorkspace() {
             </output>
           )}
 
-          {view !== 'library' && (
+          {(view === 'programs' || view === 'assignments') && (
             <section className="stats-grid" aria-label="Training summary">
               <button className="stat-card" onClick={() => showAssignments()}>
                 <span className="stat-label">
@@ -607,7 +726,7 @@ export default function TrainingWorkspace() {
                   <small>%</small>
                 </strong>
                 <span className="stat-detail">
-                  {stats.incompletePeople}{' '}
+                  {stats.complete} of {stats.total} assignments complete · {stats.incompletePeople}{' '}
                   {stats.incompletePeople === 1 ? 'person' : 'people'} with
                   incomplete assignments
                 </span>
@@ -642,6 +761,7 @@ export default function TrainingWorkspace() {
               <button
                 className="stat-card"
                 onClick={() => showAssignments('due')}
+                disabled={stats.dueSoon === 0}
               >
                 <span className="stat-label">
                   Due in the next 30 days
@@ -652,7 +772,8 @@ export default function TrainingWorkspace() {
                   <small>assignments</small>
                 </strong>
                 <span className="stat-detail">
-                  Keep your team on track <ArrowRight size={15} />
+                  {stats.dueSoon ? 'Review upcoming assignments' : 'No assignments due soon'}
+                  {stats.dueSoon > 0 && <ArrowRight size={15} />}
                 </span>
               </button>
             </section>
@@ -668,7 +789,7 @@ export default function TrainingWorkspace() {
                   <div>
                     <h2 id="programs-title">
                       Your training programs{' '}
-                      <span className="count-badge">5</span>
+                      <span className="count-badge">{courses.length}</span>
                     </h2>
                     <p>Shared foundational courses, managed for your sites.</p>
                   </div>
@@ -728,7 +849,7 @@ export default function TrainingWorkspace() {
                               <span>
                                 <strong>{course.name}</strong>
                                 <small>
-                                  {course.lessons.length} lessons<span>·</span>
+                                  {course.lessons.length} {course.unitLabel ?? 'lessons'}<span>·</span>
                                   Foundational course
                                 </small>
                               </span>
@@ -772,14 +893,16 @@ export default function TrainingWorkspace() {
                                   No overdue
                                 </span>
                               )}
-                              <button
-                                className="due-link"
-                                onClick={() =>
-                                  showAssignments('due', course.id)
-                                }
-                              >
-                                {summary.dueSoon} due soon
-                              </button>
+                              {summary.dueSoon > 0 ? (
+                                <button
+                                  className="due-link"
+                                  onClick={() => showAssignments('due', course.id)}
+                                >
+                                  {summary.dueSoon} due soon
+                                </button>
+                              ) : (
+                                <span className="due-link due-link-static">None due soon</span>
+                              )}
                             </div>
                           </TableCell>
                           <TableCell>
@@ -787,9 +910,9 @@ export default function TrainingWorkspace() {
                               variant="ghost"
                               className="manage-button"
                               onClick={() => openCourse(course)}
-                              aria-label={`Manage ${course.name}`}
+                              aria-label={`View ${course.name} details`}
                             >
-                              Manage
+                              View details
                               <ChevronRight size={15} />
                             </Button>
                           </TableCell>
@@ -805,6 +928,7 @@ export default function TrainingWorkspace() {
                             onClear={() => {
                               setQuery('');
                               setFilter('all');
+                              setSite('all');
                             }}
                           />
                         </TableCell>
@@ -997,6 +1121,7 @@ export default function TrainingWorkspace() {
                   ]}
                 />
               </div>
+              <p className="mobile-table-hint">Swipe the table for status, due date, and actions.</p>
               <Table className="assignment-table">
                 <colgroup>
                   <col style={{ width: '28%' }} />
@@ -1094,6 +1219,7 @@ export default function TrainingWorkspace() {
                             setQuery('');
                             setFilter('all');
                             setCourseFilter('all');
+                            setSite('all');
                           }}
                         />
                       </TableCell>
@@ -1180,7 +1306,7 @@ export default function TrainingWorkspace() {
                             navigate('programs');
                           }}
                         >
-                          Manage site training
+                          View site programs
                           <ArrowRight size={16} />
                         </Button>
                       </section>
@@ -1208,9 +1334,9 @@ export default function TrainingWorkspace() {
               <div className="library-note">
                 <BookOpen size={21} />
                 <span>
-                  <strong>The five launch courses</strong>Comprehensive
-                  foundations. Assign the same course for onboarding or
-                  recurring training.
+                  <strong>{courses.length} course foundations</strong>Assign by
+                  actual job, hazard, and site applicability. Syllabi and
+                  regulatory summaries are planning material.
                 </span>
               </div>
               <div className="library-grid">
@@ -1218,13 +1344,14 @@ export default function TrainingWorkspace() {
                   <section className="panel library-card" key={course.id}>
                     <CourseIcon course={course} />
                     <span className="mini-label">
-                      {course.lessons.length} LESSONS · FOUNDATION
+                      {course.lessons.length} {course.unitLabel ?? 'LESSONS'} · FOUNDATION
                     </span>
                     <h2>{course.name}</h2>
                     <p>{course.purpose}</p>
                     <div>
                       <span className="status-pill neutral">
-                        Syllabus preview
+                        {course.regulatory?.legalStatus ??
+                          'Under domain review'}
                       </span>
                       <button
                         className="text-action"
@@ -1236,11 +1363,46 @@ export default function TrainingWorkspace() {
                     </div>
                   </section>
                 ))}
+                <section
+                  className="panel library-card library-card-practice"
+                  aria-labelledby="practice-course-title"
+                >
+                  <span className="course-icon practice">
+                    <Sandwich aria-hidden="true" size={23} strokeWidth={1.7} />
+                  </span>
+                  <span className="mini-label">
+                    {practiceLessons.length} LESSONS · {pbjCourse.modules.length}{' '}
+                    MODULES · PRACTICE
+                  </span>
+                  <h2 id="practice-course-title">{pbjCourse.title}</h2>
+                  <p>
+                    {pbjCourse.code}: an everyday task taught in full so the
+                    learner experience, knowledge checks, activities, and final
+                    assessment can be tried end to end. About{' '}
+                    {estimatedMinutes(pbjCourse)} minutes.
+                  </p>
+                  <div>
+                    <span className="status-pill neutral">
+                      Practice course · not assignable
+                    </span>
+                    <Link
+                      className="text-action"
+                      href="/training/pb-and-j"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={`Open ${pbjCourse.title} (opens in a new tab)`}
+                    >
+                      Open course
+                      <ArrowUpRight size={16} />
+                    </Link>
+                  </div>
+                </section>
               </div>
               <p className="library-footer">
                 Course scripts, media, assessments, and approved release
-                versions will be added as the five course packages are
-                developed.
+                versions will be added as course packages are developed. The
+                practice course is fictional, is not part of the assignable
+                library, and keeps its progress in this browser only.
               </p>
             </>
           )}
@@ -1306,6 +1468,7 @@ export default function TrainingWorkspace() {
                 <TabsList variant="line">
                   <TabsTrigger value="overview">Program overview</TabsTrigger>
                   <TabsTrigger value="syllabus">Course syllabus</TabsTrigger>
+                  <TabsTrigger value="regulatory">Regulatory basis</TabsTrigger>
                 </TabsList>
                 <TabsContent value="overview">
                   <div className="sheet-section">
@@ -1356,6 +1519,21 @@ export default function TrainingWorkspace() {
                         {item}
                       </div>
                     ))}
+                    {detail.authorizationPrerequisites && (
+                      <div className="authorization-prerequisites">
+                        <h3>Before required respirator use</h3>
+                        <p>
+                          These are employer-program checks, separate from
+                          online course progress.
+                        </p>
+                        {detail.authorizationPrerequisites.map((item) => (
+                          <div className="local-requirement" key={item}>
+                            <span className="hollow-dot" />
+                            {item}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                     <div className="inline-info">
                       <Info size={18} />
                       <span>
@@ -1377,7 +1555,10 @@ export default function TrainingWorkspace() {
                 </TabsContent>
                 <TabsContent value="syllabus">
                   <div className="sheet-section">
-                    <h3>{detail.lessons.length} lessons · Master syllabus</h3>
+                    <h3>
+                      {detail.lessons.length} {detail.unitLabel ?? 'lessons'} ·
+                      Master syllabus
+                    </h3>
                     <p>
                       Each lesson teaches hazards, protective measures,
                       responsibilities, and practical decisions.
@@ -1395,6 +1576,83 @@ export default function TrainingWorkspace() {
                       <span>
                         Outline only. Instructional content and approved course
                         versions are still in development.
+                      </span>
+                    </div>
+                  </div>
+                </TabsContent>
+                <TabsContent value="regulatory">
+                  <div className="sheet-section regulatory-basis">
+                    <h3>Regulatory basis</h3>
+                    {detail.regulatory ? (
+                      <>
+                        <span className="status-pill neutral">
+                          {detail.regulatory.legalStatus}
+                        </span>
+                        <dl>
+                          <div>
+                            <dt>Authority and paragraphs</dt>
+                            <dd>
+                              {detail.regulatory.authority} ·{' '}
+                              {detail.regulatory.paragraphs.join(', ')}
+                            </dd>
+                          </div>
+                          <div>
+                            <dt>Applies when</dt>
+                            <dd>{detail.regulatory.appliesWhen}</dd>
+                          </div>
+                          <div>
+                            <dt>Retraining triggers</dt>
+                            <dd>
+                              {detail.regulatory.retrainingTriggers.join('; ')}
+                            </dd>
+                          </div>
+                          <div>
+                            <dt>Recurrence</dt>
+                            <dd>{detail.regulatory.recurrence.summary}</dd>
+                          </div>
+                          {detail.regulatory.competency && (
+                            <div>
+                              <dt>Competency verification</dt>
+                              <dd>{detail.regulatory.competency}</dd>
+                            </div>
+                          )}
+                          <div>
+                            <dt>Required records</dt>
+                            <dd>{detail.regulatory.records.join('; ')}</dd>
+                          </div>
+                        </dl>
+                        {detail.regulatory.notes?.map((note) => (
+                          <p key={note}>{note}</p>
+                        ))}
+                        <h4>References</h4>
+                        <ul>
+                          {detail.regulatory.references.map((reference) => (
+                            <li key={reference.href}>
+                              <a
+                                href={reference.href}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                {reference.label}{' '}
+                                <ArrowUpRight size={14} aria-hidden="true" />
+                              </a>
+                            </li>
+                          ))}
+                        </ul>
+                      </>
+                    ) : (
+                      <>
+                        <span className="status-pill neutral">
+                          Under domain review
+                        </span>
+                        <p>{detail.reviewNote}</p>
+                      </>
+                    )}
+                    <div className="inline-info">
+                      <Info size={18} />
+                      <span>
+                        Planning summary — the applicable regulation and written
+                        site program are the source of truth.
                       </span>
                     </div>
                   </div>
@@ -1519,7 +1777,7 @@ export default function TrainingWorkspace() {
             learners.
           </p>
           <p>
-            The five syllabi come from the launch brief. Approved course
+            The ten syllabi include five mapped additions. Approved course
             content, real site records, sign-in roles, and qualification
             evidence still need to be connected.
           </p>
@@ -1575,7 +1833,9 @@ function AssignmentDialog({
   );
   const [group, setGroup] = useState('All employees');
   const [reason, setReason] = useState<string>(reasons[0]);
-  const [cadence, setCadence] = useState('One-time assignment');
+  const [cadence, setCadence] = useState<string>(() =>
+    defaultCadence(courses.find((c) => c.id === initialCourse) ?? courses[0]),
+  );
   const [due, setDue] = useState('2026-09-30');
   const [error, setError] = useState('');
   const eligible = eligibleLearners(records, courseId, selectedSites, group);
@@ -1654,7 +1914,12 @@ function AssignmentDialog({
                   id="assign-course"
                   label="Course to assign"
                   value={courseId}
-                  onChange={setCourseId}
+                  onChange={(id) => {
+                    setCourseId(id);
+                    setCadence(
+                      defaultCadence(courses.find((c) => c.id === id)!),
+                    );
+                  }}
                   options={courses.map((c) => ({ value: c.id, label: c.name }))}
                 />
               </div>
@@ -1734,15 +1999,11 @@ function AssignmentDialog({
                   label="Planned recurrence"
                   value={cadence}
                   onChange={setCadence}
-                  options={[
-                    'One-time assignment',
-                    'Annual company policy',
-                    'Interval to be determined',
-                  ].map((v) => ({ value: v, label: v }))}
+                  options={cadences.map((v) => ({ value: v, label: v }))}
                 />
                 <p className="form-hint">
-                  Planning information only. This preview does not automatically
-                  schedule repeat assignments.
+                  Suggested from the regulatory basis. This preview does not
+                  automatically schedule repeat assignments.
                 </p>
               </div>
               <div className="audience-summary">
@@ -1769,7 +2030,8 @@ function AssignmentDialog({
                 <span>
                   <strong>{course.name}</strong>
                   <small>
-                    Foundation preview · {course.lessons.length} lessons
+                    Foundation preview · {course.lessons.length}{' '}
+                    {course.unitLabel ?? 'lessons'}
                   </small>
                 </span>
               </div>

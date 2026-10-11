@@ -1,5 +1,5 @@
 export const DEMO_DATE = '2026-09-09';
-export const STORAGE_KEY = 'hse-informer-admin-preview-v1';
+export const STORAGE_KEY = 'hse-informer-admin-preview-v2';
 export const sites = [
   { id: 'north', name: 'North Plant', location: 'Greensboro, NC', code: 'NP' },
   {
@@ -11,21 +11,91 @@ export const sites = [
   { id: 'west', name: 'West Works', location: 'Columbus, OH', code: 'WW' },
 ];
 export const reasons = [
-  'Onboarding',
+  'Initial assignment',
+  'Required recurring interval',
   'Company recurring policy',
-  'Required recurring training',
-  'Change in work or hazards',
-  'Knowledge or performance gap',
+  'New chemical hazard',
+  'Equipment or process change',
+  'Job or work-area change',
+  'Incident or near miss',
+  'Observed deficiency or failed evaluation',
+  'Qualification renewal',
 ] as const;
+export const courseIds = [
+  'respiratory',
+  'loto',
+  'confined',
+  'hygiene',
+  'hazcom',
+  'electrical',
+  'heat',
+  'pit',
+  'bbp',
+  'walking',
+] as const;
+export type CourseId = (typeof courseIds)[number];
+export const legalStatuses = [
+  'Federal regulatory requirement',
+  'State-specific requirement',
+  'Permit-specific requirement',
+  'Employer-program requirement',
+  'Consensus-standard-based',
+  'Recommended practice',
+  'General awareness',
+] as const;
+export type LegalStatus = (typeof legalStatuses)[number];
+export type RecurrenceKind =
+  | 'annual'
+  | 'three-year-evaluation'
+  | 'event-driven'
+  | 'employer-defined';
+export type Regulatory = {
+  authority: string;
+  paragraphs: string[];
+  legalStatus: LegalStatus;
+  appliesWhen: string;
+  retrainingTriggers: string[];
+  recurrence: { kind: RecurrenceKind; summary: string };
+  competency?: string;
+  records: string[];
+  notes?: string[];
+  references: { label: string; href: string }[];
+};
+export const cadences = [
+  'Annual (required)',
+  'Every three years (evaluation)',
+  'Event-driven',
+  'Annual company policy',
+  'Interval to be determined',
+] as const;
+export type Cadence = (typeof cadences)[number];
+export function defaultCadence(course: Course): Cadence {
+  switch (course.regulatory?.recurrence.kind) {
+    case 'annual':
+      return 'Annual (required)';
+    case 'three-year-evaluation':
+      return 'Every three years (evaluation)';
+    case 'event-driven':
+      return 'Event-driven';
+    default:
+      return 'Interval to be determined';
+  }
+}
+const osha = (standard: string) =>
+  `https://www.osha.gov/laws-regs/regulations/standardnumber/1910/${standard}`;
 export type Course = {
-  id: string;
+  id: CourseId;
   name: string;
   code: string;
   accent: string;
   previewPath?: string;
+  unitLabel?: string;
   purpose: string;
   lessons: string[];
   local: string[];
+  authorizationPrerequisites?: string[];
+  regulatory?: Regulatory;
+  reviewNote?: string;
 };
 export const courses: Course[] = [
   {
@@ -34,24 +104,99 @@ export const courses: Course[] = [
     code: 'RP',
     accent: 'blue',
     previewPath: '/training/respiratory-protection',
+    unitLabel: 'modules',
     purpose:
       'Respiratory hazards, how respirators protect, and responsibilities within a respiratory protection program.',
     lessons: [
-      'What can harm your breathing',
-      'How the workplace controls exposure',
-      'How the respiratory protection program works',
-      'What different respirators do',
-      'Filters, cartridges, and protection limits',
-      'Medical evaluation, fit testing, and seal checks',
-      'Inspecting and wearing a respirator',
-      'Cleaning, storage, and replacement',
-      'Recognizing trouble and responding',
+      'Respiratory hazards and program scope',
+      'Assigned respirators, selection, and limitations',
+      'Donning, doffing, inspection, and user seal checks',
+      'Routine use and work practices',
+      'Maintenance, cleaning, storage, and replacement',
+      'Emergency response and respirator malfunction',
+      'Medical signs, training requirements, and retraining',
     ],
     local: [
-      'Assigned respirators and task-specific hazards',
-      'Cartridge schedules, cleaning, and storage',
-      'Medical evaluation, fit testing, and local contacts',
+      'Site respiratory-protection program, task hazards, selected equipment, and emergency procedures',
+      'Assigned filters/cartridges, objective change schedule, cleaning, storage, and defect reporting',
+      'Medical-clearance and fit-test coordination, practical demonstration, and program-administrator contacts',
     ],
+    authorizationPrerequisites: [
+      'Employer hazard assessment and selection of a suitable NIOSH-certified respirator for the task.',
+      'Medical evaluation and written PLHCP recommendation before fit testing or required use; retain status, not questionnaire answers, in the LMS.',
+      'Understandable initial and annual training before required use, with retraining when conditions, respirators, knowledge, or use require it.',
+      'For tight-fitting facepieces, a passed fit test for the exact make, model, style, and size before use; repeat at least annually and after applicable changes.',
+      'The employer verifies current prerequisites, issues the selected equipment, and authorizes its use for defined tasks; course completion alone does not authorize wear.',
+    ],
+    regulatory: {
+      authority: '29 CFR 1910.134',
+      paragraphs: [
+        '(a)',
+        '(c)',
+        '(d)',
+        '(e)',
+        '(f)',
+        '(g)',
+        '(h)',
+        '(i) where atmosphere-supplying respirators are used',
+        '(j)',
+        '(k)',
+        '(l)',
+        '(m)',
+      ],
+      legalStatus: 'Federal regulatory requirement',
+      appliesWhen:
+        'Required respirator use; voluntary use has different Appendix D and program duties. Confirm the user, model, exposure, and task.',
+      retrainingTriggers: [
+        'At least annually, no later than the anniversary of prior training',
+        'Workplace or respirator-type changes that make prior training obsolete',
+        'Inadequate knowledge or use, or another condition indicating retraining is needed for safe use',
+      ],
+      recurrence: {
+        kind: 'annual',
+        summary:
+          'At least annually for required users; more often when needed.',
+      },
+      competency:
+        'OSHA requires each employee to demonstrate knowledge of the subjects in 1910.134(k)(1). Hands-on practice and documented task-specific observation are strong program controls; fit-test procedures also require respirator donning and a user seal check. Medical evaluation and fit testing remain separate prerequisites.',
+      records: [
+        'Current written program and documented training content/version, date, language, and knowledge evidence',
+        'Medical-evaluation records retained under 1910.1020; keep questionnaire responses confidential and separate from training records',
+        'Fit-test record: employee, test type, make/model/style/size, date, and result; retain until the next fit test',
+        'Program evaluation findings and corrective-action evidence under the employer retention policy',
+      ],
+      notes: [
+        'Training completion does not establish medical clearance, fit-test status, respirator selection, equipment issuance, or task authorization.',
+        'For voluntary use, distinguish filtering facepieces (Appendix D) from other respirators, which require applicable medical and maintenance safeguards.',
+      ],
+      references: [
+        { label: 'OSHA · 29 CFR 1910.134', href: osha('1910.134') },
+        {
+          label: 'OSHA · Appendix A: Fit Testing Procedures',
+          href: `${osha('1910.134')}AppA`,
+        },
+        {
+          label: 'OSHA · Appendix B-1: User Seal Check Procedures',
+          href: `${osha('1910.134')}AppB1`,
+        },
+        {
+          label: 'OSHA · Appendix D: Voluntary Use Information',
+          href: `${osha('1910.134')}AppD`,
+        },
+        {
+          label: 'OSHA · Annual training and fit-test timing interpretation',
+          href: 'https://www.osha.gov/laws-regs/standardinterpretations/1998-12-23',
+        },
+        {
+          label: 'OSHA · Required versus voluntary N95 use interpretation',
+          href: 'https://www.osha.gov/laws-regs/standardinterpretations/2009-07-14-0',
+        },
+        {
+          label: 'NIOSH · Respirator Selection and Use',
+          href: 'https://www.cdc.gov/niosh/ppe/respirators/selection.html',
+        },
+      ],
+    },
   },
   {
     id: 'loto',
@@ -76,6 +221,31 @@ export const courses: Course[] = [
       'Group lockout and shift-change arrangements',
       'Role-specific instruction and employer authorization',
     ],
+    regulatory: {
+      authority: '29 CFR 1910.147',
+      paragraphs: ['(c)(1)', '(c)(4)', '(c)(6)', '(c)(7)'],
+      legalStatus: 'Federal regulatory requirement',
+      appliesWhen:
+        'Servicing or maintenance where unexpected energization, startup, or stored-energy release could injure employees; role-specific instruction applies.',
+      retrainingTriggers: [
+        'Job, equipment, process, or procedure change',
+        'Inspection finding',
+        'Observed deviation or knowledge gap',
+      ],
+      recurrence: {
+        kind: 'event-driven',
+        summary:
+          'Retrain after specified changes or deficiencies. Annual procedure inspection is not automatic annual retraining.',
+      },
+      competency:
+        'Verify authorized employees can use the actual equipment-specific isolation and control procedure.',
+      records: [
+        'Employee names and training dates',
+        'Energy-control procedures',
+        'Annual periodic-inspection certifications',
+      ],
+      references: [{ label: 'OSHA · 29 CFR 1910.147', href: osha('1910.147') }],
+    },
   },
   {
     id: 'confined',
@@ -101,6 +271,33 @@ export const courses: Course[] = [
       'Air testing, communication, and entry equipment',
       'Assigned roles and site rescue arrangements',
     ],
+    regulatory: {
+      authority: '29 CFR 1910.146',
+      paragraphs: ['(g)'],
+      legalStatus: 'Federal regulatory requirement',
+      appliesWhen:
+        'Employees with duties in a permit-required confined-space program; role and actual space determine training.',
+      retrainingTriggers: [
+        'New duty',
+        'Permit-space operation change',
+        'Observed deficiency',
+      ],
+      recurrence: {
+        kind: 'event-driven',
+        summary:
+          'Before assigned duties and again when duties, operations, or demonstrated understanding change.',
+      },
+      competency:
+        'Verify proficiency in assigned entry, attendant, supervisor, or rescue duties as applicable.',
+      records: [
+        'Training certification with employee, trainer, and date',
+        'Site permits and role-specific records',
+      ],
+      notes: [
+        'This subject was in the existing library and vision document, but not in the supplied source map. Domain review is still required.',
+      ],
+      references: [{ label: 'OSHA · 29 CFR 1910.146', href: osha('1910.146') }],
+    },
   },
   {
     id: 'hygiene',
@@ -126,6 +323,8 @@ export const courses: Course[] = [
       'PPE, hygiene facilities, and changing arrangements',
       'Contaminated-clothing handling and reporting',
     ],
+    reviewNote:
+      'The existing syllabus covers production chemical-exposure prevention. 29 CFR 1910.1450 applies to qualifying laboratory use, so its citation cannot be assigned to this production course without a domain review and scope decision.',
   },
   {
     id: 'hazcom',
@@ -151,6 +350,301 @@ export const courses: Course[] = [
       'SDS access and nonroutine-task procedures',
       'Local controls and emergency arrangements',
     ],
+    regulatory: {
+      authority: '29 CFR 1910.1200',
+      paragraphs: ['(e)', '(f)', '(g)', '(h)'],
+      legalStatus: 'Federal regulatory requirement',
+      appliesWhen:
+        'Employees may be exposed to hazardous chemicals during normal work or a foreseeable emergency.',
+      retrainingTriggers: [
+        'Initial assignment',
+        'New chemical hazard not previously covered',
+        'Newly identified hazards under the revised rule',
+      ],
+      recurrence: {
+        kind: 'event-driven',
+        summary:
+          'Initial assignment and each newly introduced chemical hazard; no blanket federal annual interval.',
+      },
+      records: [
+        'Written HazCom program',
+        'Chemical inventory and SDS access',
+        'Labels and training evidence',
+      ],
+      notes: [
+        'November 20, 2026: review necessary workplace-label, written-program, and additional training updates for newly identified hazards under the revised rule. Confirm site applicability before deployment.',
+      ],
+      references: [
+        { label: 'OSHA · 29 CFR 1910.1200', href: osha('1910.1200') },
+      ],
+    },
+  },
+  {
+    id: 'electrical',
+    name: 'Electrical Safety',
+    code: 'ES',
+    accent: 'gold',
+    purpose:
+      'Recognize electrical hazards and follow the safe-work practices assigned to qualified and unqualified employees.',
+    lessons: [
+      'Recognizing shock, arc, and fire hazards',
+      'Who may perform electrical work',
+      'Damaged cords, wet locations, and temporary power',
+      'Panel clearance and electrical-room access',
+      'Deenergization and verification',
+      'Electrical work and hazardous-energy control',
+      'Guarding, approach, and protective equipment',
+      'Responding to a defect or incident',
+      'Qualified-person skills and boundaries',
+    ],
+    local: [
+      'Site electrical-safe-work procedures and authorized duties',
+      'Actual equipment, voltage, and protective-equipment verification',
+      'NFPA 70E qualified-person layer as a separate consensus-standard overlay',
+    ],
+    regulatory: {
+      authority: '29 CFR 1910.331–1910.335',
+      paragraphs: ['1910.332(a)', '1910.332(b)', '1910.333'],
+      legalStatus: 'Federal regulatory requirement',
+      appliesWhen:
+        'Employees face electrical shock risk not reduced to a safe level by installation requirements; qualified-person depth depends on assigned work.',
+      retrainingTriggers: [
+        'Job or equipment change',
+        'Changed safe-work practices',
+        'Incident, near miss, or observed deficiency',
+      ],
+      recurrence: {
+        kind: 'event-driven',
+        summary:
+          'No blanket annual interval in 1910.332; reassess after changes or lost proficiency.',
+      },
+      competency:
+        'Qualified persons must demonstrate live-part recognition, voltage determination, and applicable clearance skills for their duties.',
+      records: [
+        'Role and qualification evidence',
+        'Site procedures and task-specific evaluations',
+      ],
+      notes: [
+        'NFPA 70E is a consensus-standard overlay, not the OSHA citation for this course.',
+      ],
+      references: [
+        { label: 'OSHA · 29 CFR 1910.332', href: osha('1910.332') },
+        { label: 'OSHA · 29 CFR 1910.333', href: osha('1910.333') },
+      ],
+    },
+  },
+  {
+    id: 'heat',
+    name: 'Heat and Thermal Stress',
+    code: 'HT',
+    accent: 'coral',
+    purpose:
+      'Recognize heat illness, apply the employer’s prevention plan, and respond promptly to symptoms.',
+    lessons: [
+      'Where heat exposure occurs',
+      'How work and PPE increase heat load',
+      'Recognizing early heat illness',
+      'Heat stroke as a medical emergency',
+      'Hydration and recovery areas',
+      'Acclimatization and return after absence',
+      'Buddy observation and supervisor checks',
+      'Work-rest and exposure controls',
+      'Reporting symptoms and activating emergency response',
+    ],
+    local: [
+      'Site heat-illness prevention and escalation plan',
+      'Work-area exposure assessment, monitoring, and controls',
+      'Supervisor briefings, acclimatization, and emergency contacts',
+    ],
+    regulatory: {
+      authority: 'OSH Act §5(a)(1) General Duty Clause',
+      paragraphs: ['§5(a)(1)'],
+      legalStatus: 'Employer-program requirement',
+      appliesWhen:
+        'Recognized indoor or outdoor heat exposures capable of causing serious harm; employer assessment controls assignment.',
+      retrainingTriggers: [
+        'Hot-weather or hot-process assignment',
+        'Changed conditions or controls',
+        'Incident or observed knowledge gap',
+      ],
+      recurrence: {
+        kind: 'employer-defined',
+        summary:
+          'Set by the employer heat program; this is not a 1910 annual-training mandate.',
+      },
+      records: [
+        'Heat program and hazard assessment',
+        'Training and acclimatization evidence',
+        'Monitoring and response records as applicable',
+      ],
+      notes: [
+        'Planning label reflects the General Duty Clause and employer program. Confirm the current regulatory position before release.',
+      ],
+      references: [
+        {
+          label: 'OSHA · General Duty Clause',
+          href: 'https://www.osha.gov/laws-regs/oshact/section5-duties',
+        },
+        { label: 'OSHA · Heat', href: 'https://www.osha.gov/heat-exposure' },
+      ],
+    },
+  },
+  {
+    id: 'pit',
+    name: 'Powered Industrial Trucks',
+    code: 'PIT',
+    accent: 'slate',
+    purpose:
+      'Learn truck hazards and site controls before practical training and workplace performance evaluation.',
+    lessons: [
+      'Operator duties and truck types',
+      'Controls, warnings, and limitations',
+      'Stability, capacity, and data plates',
+      'Travel, turning, and visibility',
+      'Load handling and stacking',
+      'Pedestrians and site traffic',
+      'Ramps, docks, trailers, and racks',
+      'Fuel, charging, and hazardous locations',
+      'Pre-use inspection and out-of-service decisions',
+      'Supervised practice and field evaluation',
+    ],
+    local: [
+      'Truck- and attachment-specific supervised practical training',
+      'Actual workplace driving and load-handling evaluation',
+      'Site traffic plan, inspections, and operator authorization',
+    ],
+    regulatory: {
+      authority: '29 CFR 1910.178',
+      paragraphs: ['(l)(1)–(6)'],
+      legalStatus: 'Federal regulatory requirement',
+      appliesWhen:
+        'Before operating a powered industrial truck except as a supervised trainee; equipment and workplace determine content.',
+      retrainingTriggers: [
+        'Unsafe operation or evaluation',
+        'Accident or near miss',
+        'Different truck type',
+        'Changed workplace conditions',
+      ],
+      recurrence: {
+        kind: 'three-year-evaluation',
+        summary:
+          'Evaluate operator performance at least every three years; this is an evaluation interval, not automatic retraining.',
+      },
+      competency:
+        'Formal instruction, practical exercises, and workplace performance evaluation by a qualified trainer/evaluator.',
+      records: [
+        'Operator name',
+        'Training and evaluation dates',
+        'Trainer/evaluator identity',
+      ],
+      references: [
+        { label: 'OSHA · 29 CFR 1910.178(l)', href: osha('1910.178') },
+      ],
+    },
+  },
+  {
+    id: 'bbp',
+    name: 'Bloodborne Pathogens',
+    code: 'BBP',
+    accent: 'rose',
+    purpose:
+      'Prevent and respond to occupational exposure to blood and other potentially infectious materials.',
+    lessons: [
+      'Who has occupational exposure',
+      'Bloodborne disease and transmission',
+      'Exposure Control Plan and universal precautions',
+      'Recognizing exposure tasks',
+      'Engineering and work-practice controls',
+      'Sharps, PPE, and hand hygiene',
+      'Cleaning, laundry, and regulated waste',
+      'Hepatitis B vaccination',
+      'Exposure incident and post-exposure steps',
+      'Interactive questions and reporting',
+    ],
+    local: [
+      'Exposure determination and site Exposure Control Plan',
+      'Actual PPE, sharps, decontamination, and disposal procedures',
+      'Vaccination, reporting, and post-exposure contacts',
+    ],
+    regulatory: {
+      authority: '29 CFR 1910.1030',
+      paragraphs: ['(c)', '(f)', '(g)(2)', '(h)(2)'],
+      legalStatus: 'Federal regulatory requirement',
+      appliesWhen:
+        'Only employees with reasonably anticipated occupational exposure to blood or OPIM as part of assigned duties.',
+      retrainingTriggers: [
+        'Annual interval',
+        'New or changed task or procedure creating exposure',
+      ],
+      recurrence: {
+        kind: 'annual',
+        summary:
+          'At initial assignment and at least annually thereafter, within one year of previous training.',
+      },
+      competency:
+        'Provide an opportunity for interactive questions and answers with a knowledgeable person.',
+      records: [
+        'Training date and content',
+        'Trainer qualifications',
+        'Attendee names and job titles',
+        'Retain training records for three years',
+      ],
+      references: [
+        { label: 'OSHA · 29 CFR 1910.1030', href: osha('1910.1030') },
+      ],
+    },
+  },
+  {
+    id: 'walking',
+    name: 'Walking-Working Surfaces',
+    code: 'WWS',
+    accent: 'moss',
+    purpose:
+      'Recognize surface and fall hazards, use covered equipment, and apply task-specific fall protection.',
+    lessons: [
+      'Walking-surface hazards in a chemical plant',
+      'Housekeeping, inspection, and repair',
+      'Stairs, ladders, platforms, and openings',
+      'Dockboards and loading areas',
+      'Recognizing covered fall hazards',
+      'Selecting fall-protection controls',
+      'Inspecting and using personal fall protection',
+      'Hookup, anchoring, and tie-off',
+      'Equipment care and storage',
+      'Retraining after changes or skill gaps',
+    ],
+    local: [
+      'Actual surfaces, fall hazards, and inspection/repair process',
+      'Qualified-person instruction on assigned fall-protection systems',
+      'Dockboard, designated-area, or rope-descent procedures where applicable',
+    ],
+    regulatory: {
+      authority: '29 CFR 1910 Subpart D',
+      paragraphs: ['1910.22', '1910.30(a)–(d)'],
+      legalStatus: 'Federal regulatory requirement',
+      appliesWhen:
+        'Specific 1910.30 training applies to employees using covered fall-protection systems or equipment; broad surface awareness may be employer policy.',
+      retrainingTriggers: [
+        'Workplace change',
+        'Fall-protection system or equipment change',
+        'Knowledge or skill inadequacy',
+      ],
+      recurrence: {
+        kind: 'event-driven',
+        summary:
+          'Before covered exposure or equipment use; retrain when prior understanding or skill becomes inadequate.',
+      },
+      competency:
+        'Qualified-person training and correct use of assigned equipment in a manner the employee understands.',
+      records: [
+        'Site inspection and repair evidence',
+        'Covered training and qualification evidence',
+      ],
+      references: [
+        { label: 'OSHA · 29 CFR 1910.22', href: osha('1910.22') },
+        { label: 'OSHA · 29 CFR 1910.30', href: osha('1910.30') },
+      ],
+    },
   },
 ];
 export type Learner = {
@@ -234,8 +728,8 @@ export const seedAssignments: Assignment[] = learners.flatMap((person, i) =>
           : (i + c) % 2 === 0
             ? 'In progress'
             : 'Not started',
-      reason: i % 2 ? 'Onboarding' : 'Company recurring policy',
-      cadence: 'One-time assignment',
+      reason: i % 2 ? 'Initial assignment' : 'Company recurring policy',
+      cadence: defaultCadence(course),
       version: 'Foundation preview',
     })),
 );
@@ -305,7 +799,9 @@ const assignmentCollator = new Intl.Collator('en', {
   sensitivity: 'base',
 });
 const learnerById = new Map(learners.map((person) => [person.id, person]));
-const courseById = new Map(courses.map((course) => [course.id, course]));
+const courseById = new Map<string, Course>(
+  courses.map((course) => [course.id, course]),
+);
 const siteById = new Map(sites.map((site) => [site.id, site]));
 
 /** Sort the complete filtered set before pagination; never mutate saved records. */

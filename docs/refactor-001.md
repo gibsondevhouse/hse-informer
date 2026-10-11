@@ -4,13 +4,13 @@
 |---|---|
 | **Status** | Implementation underway. Live integration, regulatory, and cutover gates remain pending. |
 | **Scope** | Architecture, contracts, implementation milestones, and release gates. |
-| **Supersedes** | Nothing yet. The React/Vinext preview stays as a reference until the SvelteKit replacement reaches parity (Phase 2). |
+| **Supersedes** | Nothing yet. The React/Vinext sample preview stays as a parity reference until the SvelteKit replacement reaches Phase 2 parity. Its separate Cloudflare D1 pilot path is not part of this target architecture. |
 | **Builds on** | [Product direction](vision/phases.txt), [contract register](contracts/README.md), [starter requirements](requirements/starter-records.md) |
 | **Progress** | [Implementation ledger](refactor-001-progress.md) records checked-in work and open gates. |
 
 ## 1. Purpose
 
-HSE Informer is moving from a browser-only administrator preview to a production training-management system:
+Refactor 001 moves the original browser-only administrator preview toward a production training-management system. The React app has since gained a separate, unprovisioned Cloudflare D1/Access pilot path; that work does not change this roadmap's SvelteKit, PostgreSQL, Keycloak, and Moodle target:
 
 - **DeepHow** supplies course content.
 - **One self-hosted, unmodified Moodle instance per client company** delivers courses and records new enrollments and completions. Site cohorts represent facilities within that company.
@@ -25,16 +25,16 @@ The [product direction](vision/phases.txt) supplies design principles. Its regul
 
 ## 2. Preview baseline and current implementation
 
-The repository has two applications: the frozen React/Vinext [`admin-app`](../admin-app/README.md), hosted as a private preview through Sites/Cloudflare, and the in-progress SvelteKit/PostgreSQL [`web/`](../web/README.md) replacement. The [implementation ledger](refactor-001-progress.md) records what has been built and which exit gates remain open. The preview remains the Phase 2 parity reference.
+The repository has two active code paths: the React/Vinext [`admin-app`](../admin-app/README.md), whose hosted sample preview is joined by a protected but unprovisioned D1 pilot workspace, and the in-progress SvelteKit/PostgreSQL [`web/`](../web/README.md) replacement. The D1 pilot uses Cloudflare Access and has separate records and integration assumptions; it does not satisfy the Keycloak/Moodle gates in this plan. The [implementation ledger](refactor-001-progress.md) records what has been built and which exit gates remain open. The React sample UI remains the Phase 2 parity reference.
 
-**None of its data is authoritative:**
+**None of the sample preview data is authoritative:**
 
 | Preview element | Where it lives | Status after this refactor |
 |---|---|---|
 | Organizations, three fictional sites (North Plant, Riverbend Facility, West Works), learners, and assignments | Seed data in [`training.ts`](../admin-app/lib/training.ts) | Excluded from PostgreSQL, Moodle, and audit packets. The replacement uses distinct, explicitly synthetic Tifton/Ocilla/Vernon fixtures. |
 | Assignment edits | Browser `localStorage` under `hse-informer-admin-preview-v1` ([`training-workspace.tsx`](../admin-app/components/training-workspace.tsx)) | The replacement stores its implemented assignment flows in PostgreSQL; full preview parity remains open. |
 | Fixed reporting date `2026-09-09` | [`training.ts`](../admin-app/lib/training.ts) | The replacement uses its server clock for current records and tests. |
-| Five draft courses (Respiratory Protection, Lockout/Tagout, Confined Space, Chemical Hygiene, Hazard Communication) with 48 lesson titles and one draft opening lesson | [`training.ts`](../admin-app/lib/training.ts), [`respiratory-lesson-content.tsx`](../admin-app/components/respiratory-lesson-content.tsx) | Reference syllabi only. These are not approved course versions and will not be published as courses. Production content depends on a real DeepHow export and HSE approval. |
+| Original five draft courses (Respiratory Protection, Lockout/Tagout, Confined Space, Chemical Hygiene, Hazard Communication) and the draft Respiratory opening lesson; five additional outlines and a separate PBJ practice course were added later | [`training.ts`](../admin-app/lib/training.ts), [`respiratory-lesson-content.tsx`](../admin-app/components/respiratory-lesson-content.tsx), [`admin-app README`](../admin-app/README.md) | Reference syllabi and practice material only. These are not approved HSE course versions. Production content depends on a real DeepHow export and HSE approval. |
 | Learner theme preference (`hse-learner-theme`) | Browser `localStorage` | May stay device-local. It is a display preference, not a record. |
 
 The preview gets these things right, and the new system must keep them: completion and authorization stay separate, statuses don't overlap (Overdue takes precedence), assignment reasons are explicit, open assignments aren't duplicated, and recurrence is labeled as planning metadata. The [admin-app README](../admin-app/README.md) lists the features that make up the parity checklist used in Phase 2.

@@ -6,6 +6,20 @@ export const previewSteps = [
   'Practice a workplace decision',
   'Opening lesson recap',
 ];
+export const lessonReferences = [
+  {
+    label: 'OSHA · Industrial Hygiene (OSHA 3143)',
+    href: 'https://www.osha.gov/publications/OSHA3143',
+  },
+  {
+    label: 'NIOSH · A Guide to Air-Purifying Respirators',
+    href: 'https://www.cdc.gov/niosh/docs/2018-176/',
+  },
+  {
+    label: 'NIOSH · Confined-space hazards',
+    href: 'https://archive.cdc.gov/www_cdc_gov/niosh/topics/emres/confined.html',
+  },
+] as const;
 
 export type PreviewState = {
   step: number;

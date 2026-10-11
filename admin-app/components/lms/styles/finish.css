@@ -1,0 +1,102 @@
+/*
+ * Motion, accessibility preferences, and print.
+ * Hovers are 150ms; new slides enter with a quick fade and a short slide. Nothing overshoots.
+ */
+@keyframes lms-enter-forward {
+  from {
+    opacity: 0;
+    transform: translateX(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes lms-enter-back {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes lms-rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.lms-slide {
+  outline: none;
+  animation: lms-enter-forward var(--lms-speed) cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.lms-slide[data-direction='back'] {
+  animation-name: lms-enter-back;
+}
+.lms-view:not(.lms-lesson),
+.lms-feedback > * {
+  animation: lms-rise var(--lms-speed) ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .lms-player *,
+  .lms-player *::before,
+  .lms-player *::after,
+  .lms-overlay * {
+    animation: none !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+@media print {
+  .lms-player,
+  .lms-overlay {
+    --lms-frame: #fff;
+    --lms-panel: #fff;
+    --lms-raised: #fff;
+    --lms-raised-hover: #fff;
+    --lms-field: transparent;
+    --lms-wash: transparent;
+    --lms-wash-strong: transparent;
+    --lms-text: #111;
+    --lms-text-2: #222;
+    --lms-muted: #444;
+    --lms-faint: #666;
+    --lms-line: #ccc;
+    --lms-line-strong: #999;
+    --lms-accent: #2a3290;
+    --lms-accent-ink: #2a3290;
+    --lms-accent-line: #2a3290;
+    --lms-sheen: none;
+    color-scheme: light;
+  }
+  .lms-header,
+  .lms-sandbox-bar,
+  .lms-outline,
+  .lms-toolbar,
+  .lms-segments,
+  .lms-view-nav,
+  .lms-view-actions {
+    display: none;
+  }
+  .lms-player,
+  .lms-layout,
+  .lms-stage,
+  .lms-main {
+    display: block;
+    height: auto;
+    padding: 0;
+    overflow: visible;
+    border: 0;
+    background: #fff;
+  }
+  .lms-interaction {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    break-inside: avoid;
+  }
+}

@@ -20,7 +20,7 @@ jobs:
       - name: Verify synthetic HSI reconciliation
         run: python3 -m unittest discover -s tools/hsi-reconcile -p 'test_*.py'
 
-  preview-reference:
+  admin-app:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -33,7 +33,9 @@ jobs:
           cache: npm
           cache-dependency-path: admin-app/package-lock.json
       - run: npm ci
-      - run: node --test tests/*.test.mjs
+      - run: npm exec tsc -- --noEmit
+      - run: npm run lint
+      - run: node --experimental-strip-types --test tests/*.test.mjs
       - run: npm run build
 
   moodle-synthetic-isolation:

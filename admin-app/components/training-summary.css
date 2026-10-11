@@ -34,6 +34,15 @@ html:has([data-slot='sidebar-wrapper']) {
   border-color: #9ab7e2;
   box-shadow: 0 3px 10px #25395c08;
 }
+.stat-card:disabled {
+  cursor: default;
+  color: inherit;
+  opacity: 1;
+}
+.stat-card:disabled:hover {
+  border-color: #dfe5ef;
+  box-shadow: none;
+}
 .stat-card[aria-pressed='true'] {
   border-color: #0056d2;
   background: #f4f8ff;
