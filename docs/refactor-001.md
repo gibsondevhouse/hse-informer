@@ -17,24 +17,24 @@ HSE Informer is moving from a browser-only administrator preview to a production
 - **Self-hosted Keycloak** gives each worker an individual sign-in and can broker employer identity providers later.
 - **HSE Informer** (`web/`, Svelte 5 / SvelteKit on PostgreSQL) decides who must be trained, why, and when. It also holds the evidence that turns a course completion into a workplace authorization.
 
-The [product direction](vision/phases.txt) still governs. Specifically:
+The [product direction](vision/phases.txt) supplies design principles. Its regulatory interpretations remain unapproved until qualified HSE review. Specifically:
 
 1. **Applicability first.** Assignments come from site, job, task, equipment, chemical, and exposure rules. HSE Informer never assigns every course to every employee.
 2. **Immutable evidence.** Each record keeps the exact course version, site addendum version, assessment, evaluator, and dates that applied when the training happened. HSE Informer never repoints an old record at new content.
 3. **Knowledge completion is not authorization.** A Moodle completion means **Knowledge Complete** and nothing more. **Site Training Complete**, **Practical Evaluation Passed**, **External Credential Verified**, and **Authorized / Qualified** are separate states that HSE Informer owns.
 
-## 2. Current state
+## 2. Preview baseline and current implementation
 
-The repository has one application, [`admin-app`](../admin-app/README.md). It is a React 19 app on Vinext `1.0.0-beta.5`, hosted as a private preview through Sites/Cloudflare.
+The repository has two applications: the frozen React/Vinext [`admin-app`](../admin-app/README.md), hosted as a private preview through Sites/Cloudflare, and the in-progress SvelteKit/PostgreSQL [`web/`](../web/README.md) replacement. The [implementation ledger](refactor-001-progress.md) records what has been built and which exit gates remain open. The preview remains the Phase 2 parity reference.
 
 **None of its data is authoritative:**
 
 | Preview element | Where it lives | Status after this refactor |
 |---|---|---|
-| Organizations, three fictional sites (North Plant, Riverbend Facility, West Works), learners, and assignments | Seed data in [`training.ts`](../admin-app/lib/training.ts#L1-L12) and [`training.ts`](../admin-app/lib/training.ts#L156-L240) | Discarded. Never migrated into PostgreSQL, Moodle, or reports. |
-| Assignment edits | Browser `localStorage` under `hse-informer-admin-preview-v1` ([`training-workspace.tsx`](../admin-app/components/training-workspace.tsx#L350-L392)) | Replaced by server-owned PostgreSQL records in Phase 2. |
-| Fixed reporting date `2026-09-09` | [`training.ts`](../admin-app/lib/training.ts#L1) | Replaced by real time plus testable clock injection. |
-| Five draft courses (Respiratory Protection, Lockout/Tagout, Confined Space, Chemical Hygiene, Hazard Communication) with 48 lesson titles and one draft opening lesson | [`training.ts`](../admin-app/lib/training.ts#L30-L155), [`respiratory-lesson-content.tsx`](../admin-app/components/respiratory-lesson-content.tsx) | Reference syllabi only. These are not approved course versions and will not be published as courses. Production content comes from DeepHow. |
+| Organizations, three fictional sites (North Plant, Riverbend Facility, West Works), learners, and assignments | Seed data in [`training.ts`](../admin-app/lib/training.ts) | Excluded from PostgreSQL, Moodle, and audit packets. The replacement uses distinct, explicitly synthetic Tifton/Ocilla/Vernon fixtures. |
+| Assignment edits | Browser `localStorage` under `hse-informer-admin-preview-v1` ([`training-workspace.tsx`](../admin-app/components/training-workspace.tsx)) | The replacement stores its implemented assignment flows in PostgreSQL; full preview parity remains open. |
+| Fixed reporting date `2026-09-09` | [`training.ts`](../admin-app/lib/training.ts) | The replacement uses its server clock for current records and tests. |
+| Five draft courses (Respiratory Protection, Lockout/Tagout, Confined Space, Chemical Hygiene, Hazard Communication) with 48 lesson titles and one draft opening lesson | [`training.ts`](../admin-app/lib/training.ts), [`respiratory-lesson-content.tsx`](../admin-app/components/respiratory-lesson-content.tsx) | Reference syllabi only. These are not approved course versions and will not be published as courses. Production content depends on a real DeepHow export and HSE approval. |
 | Learner theme preference (`hse-learner-theme`) | Browser `localStorage` | May stay device-local. It is a display preference, not a record. |
 
 The preview gets these things right, and the new system must keep them: completion and authorization stay separate, statuses don't overlap (Overdue takes precedence), assignment reasons are explicit, open assignments aren't duplicated, and recurrence is labeled as planning metadata. The [admin-app README](../admin-app/README.md) lists the features that make up the parity checklist used in Phase 2.

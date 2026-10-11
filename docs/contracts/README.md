@@ -22,8 +22,8 @@ These contracts implement the documentation portion of [Refactor 001](../refacto
 |---|---|---|
 | HSE approval | Named qualified reviewer approves each authority, legal-status label, applicability/recurrence rule, and course claim | **Pending**; no reviewer named |
 | DeepHow delivery | Real export, format, version ID, checksum, and replayed package/launch test | **Pending**; no export supplied |
-| Moodle pilot | Exact 5.3 LTS patch pinned and tested for account creation, site cohorts, enrollment, completion/score/attempt reads, version replacement, and cross-company isolation | **Pending**; no Moodle instance supplied |
-| Identity | Keycloak-to-HSE and Keycloak-to-Moodle login, user mapping, and disabled-user behavior tested | **Pending**; no service supplied |
+| Moodle pilot | Exact 5.3 LTS patch pinned and tested for account creation, site cohorts, enrollment, completion/score/attempt reads, version replacement, and cross-company isolation | **Pending**. CI runs two disposable Moodle 5.3.0 instances and verifies synthetic provisioning, cohorts, enrollment, SCORM tracking, and service-token isolation. The real DeepHow course, version/reset behavior, learner UI isolation, and live patch acceptance are unverified. |
+| Identity | Keycloak-to-HSE and Keycloak-to-Moodle login, user mapping, and disabled-user behavior tested | **Pending**. CI checks synthetic realm and issuer isolation; Moodle browser account linking and disabled-user behavior remain unverified. |
 | HSI inventory | Every mapped field traced to a real HSI export column, including dates, provenance and unmapped cases | **Pending**; [template only](integrations.md#hsi-field-inventory-template) |
 | HSI cutover | Reviewed importer, two clean full reconciliations, 100% original date/provenance equality, rollback rehearsal, HSE signoff | **Blocked** until real export and Moodle are available |
 | Production launch | Security/isolation tests and regulatory, licensing, trademark, operational reviews | **Pending** |

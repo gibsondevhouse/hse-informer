@@ -23,7 +23,7 @@ Each client company has one self-hosted Moodle instance and one server-held serv
 
 Enable only tested functions and minimum required Moodle capabilities for the service account. Moodle is authoritative for new knowledge completion. There is no generic historical-date completion write in this contract: Moodle's [function index](https://docs.moodle.org/dev/Web_service_API_functions) lists specific completion functions with different purposes, so Gate C must test the chosen importer on the pinned release. Do not call a completion-write function to fabricate learner results. Do not change Moodle core files or directly update its core tables.
 
-The Moodle version target is **5.3 LTS**, with an exact patch/revision pinned only after integration testing. The [5.3 release documentation](https://moodledev.io/docs/5.3) identifies it as LTS. A version label in a deployment manifest alone does not pass the pilot gate.
+The Moodle version target is **5.3 LTS**. The disposable CI fixture pins **5.3.0** by archive checksum and exercises synthetic account, cohort, enrollment, and SCORM reads. The [5.3 release documentation](https://moodledev.io/docs/5.3) identifies the series as LTS. That fixture does not accept 5.3.0 as the live pilot patch; the exact deployment revision and its behavior still need Gate B verification.
 
 ## DeepHow content intake
 
@@ -35,7 +35,7 @@ Gate A must establish the actual format and launch method. Moodle's native [SCOR
 
 An HSE transaction commits the assignment decision and an enrollment outbox message together. The message carries `tenant_id`, `assignment_id`, mapped `person_id`/Moodle user ID, Moodle instance/course ID, idempotency key, creation time, and attempt metadata. A worker retries transient Moodle failures with bounded backoff; permanent mapping/permission errors move to operator review. Replaying the same message cannot create a second open assignment. Log success with the Moodle enrollment evidence returned or read back.
 
-A scheduled job reads Moodle enrollments and completions for each company instance, compares them with assignment decisions and previous snapshots, and reports missing, unexpected, or changed records. It never silently overwrites an older evidence snapshot. Alert on an aged outbox item, completion-read failure, or reconciliation drift; provide an operator-visible retry and resolution trail. Completion arrival alone may set **Knowledge Complete** but cannot create **Authorized / Qualified**.
+The reconciliation job checks expected Moodle enrollments and completions against assignment decisions and previous snapshots, reporting missing or changed records. It does not yet enumerate unexpected manual enrollments. It never silently overwrites an older evidence snapshot. A deployment must schedule the job, alert on aged outbox items, completion-read failures and drift, and provide an operator-visible retry and resolution trail. A verified completion with an authoritative source time may set **Knowledge Complete** but cannot create **Authorized / Qualified**. The synthetic 5.3.0 course-completion response lacked a canonical course timestamp, so the current adapter records SCORM activity/criterion observations for review without promoting them to knowledge evidence.
 
 ## HSI field-inventory template
 
