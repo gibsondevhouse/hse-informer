@@ -181,28 +181,6 @@ jobs:
       - name: Install React preview for shared browser checks
         run: npm ci --prefix ../admin-app
       - run: npx playwright install --with-deps chromium
-      # One-time PR bootstrap. Remove these three steps after committing the
-      # reviewed Linux baselines; the normal test:e2e step is the lasting gate.
-      - name: Check Linux UI baselines
-        id: ui_baselines
-        run: |
-          if test -f e2e/ui-standard.spec.ts-snapshots/react-admin-desktop-chromium-linux.png; then
-            echo 'present=true' >> "$GITHUB_OUTPUT"
-          else
-            echo 'present=false' >> "$GITHUB_OUTPUT"
-          fi
-      - name: Generate Linux UI baselines for review
-        if: steps.ui_baselines.outputs.present == 'false'
-        run: npm run test:e2e -- --grep 'stable|layouts|framing' --update-snapshots
-        env:
-          DEV_AUTH: synthetic
-      - name: Upload Linux UI baselines for review
-        if: steps.ui_baselines.outputs.present == 'false'
-        uses: actions/upload-artifact@v4
-        with:
-          name: ui-linux-baselines
-          path: web/e2e/ui-standard.spec.ts-snapshots/*-chromium-linux.png
-          retention-days: 7
       - run: npm run test:e2e
         env:
           DEV_AUTH: synthetic
