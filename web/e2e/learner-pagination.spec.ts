@@ -5,6 +5,9 @@ test('draft learner pages fit the reading area and keep every intro block in ord
   await page.goto('/preview/respiratory-protection');
   const reading = page.locator('.reading-area');
   await expect(reading).toHaveAttribute('aria-busy', 'false');
+  const measuredWidth = await page.locator('.lesson-measure').evaluate((element) => element.getBoundingClientRect().width);
+  const readingWidth = await reading.evaluate((element) => element.clientWidth);
+  expect(Math.abs(measuredWidth - readingWidth)).toBeLessThanOrEqual(1);
   const position = page.getByRole('navigation', { name: 'Lesson navigation' }).locator('span').first();
   await expect(position).toContainText(/1 \/ [2-9]/);
   const total = Number((await position.textContent())?.match(/\d+ \/ (\d+)/)?.[1]);

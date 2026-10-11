@@ -73,7 +73,7 @@
 .lesson-stage { position: relative; min-height: 0; min-width: 0; overflow: hidden; }
 .reading-area { height: 100%; min-height: 0; min-width: 0; overflow-y: auto; overscroll-behavior: contain; outline: none; scrollbar-gutter: stable; }
 .lesson-measure, .page-content { display: flex; flex-direction: column; gap: 16px; min-width: 0; padding-right: 8px; }
-.lesson-measure { position: absolute; top: 0; left: 0; right: 0; visibility: hidden; pointer-events: none; }
+.lesson-measure { position: absolute; top: 0; left: 0; width: 100%; visibility: hidden; pointer-events: none; }
 .page-content { outline: none; }
 .content-block { display: flow-root; min-width: 0; max-width: 75ch; overflow-wrap: break-word; }
 .lesson-stage h1 { font-size: 26px; line-height: 1.25; letter-spacing: -.02em; }

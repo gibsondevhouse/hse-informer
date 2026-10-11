@@ -61,6 +61,9 @@
     if (!viewport || !measured || typeof ResizeObserver === 'undefined') return;
     let frame = 0;
     const recalculate = () => {
+      // Stable scrollbars take layout width on Linux; measure at the exact
+      // reading width so wrapped text has the same height as the visible page.
+      measured.style.width = `${viewport.clientWidth}px`;
       const heights = Array.from(measured.children, (child) => child.getBoundingClientRect().height);
       if (!viewport.clientHeight || heights.length !== currentParts.length) return;
       const currentDepths = untrack(() => depths);
