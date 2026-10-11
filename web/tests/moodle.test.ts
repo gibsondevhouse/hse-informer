@@ -22,8 +22,8 @@ describe('Moodle server adapter', () => {
     expect(url).not.toContain('secret-test-token');
     const body = options.body as URLSearchParams;
     expect(body.get('wsfunction')).toBe('enrol_manual_enrol_users');
-    expect(body.get('enrollments[0][courseid]')).toBe('42');
-    expect(body.get('enrollments[0][userid]')).toBe('17');
+    expect(body.get('enrolments[0][courseid]')).toBe('42');
+    expect(body.get('enrolments[0][userid]')).toBe('17');
     expect(moodleCourseUrl(tenant, 42)).toBe('https://moodle.example.test/course/view.php?id=42');
   });
 

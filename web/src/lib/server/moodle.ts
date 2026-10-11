@@ -84,7 +84,7 @@ export async function moodleCall<T>(tenantId: string, fn: MoodleFunction, params
 export async function enrollUser(tenantId: string, courseId: number, userId: number, learnerRoleId: number): Promise<void> {
   if (![courseId, userId, learnerRoleId].every((value) => Number.isSafeInteger(value) && value > 0)) throw new Error('Invalid Moodle enrollment IDs');
   await moodleCall<unknown>(tenantId, 'enrol_manual_enrol_users', {
-    enrollments: [{ roleid: learnerRoleId, userid: userId, courseid: courseId }]
+    enrolments: [{ roleid: learnerRoleId, userid: userId, courseid: courseId }]
   });
 }
 

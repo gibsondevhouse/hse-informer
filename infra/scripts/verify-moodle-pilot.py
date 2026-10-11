@@ -71,9 +71,9 @@ def verify_site(label: str, base_url: str, fixture: dict[str, object],
         raise RuntimeError(f"{label} HSE-ID lookup did not recover the created Moodle user: {found}")
 
     enrolled = ws("enrol_manual_enrol_users", **{
-        "enrollments[0][roleid]": role_id,
-        "enrollments[0][userid]": user_id,
-        "enrollments[0][courseid]": course_id,
+        "enrolments[0][roleid]": role_id,
+        "enrolments[0][userid]": user_id,
+        "enrolments[0][courseid]": course_id,
     })
     if enrolled is not None:
         raise RuntimeError(f"{label} enrollment did not return Moodle's documented null result: {enrolled}")
