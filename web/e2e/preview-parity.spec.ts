@@ -26,6 +26,40 @@ test('admin can inspect draft programs and filter site assignments', async ({ pa
   await expect(page.locator('table tbody')).not.toContainText('Jordan Example');
 });
 
+test('summary drilldowns, progress filters, and sorting act on the visible assignment set', async ({ page }) => {
+  await page.goto('/');
+  const completionCard = page.getByRole('button', { name: /Knowledge completion.*view breakdown/ });
+  await completionCard.click();
+  await expect(page.getByRole('heading', { name: 'Assignment records' })).toBeVisible();
+  await expect(page.locator('.breakdown .ring')).toHaveCount(5);
+  await page.getByRole('button', { name: 'View records' }).click();
+
+  const learnerHeader = page.locator('thead th').first();
+  await learnerHeader.getByRole('button', { name: 'Sort by learner, ascending' }).click();
+  await expect(learnerHeader).toHaveAttribute('aria-sort', 'ascending');
+  const ascending = await page.locator('tbody .learner-link').allTextContents();
+  expect(ascending).toEqual([...ascending].sort((a, b) => a.localeCompare(b, undefined, { numeric: true })));
+  await learnerHeader.getByRole('button', { name: 'Sort by learner, descending' }).click();
+  await expect(learnerHeader).toHaveAttribute('aria-sort', 'descending');
+  expect(await page.locator('tbody .learner-link').allTextContents()).toEqual([...ascending].reverse());
+  await page.getByRole('searchbox', { name: 'Search' }).fill('Avery');
+
+  await page.getByRole('navigation', { name: 'Workspace' }).getByRole('button', { name: 'Programs' }).click();
+  await page.getByRole('combobox', { name: 'Assignment progress' }).selectOption('overdue');
+  await expect(page.locator('.course-card')).toHaveCount(1);
+  await expect(page.locator('.course-card')).toContainText('Respiratory Protection');
+  await page.getByRole('combobox', { name: 'Assignment progress' }).selectOption('open_knowledge');
+  await expect(page.locator('.course-card')).toHaveCount(4);
+
+  await page.getByRole('navigation', { name: 'Workspace' }).getByRole('button', { name: 'Overview' }).click();
+  const dueCard = page.getByRole('button', { name: /Due in the next 30 days/ });
+  const dueCount = Number(await dueCard.locator('strong').textContent());
+  expect(dueCount).toBeGreaterThan(0);
+  await dueCard.click();
+  await expect(page.getByRole('combobox', { name: 'Status' })).toHaveValue('due_soon');
+  await expect(page.locator('tbody .learner-link')).toHaveCount(dueCount);
+});
+
 test('deadline edits persist in PostgreSQL across browser contexts', async ({ browser, page }) => {
   await page.goto('/');
   await page.getByRole('navigation', { name: 'Workspace' }).getByRole('button', { name: 'Assignments' }).click();

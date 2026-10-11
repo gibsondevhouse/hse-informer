@@ -17,9 +17,9 @@
   };
   type IntegrationHealth = { asOf: string; jobs: { failed: number; aged: number; pending: number; stalled: number }; unresolvedDrifts: Record<string, number>; reassignmentFailures: number };
   type View = 'overview' | 'programs' | 'assignments' | 'sites';
-  type Bucket = 'all' | 'not_started' | 'in_progress' | 'knowledge_complete' | 'overdue' | 'needs_review' | 'closed' | 'authorized';
+  type Bucket = 'all' | 'not_started' | 'in_progress' | 'knowledge_complete' | 'overdue' | 'needs_review' | 'closed' | 'authorized' | 'due_soon' | 'open_knowledge';
   type Sort = 'person' | 'site' | 'course' | 'reason' | 'status' | 'due';
-  const labels: Record<string, string> = { not_started: 'Not started', in_progress: 'In progress', knowledge_complete: 'Knowledge Complete', overdue: 'Overdue', needs_review: 'Needs review', closed: 'Closed', authorized: 'Active authorization' };
+  const labels: Record<string, string> = { not_started: 'Not started', in_progress: 'In progress', knowledge_complete: 'Knowledge Complete', overdue: 'Overdue', needs_review: 'Needs review', closed: 'Closed', authorized: 'Active authorization', due_soon: 'Due in 30 days', open_knowledge: 'Open knowledge steps' };
   const reasons = ['Onboarding', 'Company recurring policy', 'Required recurring training', 'Change in work or hazards', 'Knowledge or performance gap'];
   const navigation: { key: View; label: string; icon: string }[] = [
     { key: 'overview', label: 'Overview', icon: '◫' }, { key: 'programs', label: 'Programs', icon: '▦' },
@@ -45,6 +45,7 @@
   let query = $state('');
   let programQuery = $state('');
   let programStatus = $state('all');
+  let programProgress = $state<'all' | 'overdue' | 'open_knowledge'>('all');
   let sort = $state<Sort>('due');
   let direction = $state<'asc' | 'desc'>('asc');
   let page = $state(1);
@@ -58,6 +59,7 @@
   let formRequirement = $state('');
   let formDue = $state('');
   let formReason = $state(reasons[0]);
+  let formJob = $state('all');
   let selectedPeople = $state<string[]>([]);
   let saving = $state(false);
   let reviewAssignment = $state(false);
@@ -99,24 +101,32 @@
     return zone && !Number.isNaN(new Date(value).valueOf()) ? localDate(value, zone) : '';
   };
   const status = (row: Assignment) => row.state;
+  const hasOpenKnowledge = (row: Assignment) => status(row) !== 'closed' && !row.knowledgeComplete;
+  const isDueSoon = (row: Assignment) => {
+    const until = new Date(row.dueAt).getTime() - Date.now();
+    return until >= 0 && until <= 30 * 86400000 && hasOpenKnowledge(row);
+  };
   const authorizationLabel = (row: Assignment) => row.authorizationDecision === 'restricted' ? 'Restricted authorization' : 'Authorized';
   const statusLabel = (row: Assignment) => row.authorized && row.authorizationDecision === 'restricted' && status(row) === 'authorized'
     ? authorizationLabel(row) : labels[status(row)] || row.state;
   const percent = (part: number, whole: number) => whole ? Math.round(100 * part / whole) : 0;
   let approved = $derived(requirements.filter((item) => item.reviewStatus === 'approved'));
-  let visibleRequirements = $derived(requirements.filter((item) =>
-    (programStatus === 'all' || item.reviewStatus === programStatus)
-    && (!programQuery.trim() || [item.title, item.code].join(' ').toLowerCase().includes(programQuery.trim().toLowerCase()))));
   let canManage = $derived(actor?.role === 'tenant_admin' || actor?.role === 'site_admin');
   let canMonitor = $derived(actor?.role === 'tenant_admin' || actor?.role === 'hse_reviewer' || actor?.role === 'auditor');
-  let availablePeople = $derived(people.filter((item) => item.siteIds.includes(formSite)));
+  let sitePeople = $derived(people.filter((item) => item.siteIds.includes(formSite)));
+  let jobOptions = $derived([...new Set(sitePeople.map((item) => item.jobTitle).filter(Boolean))].sort());
+  let availablePeople = $derived(sitePeople.filter((item) => formJob === 'all' || item.jobTitle === formJob));
+  let possibleDuplicateIds = $derived(selectedPeople.filter((id) => assignments.some((row) =>
+    row.person.id === id && row.site.id === formSite && row.requirement.id === formRequirement && status(row) !== 'closed')));
   let scoped = $derived(assignments.filter((item) => siteFilter === 'all' || item.site.id === siteFilter));
+  let visibleRequirements = $derived(requirements.filter((item) =>
+    (programStatus === 'all' || item.reviewStatus === programStatus)
+    && (!programQuery.trim() || [item.title, item.code].join(' ').toLowerCase().includes(programQuery.trim().toLowerCase()))
+    && (programProgress === 'all' || scoped.some((row) => row.requirement.id === item.id
+      && (programProgress === 'overdue' ? status(row) === 'overdue' : hasOpenKnowledge(row))))));
   let assignedPeople = $derived(new Set(scoped.map((item) => item.person.id)).size);
   let incompletePeople = $derived(new Set(scoped.filter((item) => !item.knowledgeComplete && status(item) !== 'closed').map((item) => item.person.id)).size);
-  let dueSoon = $derived(scoped.filter((item) => {
-    const until = new Date(item.dueAt).getTime() - Date.now();
-    return until >= 0 && until <= 30 * 86400000 && !item.knowledgeComplete && status(item) !== 'closed';
-  }).length);
+  let dueSoon = $derived(scoped.filter(isDueSoon).length);
   let counts = $derived({
     total: scoped.length,
     not_started: scoped.filter((item) => status(item) === 'not_started').length,
@@ -131,7 +141,9 @@
       .filter((item) => (siteFilter === 'all' || item.site.id === siteFilter)
         && (courseFilter === 'all' || item.requirement.id === courseFilter)
         && (bucket === 'all' || (bucket === 'authorized' ? item.authorized
-          : bucket === 'knowledge_complete' ? item.knowledgeComplete : status(item) === bucket))
+          : bucket === 'knowledge_complete' ? item.knowledgeComplete
+            : bucket === 'due_soon' ? isDueSoon(item)
+              : bucket === 'open_knowledge' ? hasOpenKnowledge(item) : status(item) === bucket))
         && (!q || [name(item.person), name(item.site), name(item.requirement), item.reason].join(' ').toLowerCase().includes(q)))
       .sort((a, b) => {
         const key = (item: Assignment) => sort === 'person' ? name(item.person) : sort === 'site' ? name(item.site)
@@ -147,10 +159,7 @@
     return { total: rows.length, assignedPeople: new Set(rows.map((item) => item.person.id)).size,
       knowledgeComplete: rows.filter((item) => item.knowledgeComplete).length,
       overdue: rows.filter((item) => status(item) === 'overdue').length,
-      dueSoon: rows.filter((item) => {
-        const until = new Date(item.dueAt).getTime() - Date.now();
-        return until >= 0 && until <= 30 * 86400000 && !item.knowledgeComplete && status(item) !== 'closed';
-      }).length };
+      dueSoon: rows.filter(isDueSoon).length };
   }
 
   async function request<T>(path: string, options?: RequestInit): Promise<T> {
@@ -182,9 +191,17 @@
     assignments = a.items; summary = sum;
     if (canMonitor) integrationHealth = await request<IntegrationHealth>('/api/integration-health').catch(() => null);
   }
-  function navigate(next: View) { view = next; page = 1; breakdown = false; actionError = ''; }
+  function navigate(next: View) {
+    view = next; page = 1; breakdown = false; actionError = '';
+    query = ''; bucket = 'all'; courseFilter = 'all';
+    programQuery = ''; programStatus = 'all'; programProgress = 'all';
+  }
   function showAssignments(next: Bucket = 'all', course = 'all') {
     navigate('assignments'); bucket = next; courseFilter = course;
+  }
+  function showBreakdown() {
+    showAssignments();
+    breakdown = true;
   }
   function sortBy(next: Sort) {
     if (sort === next) direction = direction === 'asc' ? 'desc' : 'asc';
@@ -194,7 +211,7 @@
   function openAssign(requirementId = '') {
     formSite = siteFilter === 'all' ? sites[0]?.id || '' : siteFilter;
     formRequirement = requirementId || approved[0]?.id || '';
-    formDue = ''; formReason = reasons[0]; selectedPeople = []; actionError = ''; reviewAssignment = false; assignOpen = true;
+    formDue = ''; formReason = reasons[0]; formJob = 'all'; selectedPeople = []; actionError = ''; reviewAssignment = false; assignOpen = true;
   }
   function togglePerson(id: string) {
     selectedPeople = selectedPeople.includes(id) ? selectedPeople.filter((item) => item !== id) : [...selectedPeople, id];
@@ -265,6 +282,7 @@
 {:else if error}
   <div class="center-state"><span class="mark">H</span><h1>Workspace unavailable</h1><p>{error}</p><div class="center-actions"><button onclick={() => void load()}>Try again</button><a href="/auth/login">Sign in</a></div></div>
 {:else}
+  <a class="skip-link" href="#workspace-main">Skip to main content</a>
   <div class="shell">
     <aside class="sidebar">
       <div class="brand"><span class="mark">H</span><div><strong>HSE Informer</strong><small>Training management</small></div></div>
@@ -272,7 +290,7 @@
       <nav aria-label="Workspace"><span class="nav-heading">MANAGE</span>{#each navigation as item}<button class:active={view === item.key} aria-current={view === item.key ? 'page' : undefined} onclick={() => navigate(item.key)}><span aria-hidden="true">{item.icon}</span>{item.label}</button>{/each}</nav>
       <div class="sidebar-bottom"><span class="avatar">{actor?.displayName?.slice(0, 1) || 'H'}</span><div><strong>{actor?.displayName}</strong><small>{actor?.role}</small></div>{#if !tenant?.synthetic}<form method="POST" action="/auth/logout"><button aria-label="Sign out">Sign out</button></form>{/if}</div>
     </aside>
-    <main>
+    <main id="workspace-main">
       <header class="topbar"><div>HSE Informer <span>/</span> {navigation.find((item) => item.key === view)?.label}</div><span class="mode-pill">{tenant?.synthetic ? 'Synthetic workspace' : 'Live workspace'}</span></header>
       <div class="content">
         <div class="page-heading"><div><p class="eyebrow">TRAINING OPERATIONS</p><h1>{navigation.find((item) => item.key === view)?.label}</h1><p>{view === 'overview' ? 'Knowledge progress and the work still needed for authorization.' : view === 'assignments' ? 'See why training was assigned, when it is due, and what was completed.' : view === 'programs' ? 'Requirement status and course delivery readiness.' : 'Training across locations.'}</p></div>{#if view !== 'sites' && canManage}<button class="primary" disabled={!approved.length} onclick={() => openAssign()}>+ New assignment</button>{/if}</div>
@@ -282,10 +300,10 @@
           <div class="filters"><label>Site <select bind:value={siteFilter} onchange={() => page = 1}><option value="all">All sites</option>{#each sites as site}<option value={site.id}>{site.name}</option>{/each}</select></label><span>As of {date(summary?.asOf || new Date().toISOString())}</span></div>
           <div class="stats">
             <button onclick={() => showAssignments()}><span>Assigned learners</span><strong>{assignedPeople}</strong><small>{counts.total} assignment records</small></button>
-            <button onclick={() => showAssignments('knowledge_complete')}><span>Knowledge completion</span><strong>{percent(counts.knowledge_complete, counts.total)}%</strong><small>{counts.knowledge_complete} of {counts.total} assignments</small></button>
-            <button onclick={() => showAssignments()}><span>People with incomplete training</span><strong>{incompletePeople}</strong><small>At least one open knowledge step</small></button>
+            <button onclick={showBreakdown}><span>Knowledge completion</span><strong>{percent(counts.knowledge_complete, counts.total)}%</strong><small>{counts.knowledge_complete} of {counts.total} assignments · view breakdown</small></button>
+            <button onclick={() => showAssignments('open_knowledge')}><span>People with incomplete training</span><strong>{incompletePeople}</strong><small>At least one open knowledge step</small></button>
             <button class="warning" onclick={() => showAssignments('overdue')}><span>Overdue</span><strong>{counts.overdue}</strong><small>Requires follow-up</small></button>
-            <button onclick={() => showAssignments()}><span>Due in the next 30 days</span><strong>{dueSoon}</strong><small>Open knowledge assignments</small></button>
+            <button onclick={() => showAssignments('due_soon')}><span>Due in the next 30 days</span><strong>{dueSoon}</strong><small>Open knowledge assignments</small></button>
             <button onclick={() => showAssignments('authorized')}><span>Active authorization</span><strong>{counts.authorized}</strong><small>Full or restricted decision</small></button>
           </div>
         {/if}
@@ -302,13 +320,13 @@
             <div class="breakdown">{#each (['not_started', 'in_progress', 'knowledge_complete', 'overdue', 'authorized'] as const) as key}<button onclick={() => showAssignments(key)}><span class="ring" style={'--fill:' + percent(counts[key], counts.total) + '%'}><strong>{percent(counts[key], counts.total)}%</strong></span><b>{labels[key]}</b><small>{counts[key]} assignment{counts[key] === 1 ? '' : 's'}</small></button>{/each}</div>
           {:else}
             <div class="toolbar"><label>Search<input type="search" placeholder="Learner, course, or reason" bind:value={query} oninput={() => page = 1} /></label><label>Status<select bind:value={bucket} onchange={() => page = 1}><option value="all">All statuses</option>{#each Object.entries(labels) as [key, label]}<option value={key}>{label}</option>{/each}</select></label><label>Program<select bind:value={courseFilter} onchange={() => page = 1}><option value="all">All programs</option>{#each requirements as item}<option value={item.id}>{item.title}</option>{/each}</select></label></div>
-            <div class="table-wrap"><table><thead><tr><th><button onclick={() => sortBy('person')}>Learner {sort === 'person' ? direction === 'asc' ? '↑' : '↓' : ''}</button></th><th><button onclick={() => sortBy('site')}>Site {sort === 'site' ? direction === 'asc' ? '↑' : '↓' : ''}</button></th><th><button onclick={() => sortBy('course')}>Program {sort === 'course' ? direction === 'asc' ? '↑' : '↓' : ''}</button></th><th><button onclick={() => sortBy('reason')}>Reason {sort === 'reason' ? direction === 'asc' ? '↑' : '↓' : ''}</button></th><th><button onclick={() => sortBy('status')}>Training status {sort === 'status' ? direction === 'asc' ? '↑' : '↓' : ''}</button></th><th><button onclick={() => sortBy('due')}>Due {sort === 'due' ? direction === 'asc' ? '↑' : '↓' : ''}</button></th><th>Actions</th></tr></thead><tbody>{#each visible as item (item.id)}<tr><td><button class="learner-link" onclick={() => personDetail = people.find((person) => person.id === item.person.id) || null}>{name(item.person)}</button></td><td>{name(item.site)}</td><td>{name(item.requirement)}</td><td>{item.reason}</td><td><span class={'status ' + (item.authorized && item.authorizationDecision === 'restricted' ? 'restricted' : status(item))}>{statusLabel(item)}</span>{#if item.knowledgeComplete && status(item) !== 'knowledge_complete'}<span class="status knowledge_complete authorization-badge">Knowledge Complete</span>{/if}{#if item.authorized && status(item) !== 'authorized'}<span class={'status authorization-badge ' + (item.authorizationDecision === 'restricted' ? 'restricted' : 'authorized')}>{authorizationLabel(item)}</span>{/if}{#if item.authorized && item.authorizationRestrictions}<small class="delivery">Restrictions: {item.authorizationRestrictions}</small>{/if}{#if item.deliveryState !== 'enrolled'}<small class="delivery">Delivery: {item.deliveryState}</small>{/if}</td><td>{siteDate(item.dueAt, item.site.id)}</td><td>{#if canManage}<button class="link-button" onclick={() => { edit = item; editDue = inputDate(item.dueAt, item.site.id); actionError = ''; }}>Edit due</button>{/if}{#if item.launchUrl}<a href={item.launchUrl} target="_blank" rel="noopener noreferrer">Launch ↗</a>{/if}</td></tr>{:else}<tr><td class="empty" colspan="7">No assignments match these filters.</td></tr>{/each}</tbody></table></div>
+            <div class="table-wrap"><table><colgroup><col class="col-learner" /><col class="col-site" /><col class="col-program" /><col class="col-reason" /><col class="col-status" /><col class="col-due" /><col class="col-actions" /></colgroup><thead><tr><th aria-sort={sort === 'person' ? direction === 'asc' ? 'ascending' : 'descending' : undefined}><button aria-label={'Sort by learner, ' + (sort === 'person' && direction === 'asc' ? 'descending' : 'ascending')} onclick={() => sortBy('person')}>Learner {sort === 'person' ? direction === 'asc' ? '↑' : '↓' : ''}</button></th><th aria-sort={sort === 'site' ? direction === 'asc' ? 'ascending' : 'descending' : undefined}><button aria-label={'Sort by site, ' + (sort === 'site' && direction === 'asc' ? 'descending' : 'ascending')} onclick={() => sortBy('site')}>Site {sort === 'site' ? direction === 'asc' ? '↑' : '↓' : ''}</button></th><th aria-sort={sort === 'course' ? direction === 'asc' ? 'ascending' : 'descending' : undefined}><button aria-label={'Sort by program, ' + (sort === 'course' && direction === 'asc' ? 'descending' : 'ascending')} onclick={() => sortBy('course')}>Program {sort === 'course' ? direction === 'asc' ? '↑' : '↓' : ''}</button></th><th aria-sort={sort === 'reason' ? direction === 'asc' ? 'ascending' : 'descending' : undefined}><button aria-label={'Sort by reason, ' + (sort === 'reason' && direction === 'asc' ? 'descending' : 'ascending')} onclick={() => sortBy('reason')}>Reason {sort === 'reason' ? direction === 'asc' ? '↑' : '↓' : ''}</button></th><th aria-sort={sort === 'status' ? direction === 'asc' ? 'ascending' : 'descending' : undefined}><button aria-label={'Sort by training status, ' + (sort === 'status' && direction === 'asc' ? 'descending' : 'ascending')} onclick={() => sortBy('status')}>Training status {sort === 'status' ? direction === 'asc' ? '↑' : '↓' : ''}</button></th><th aria-sort={sort === 'due' ? direction === 'asc' ? 'ascending' : 'descending' : undefined}><button aria-label={'Sort by due date, ' + (sort === 'due' && direction === 'asc' ? 'descending' : 'ascending')} onclick={() => sortBy('due')}>Due {sort === 'due' ? direction === 'asc' ? '↑' : '↓' : ''}</button></th><th>Actions</th></tr></thead><tbody>{#each visible as item (item.id)}<tr><td><button class="learner-link" onclick={() => personDetail = people.find((person) => person.id === item.person.id) || null}>{name(item.person)}</button></td><td>{name(item.site)}</td><td>{name(item.requirement)}</td><td>{item.reason}</td><td><span class={'status ' + (item.authorized && item.authorizationDecision === 'restricted' ? 'restricted' : status(item))}>{statusLabel(item)}</span>{#if item.knowledgeComplete && status(item) !== 'knowledge_complete'}<span class="status knowledge_complete authorization-badge">Knowledge Complete</span>{/if}{#if item.authorized && status(item) !== 'authorized'}<span class={'status authorization-badge ' + (item.authorizationDecision === 'restricted' ? 'restricted' : 'authorized')}>{authorizationLabel(item)}</span>{/if}{#if item.authorized && item.authorizationRestrictions}<small class="delivery">Restrictions: {item.authorizationRestrictions}</small>{/if}{#if item.deliveryState !== 'enrolled'}<small class="delivery">Delivery: {item.deliveryState}</small>{/if}</td><td>{siteDate(item.dueAt, item.site.id)}</td><td>{#if canManage}<button class="link-button" onclick={() => { edit = item; editDue = inputDate(item.dueAt, item.site.id); actionError = ''; }}>Edit due</button>{/if}{#if item.launchUrl}<a href={item.launchUrl} target="_blank" rel="noopener noreferrer">Launch ↗</a>{/if}</td></tr>{:else}<tr><td class="empty" colspan="7">No assignments match these filters.</td></tr>{/each}</tbody></table></div>
             <div class="pagination"><span>Showing {filtered.length ? (page - 1) * 20 + 1 : 0}–{Math.min(page * 20, filtered.length)} of {filtered.length}</span><div><button disabled={page <= 1} onclick={() => page--}>Previous</button><span>Page {page} of {pageCount}</span><button disabled={page >= pageCount} onclick={() => page++}>Next</button></div></div>
           {/if}
         {/if}
         {#if view === 'programs'}
           <div class="section-head"><div><h2>Requirement library</h2><p>Draft syllabi remain unapproved until HSE review.</p></div></div>
-          <div class="toolbar"><label>Search programs<input type="search" placeholder="Title or code" bind:value={programQuery} /></label><label>Review status<select bind:value={programStatus}><option value="all">All statuses</option><option value="approved">Approved</option><option value="unapproved">Unapproved</option></select></label><label>Site<select bind:value={siteFilter}><option value="all">All sites</option>{#each sites as site}<option value={site.id}>{site.name}</option>{/each}</select></label></div>
+          <div class="toolbar"><label>Search programs<input type="search" placeholder="Title or code" bind:value={programQuery} /></label><label>Review status<select bind:value={programStatus}><option value="all">All statuses</option><option value="approved">Approved</option><option value="unapproved">Unapproved</option></select></label><label>Assignment progress<select bind:value={programProgress}><option value="all">All programs</option><option value="overdue">Has overdue assignments</option><option value="open_knowledge">Has open knowledge steps</option></select></label><label>Site<select bind:value={siteFilter}><option value="all">All sites</option>{#each sites as site}<option value={site.id}>{site.name}</option>{/each}</select></label></div>
           <div class="course-grid">{#each visibleRequirements as item}{@const course = courseStats(item.id)}<button class="course-card" onclick={() => detail = item}><span class="monogram">{item.code.slice(0, 2)}</span><strong>{item.title}</strong><small>{item.code} · Version {item.version}</small><span class={'review ' + item.reviewStatus}>{item.reviewStatus}</span><span class="course-metrics">{course.assignedPeople} learners · {percent(course.knowledgeComplete, course.total)}% knowledge complete · {course.overdue} overdue · {course.dueSoon} due soon</span><span class="card-bottom">{legalLabel(item)} <b>Details →</b></span></button>{:else}<p class="empty-card">No programs match these filters.</p>{/each}</div>
         {/if}
         {#if view === 'sites'}
@@ -359,23 +377,26 @@
           <dl class="review-list">
             <div><dt>Program</dt><dd>{approved.find((item) => item.id === formRequirement)?.title}</dd></div>
             <div><dt>Site</dt><dd>{sites.find((item) => item.id === formSite)?.name}</dd></div>
-            <div><dt>Audience</dt><dd>{selectedPeople.length} selected learner{selectedPeople.length === 1 ? '' : 's'}</dd></div>
+            <div><dt>Audience</dt><dd>{selectedPeople.length} selected learner{selectedPeople.length === 1 ? '' : 's'}{formJob === 'all' ? '' : ' · ' + formJob}</dd></div>
             <div><dt>Reason</dt><dd>{formReason}</dd></div>
             <div><dt>Due date</dt><dd>{calendarDate(formDue)}</dd></div>
             <div><dt>Planned recurrence</dt><dd>{recurrenceLabel(approved.find((item) => item.id === formRequirement)?.recurrence || null)}</dd></div>
           </dl>
-          <div class="recipient-review"><strong>People receiving this assignment</strong><ul>{#each selectedPeople as id}<li>{people.find((item) => item.id === id)?.displayName || id}</li>{/each}</ul></div>
+          <div class="recipient-review"><strong>Selected people</strong><ul>{#each selectedPeople as id}<li>{people.find((item) => item.id === id)?.displayName || id}{possibleDuplicateIds.includes(id) ? ' · possible existing open assignment' : ''}</li>{/each}</ul></div>
+          {#if possibleDuplicateIds.length}<p class="form-alert">{possibleDuplicateIds.length} selected learner{possibleDuplicateIds.length === 1 ? ' has' : 's have'} an open record for this program and site. The server checks the exact approved version and skips duplicate open assignments.</p>{/if}
           <p class="muted">Recurrence is requirement metadata. Creating this assignment does not schedule a new cycle by itself.</p>
           {#if actionError}<p class="form-alert" role="alert">{actionError}</p>{/if}
           <div class="modal-actions"><button onclick={() => reviewAssignment = false}>Back</button><button class="primary" disabled={saving} onclick={() => void createAssignment()}>{saving ? 'Saving…' : 'Create assignments'}</button></div>
         {:else}
           <div class="form-grid">
             <label>Program<select bind:value={formRequirement}>{#each approved as item}<option value={item.id}>{item.title}</option>{/each}</select></label>
-            <label>Site<select bind:value={formSite} onchange={() => selectedPeople = []}>{#each sites as site}<option value={site.id}>{site.name}</option>{/each}</select></label>
+            <label>Site<select bind:value={formSite} onchange={() => { formJob = 'all'; selectedPeople = []; }}>{#each sites as site}<option value={site.id}>{site.name}</option>{/each}</select></label>
+            <label>Job title<select bind:value={formJob} onchange={() => selectedPeople = []}><option value="all">All job titles</option>{#each jobOptions as job}<option value={job}>{job}</option>{/each}</select></label>
             <label>Reason<select bind:value={formReason}>{#each reasons as reason}<option value={reason}>{reason}</option>{/each}</select></label>
             <label>Due date<input type="date" bind:value={formDue} /></label>
           </div>
           <p class="muted"><strong>Planned recurrence:</strong> {recurrenceLabel(approved.find((item) => item.id === formRequirement)?.recurrence || null)}. The approved requirement controls future reassignment.</p>
+          {#if possibleDuplicateIds.length}<p class="form-alert">{possibleDuplicateIds.length} selected learner{possibleDuplicateIds.length === 1 ? ' has' : 's have'} a possible duplicate open record. The exact version will be checked when saved.</p>{/if}
           <fieldset>
             <legend>Audience · {selectedPeople.length} selected</legend>
             <div class="select-actions"><button onclick={() => selectedPeople = availablePeople.map((person) => person.id)}>Select all at this site</button><button onclick={() => selectedPeople = []}>Clear</button></div>
