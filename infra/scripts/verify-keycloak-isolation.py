@@ -22,13 +22,16 @@ REALM_FILES = {
     "moodle-company-b": REALM_DIR / "moodle-company-b-realm.json",
 }
 WORKERS = (
-    ("moodle-company-a", "moodle-a-isolation-probe", "synthetic.worker.a", "11111111-1111-4111-8111-111111111111"),
-    ("moodle-company-b", "moodle-b-isolation-probe", "synthetic.worker.b", "22222222-2222-4222-8222-222222222222"),
+    ("moodle-company-a", "moodle-a-isolation-probe", "synthetic.worker.a", "44444444-4444-4444-8444-444444444444"),
+    ("moodle-company-b", "moodle-b-isolation-probe", "synthetic.worker.b", "55555555-5555-4555-8555-555555555555"),
 )
 
 
 def verify_realm_files() -> None:
     realms = {name: json.loads(path.read_text()) for name, path in REALM_FILES.items()}
+    user_ids = [user["id"] for data in realms.values() for user in data["users"]]
+    if len(user_ids) != len(set(user_ids)):
+        raise RuntimeError("Keycloak user IDs must be unique across imported realms")
     expected_clients = {
         "hse-dev": {"hse-web"},
         "moodle-company-a": {"moodle-company-a", "moodle-a-isolation-probe"},
