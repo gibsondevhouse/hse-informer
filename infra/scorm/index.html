@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>HSE synthetic SCORM 1.2 probe</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      body { font: 1rem system-ui, sans-serif; max-width: 40rem; margin: 3rem auto; padding: 0 1rem; }
+      button { padding: .7rem 1rem; font: inherit; }
+      #result { white-space: pre-wrap; }
+    </style>
+  </head>
+  <body>
+    <h1>Synthetic completion probe</h1>
+    <p>This is test content. It is not HSE training and must never be assigned to real workers.</p>
+    <button id="complete" type="button">Record synthetic completion</button>
+    <p id="result" role="status"></p>
+    <script>
+      function findApi(start) {
+        let current = start;
+        for (let depth = 0; current && depth < 10; depth += 1) {
+          if (current.API) return current.API;
+          if (current.parent === current) break;
+          current = current.parent;
+        }
+        return start.opener ? findApi(start.opener) : null;
+      }
+
+      document.getElementById('complete').addEventListener('click', () => {
+        const result = document.getElementById('result');
+        const api = findApi(window);
+        if (!api) {
+          result.textContent = 'SCORM 1.2 API not found. Launch this package in Moodle.';
+          return;
+        }
+        const steps = [
+          ['LMSInitialize', () => api.LMSInitialize('')],
+          ['lesson_status', () => api.LMSSetValue('cmi.core.lesson_status', 'completed')],
+          ['score.raw', () => api.LMSSetValue('cmi.core.score.raw', '100')],
+          ['LMSCommit', () => api.LMSCommit('')],
+          ['LMSFinish', () => api.LMSFinish('')]
+        ];
+        for (const [name, call] of steps) {
+          if (String(call()) !== 'true') {
+            result.textContent = `${name} failed. SCORM error: ${api.LMSGetLastError()}`;
+            return;
+          }
+        }
+        result.textContent = 'Synthetic SCORM status completed; score 100. Check Moodle completion separately.';
+        document.getElementById('complete').disabled = true;
+      });
+    </script>
+  </body>
+</html>

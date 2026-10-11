@@ -1,0 +1,107 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  artifact-contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate local Compose configuration and Keycloak realm
+        run: |
+          cp infra/.env.example infra/.env
+          docker compose --env-file infra/.env -f infra/compose.yaml config --quiet
+          python3 -m json.tool infra/keycloak/hse-dev-realm.json > /dev/null
+      - name: Verify synthetic SCORM 1.2 package
+        run: python3 -m unittest discover -s infra/scorm -p 'test_*.py'
+      - name: Verify synthetic HSI reconciliation
+        run: python3 -m unittest discover -s tools/hsi-reconcile -p 'test_*.py'
+
+  preview-reference:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: admin-app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: admin-app/package-lock.json
+      - run: npm ci
+      - run: node --test tests/*.test.mjs
+      - run: npm run build
+
+  moodle-synthetic-isolation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start separate Moodle sites and Keycloak
+        run: |
+          cp infra/.env.example infra/.env
+          echo '127.0.0.1 auth.localhost' | sudo tee -a /etc/hosts > /dev/null
+          docker compose --env-file infra/.env -f infra/compose.yaml up -d --build keycloak moodle-a moodle-b
+      - name: Check Moodle and issuer readiness
+        run: python3 infra/scripts/check-stack.py
+      - name: Verify web-service tokens cannot cross companies
+        shell: bash
+        run: |
+          set -euo pipefail
+          A="$(docker compose --env-file infra/.env -f infra/compose.yaml exec -T -u www-data moodle-a php /opt/hse/bootstrap-isolation.php)"
+          B="$(docker compose --env-file infra/.env -f infra/compose.yaml exec -T -u www-data moodle-b php /opt/hse/bootstrap-isolation.php)"
+          [[ "$A" =~ ^[a-f0-9]{32}$ && "$B" =~ ^[a-f0-9]{32}$ ]]
+          echo "::add-mask::$A"
+          echo "::add-mask::$B"
+          MOODLE_A_TOKEN="$A" MOODLE_B_TOKEN="$B" python3 infra/scripts/verify-moodle-isolation.py
+      - name: Show stack logs on failure
+        if: failure()
+        run: docker compose --env-file infra/.env -f infra/compose.yaml logs --tail=100
+      - name: Stop synthetic stack
+        if: always()
+        run: docker compose --env-file infra/.env -f infra/compose.yaml down -v
+
+  web:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: hse_ci
+          POSTGRES_USER: hse_ci
+          POSTGRES_PASSWORD: ci-only-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U hse_ci -d hse_ci"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 30
+    defaults:
+      run:
+        working-directory: web
+    env:
+      DATABASE_URL: postgres://hse_ci:ci-only-password@localhost:5432/hse_ci
+      TEST_DATABASE_URL: postgres://hse_ci:ci-only-password@localhost:5432/hse_ci
+      APP_ORIGIN: http://localhost:5173
+      OIDC_ISSUER: http://auth.localhost:8080/realms/hse-dev
+      OIDC_CLIENT_ID: hse-web
+      OIDC_CLIENT_SECRET: ci-only-oidc-secret
+      SESSION_SECRET: ci-only-session-secret-with-32-bytes-minimum
+      MOODLE_CONNECTIONS_JSON: '{}'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm run check
+      - run: npm test
+      - run: npm run db:migrate
+      - run: npm run test:integration
+      - run: npm run build
