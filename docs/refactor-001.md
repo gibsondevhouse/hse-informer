@@ -6,6 +6,7 @@
 | **Scope** | Architecture, contracts, implementation milestones, and release gates. |
 | **Supersedes** | Nothing yet. The React/Vinext preview stays as a reference until the SvelteKit replacement reaches parity (Phase 2). |
 | **Builds on** | [Product direction](vision/phases.txt), [contract register](contracts/README.md), [starter requirements](requirements/starter-records.md) |
+| **Progress** | [Implementation ledger](refactor-001-progress.md) records checked-in work and open gates. |
 
 ## 1. Purpose
 
@@ -249,4 +250,5 @@ These are required before any production learner uses the system, whatever phase
 - [Product direction](vision/phases.txt): completion states (§1), Site Qualification Builder (§3), platform controls (§5), prohibited claims (§6), risks (§7), implementation order (§8).
 - [Admin app README](../admin-app/README.md): preview scope, boundary, and parity checklist source.
 - [Contract register](contracts/README.md), [domain/evidence](contracts/domain.md), [integrations/migration](contracts/integrations.md), and [five unapproved starter requirements](requirements/starter-records.md).
+- [Draft HSI cutover runbook](runbooks/hsi-cutover.md) for rehearsal, freeze, rollback, and read-only retention.
 - Moodle: [Web service API functions](https://docs.moodle.org/dev/Web_service_API_functions), [SCORM FAQ](https://docs.moodle.org/500/en/SCORM_FAQ).

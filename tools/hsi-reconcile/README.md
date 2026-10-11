@@ -35,5 +35,7 @@ Exit code 0 means every supplied row and count matched; 1 means discrepancies;
 2 means invalid input. A passing report is one input to the two-rehearsal and
 HSE approval gate, not an authorization to cut over. Keep real exports and
 reports out of Git because they contain employee records.
+The comparison rejects duplicate HSI records, duplicate Moodle completions,
+and two provenance rows that claim the same Moodle completion ID.
 
 Run synthetic tests with `python3 -m unittest discover -s tools/hsi-reconcile -p 'test_*.py'`.

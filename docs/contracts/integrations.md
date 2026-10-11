@@ -58,8 +58,8 @@ Archive the full source export with checksum, extraction timestamp, operator, HS
 
 | Input | Required normalized CSV columns |
 |---|---|
-| HSI | `hsi_record_id,tenant_id,site_id,person_id,course_id,completed_at,expires_at` |
+| HSI | `hsi_record_id,tenant_id,site_id,person_id,course_id,completed_at,expires_at,original_completed_raw,original_expires_raw,original_timezone` |
 | PostgreSQL provenance | HSI columns plus `moodle_completion_id,moodle_user_id,moodle_course_id,source_export_sha256,import_batch_id` |
 | Moodle completions | `moodle_completion_id,moodle_user_id,moodle_course_id,completed_at` |
 
-Dates are timezone-aware ISO 8601 timestamps with second precision; `source_export_sha256` is the hash of the untouched original export supplied to the CLI with `--source-archive`. This normalized shape is a **rehearsal interface**, not a proven HSI parser, Moodle importer, or acceptance of a real HSI format. Gate C additionally requires a reviewed one-time Moodle importer, two clean rehearsals, 100% equality of original completion dates and provenance, rollback proof, and HSE signoff. Until then, HSI remains authoritative and read-only cutover is blocked.
+Normalized dates are timezone-aware ISO 8601 timestamps with second precision; the `original_*_raw` fields preserve the HSI source strings exactly, and `original_timezone` captures the source zone if known. `source_export_sha256` is the hash of the untouched original export supplied to the CLI with `--source-archive`. This normalized shape is a **rehearsal interface**, not a proven HSI parser, Moodle importer, or acceptance of a real HSI format. Gate C additionally requires a reviewed one-time Moodle importer, two clean rehearsals, 100% equality of original completion dates and provenance, rollback proof, and HSE signoff. Until then, HSI remains authoritative and read-only cutover is blocked.
