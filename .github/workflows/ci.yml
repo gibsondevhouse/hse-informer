@@ -101,11 +101,15 @@ jobs:
           python3 infra/scorm/build.py --output infra/scorm/synthetic-scorm-1.2.zip
           docker compose --env-file infra/.env -f infra/compose.yaml cp \
             infra/scorm/synthetic-scorm-1.2.zip moodle-a:/tmp/synthetic-scorm-1.2.zip
+          docker compose --env-file infra/.env -f infra/compose.yaml exec -T moodle-a \
+            php -l /opt/hse/bootstrap-scorm.php
+          docker compose --env-file infra/.env -f infra/compose.yaml exec -T -u www-data moodle-a \
+            sh -c 'test -r /tmp/synthetic-scorm-1.2.zip'
           A="$(docker compose --env-file infra/.env -f infra/compose.yaml exec -T -u www-data moodle-a php /opt/hse/bootstrap-pilot.php)"
           echo "::add-mask::$(jq -r .token <<<"$A")"
           SCORM="$(docker compose --env-file infra/.env -f infra/compose.yaml exec -T -u www-data \
-            -e SCORM_LEARNER_PASSWORD="$DEV_WORKER_PASSWORD" moodle-a php /opt/hse/bootstrap-scorm.php)"
-          MOODLE_SCORM_FIXTURE="$SCORM" SCORM_LEARNER_PASSWORD="$DEV_WORKER_PASSWORD" \
+            -e SCORM_LEARNER_PASSWORD="$SCORM_LEARNER_PASSWORD" moodle-a php /opt/hse/bootstrap-scorm.php)"
+          MOODLE_SCORM_FIXTURE="$SCORM" SCORM_LEARNER_PASSWORD="$SCORM_LEARNER_PASSWORD" \
             node infra/scripts/verify-scorm-browser.cjs
           docker compose --env-file infra/.env -f infra/compose.yaml exec -T -u www-data \
             moodle-a php /var/www/moodle/admin/cli/cron.php

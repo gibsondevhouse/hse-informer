@@ -12,13 +12,28 @@ require_once($CFG->dirroot . '/webservice/lib.php');
 require_once($CFG->libdir . '/filelib.php');
 require_once($CFG->libdir . '/enrollib.php');
 
+// Moodle's default CLI exception handler can exit without a useful hosted-CI
+// line. Report the failing fixture stage, while redacting both local secrets.
+set_exception_handler(static function (Throwable $error): void {
+    $message = $error->getMessage();
+    foreach ([getenv('SCORM_LEARNER_PASSWORD'), getenv('MOODLE_ADMIN_PASSWORD')] as $secret) {
+        if (is_string($secret) && $secret !== '') {
+            $message = str_replace($secret, '[redacted]', $message);
+        }
+    }
+    fwrite(STDERR, sprintf("SCORM bootstrap failed: %s: %s at %s:%d\n",
+        get_class($error), $message, basename($error->getFile()), $error->getLine()));
+    exit(1);
+});
+
 global $CFG, $DB, $PAGE, $USER;
 $USER = get_admin();
 $package = getenv('SCORM_PACKAGE_PATH') ?: '/tmp/synthetic-scorm-1.2.zip';
 $password = getenv('SCORM_LEARNER_PASSWORD');
-if (!is_file($package) || !$password) {
-    throw new RuntimeException('Synthetic SCORM ZIP and learner password are required');
+if (!is_readable($package) || !$password) {
+    throw new RuntimeException('Synthetic SCORM ZIP must be readable by www-data and learner password must be set');
 }
+fwrite(STDERR, "SCORM fixture: package readable; creating course\n");
 set_config('enablecompletion', 1);
 
 $course = $DB->get_record('course', ['shortname' => 'HSE-SCORM-SYNTHETIC']);
@@ -37,6 +52,7 @@ if (!$course) {
 if ((int) $course->enablecompletion !== 1) {
     throw new RuntimeException('SCORM fixture course completion is disabled');
 }
+fwrite(STDERR, "SCORM fixture: course ready; staging package\n");
 
 $PAGE->set_context(context_course::instance($course->id));
 $PAGE->set_url(new moodle_url('/course/view.php', ['id' => $course->id]));
@@ -84,6 +100,7 @@ if (strtoupper((string) $scorm->version) !== 'SCORM_1.2') {
     throw new RuntimeException('Moodle did not parse the ZIP as SCORM 1.2: ' . $scorm->version);
 }
 $sco = $DB->get_record('scorm_scoes', ['scorm' => $scorm->id, 'scormtype' => 'sco'], '*', MUST_EXIST);
+fwrite(STDERR, "SCORM fixture: Moodle parsed SCORM 1.2; configuring completion\n");
 if (!completion_criteria_activity::fetch(['course' => $course->id, 'moduleinstance' => $cm->id])) {
     $criterion = new completion_criteria_activity();
     $data = (object) ['id' => $course->id, 'criteria_activity' => [$cm->id => 1]];
@@ -93,6 +110,7 @@ if (!completion_criteria_activity::fetch(['course' => $course->id, 'moduleinstan
 $username = 'synthetic.scorm.learner';
 $learner = $DB->get_record('user', ['username' => $username, 'mnethostid' => $CFG->mnet_localhost_id]);
 if (!$learner) {
+    fwrite(STDERR, "SCORM fixture: creating manual-auth browser learner\n");
     $userid = \core\user::create_user((object) [
         'auth' => 'manual',
         'username' => $username,
@@ -128,6 +146,7 @@ if (!is_enrolled(context_course::instance($course->id), $learner->id)) {
 if (!is_enrolled(context_course::instance($course->id), $learner->id)) {
     throw new RuntimeException('Synthetic SCORM learner was not enrolled');
 }
+fwrite(STDERR, "SCORM fixture: learner enrolled; enabling read functions\n");
 
 $manager = new webservice();
 $service = $manager->get_external_service_by_shortname('hse_synthetic_pilot_probe', MUST_EXIST);
