@@ -36,6 +36,9 @@ Exit code 0 means every supplied row and count matched; 1 means discrepancies;
 HSE approval gate, not an authorization to cut over. Keep real exports and
 reports out of Git because they contain employee records.
 The comparison rejects duplicate HSI records, duplicate Moodle completions,
-and two provenance rows that claim the same Moodle completion ID.
+two provenance rows that claim the same Moodle completion ID, and distinct
+completions mapped to the same Moodle user/course pair. Empty exports fail
+closed. See the [Moodle 5.3 backfill feasibility decision](moodle53-backfill-feasibility.md)
+for why there is no historical write importer yet.
 
 Run synthetic tests with `python3 -m unittest discover -s tools/hsi-reconcile -p 'test_*.py'`.

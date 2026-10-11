@@ -54,10 +54,10 @@ class ReconcileTest(unittest.TestCase):
             "completed_at": "2025-03-01T14:00:00Z",
         }
 
-    def run_check(self, source_rows=None, provenance_rows=None):
-        write_csv(self.source, self.original.keys(), source_rows or [self.original])
-        write_csv(self.provenance, self.prov.keys(), provenance_rows or [self.prov])
-        write_csv(self.moodle, self.completion.keys(), [self.completion])
+    def run_check(self, source_rows=None, provenance_rows=None, moodle_rows=None):
+        write_csv(self.source, self.original.keys(), [self.original] if source_rows is None else source_rows)
+        write_csv(self.provenance, self.prov.keys(), [self.prov] if provenance_rows is None else provenance_rows)
+        write_csv(self.moodle, self.completion.keys(), [self.completion] if moodle_rows is None else moodle_rows)
         return subprocess.run(
             [
                 sys.executable,
@@ -116,6 +116,23 @@ class ReconcileTest(unittest.TestCase):
         )
         self.assertEqual(result.returncode, 1)
         self.assertIn("provenance: duplicate moodle_completion_id=101", result.stdout)
+
+    def test_distinct_completion_ids_cannot_claim_one_moodle_user_course(self):
+        second_source = {**self.original, "hsi_record_id": "HSI-2"}
+        second_provenance = {**self.prov, "hsi_record_id": "HSI-2", "moodle_completion_id": "102"}
+        second_completion = {**self.completion, "moodle_completion_id": "102"}
+        result = self.run_check(
+            source_rows=[self.original, second_source],
+            provenance_rows=[self.prov, second_provenance],
+            moodle_rows=[self.completion, second_completion],
+        )
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("Moodle user/course target 501/701 is claimed", result.stdout)
+
+    def test_empty_source_is_invalid_input(self):
+        result = self.run_check(source_rows=[])
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("no data rows", result.stderr)
 
 
 if __name__ == "__main__":

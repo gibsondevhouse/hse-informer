@@ -66,6 +66,8 @@ def read_rows(path: Path, required: tuple[str, ...]) -> list[dict[str, str]]:
                 if key not in ("expires_at", "original_expires_raw", "original_timezone") and not row[key].strip():
                     raise InputError(f"{path}:{line}: blank {key}")
             rows.append(row)
+    if not rows:
+        raise InputError(f"{path}: no data rows; an empty export cannot prove a migration")
     return rows
 
 
@@ -105,6 +107,21 @@ def compare(
     provenance = keyed(provenance_rows, "hsi_record_id", "provenance", issues)
     keyed(provenance_rows, "moodle_completion_id", "provenance", issues)
     moodle = keyed(moodle_rows, "moodle_completion_id", "Moodle", issues)
+
+    # Moodle course completion is one record per user/course. Two HSI events
+    # cannot be reconciled as distinct course completions merely by assigning
+    # them different IDs in a fabricated Moodle export.
+    targets: dict[tuple[str, str], str] = {}
+    for row in provenance_rows:
+        target = (row["moodle_user_id"], row["moodle_course_id"])
+        first = targets.get(target)
+        if first is not None:
+            issues.append(
+                f"provenance: Moodle user/course target {target[0]}/{target[1]} "
+                f"is claimed by HSI records {first} and {row['hsi_record_id']}"
+            )
+        else:
+            targets[target] = row["hsi_record_id"]
 
     for record_id, original in source.items():
         imported = provenance.get(record_id)
