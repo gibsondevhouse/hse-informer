@@ -1,6 +1,6 @@
 # HSE Informer
 
-Training administration for chemical manufacturing sites. The repository contains a frozen React preview and a SvelteKit/PostgreSQL replacement in progress. The five starter requirements and the respiratory lesson are unapproved drafts.
+Training administration for chemical manufacturing sites. The active implementation is the SvelteKit/PostgreSQL app in `web/`. The React app remains a frozen parity reference. The five starter requirements and respiratory lesson are unapproved drafts.
 
 - [Refactor roadmap](docs/refactor-001.md): architecture, milestones, verification, and release gates.
 - [Replacement app](web/README.md): SvelteKit server, tenant-scoped data, and synthetic development fixtures.
@@ -11,7 +11,9 @@ Training administration for chemical manufacturing sites. The repository contain
 
 ## Run locally
 
-For the existing React preview, use Node.js 22.13 or newer and npm:
+Start with the [SvelteKit setup](web/README.md), which requires Node.js 22.17 or newer and PostgreSQL. Its synthetic seed is for development only.
+
+For the frozen React preview, use Node.js 22.13 or newer and npm:
 
 ```sh
 cd admin-app
@@ -19,11 +21,11 @@ npm ci
 npm run dev
 ```
 
-The replacement needs Node.js 22.17 or newer and PostgreSQL; see [web setup](web/README.md). On Windows PowerShell, use `npm.cmd` if script execution policy blocks `npm`.
+On Windows PowerShell, use `npm.cmd` if script execution policy blocks `npm`.
 
 ## Validate
 
-From `admin-app` for the frozen preview:
+The [web commands](web/README.md#commands) cover TypeScript, PostgreSQL integration, browser, and build checks. For the frozen preview, run from `admin-app`:
 
 ```sh
 npm exec tsc -- --noEmit
@@ -34,10 +36,10 @@ npm run build
 
 ## Current scope
 
-The React app is an administrator preview with fictional organizations, sites, learners, and assignments. Assignment edits are stored in the browser. Its records are never migrated as production evidence. The replacement has separate server-owned records and explicitly synthetic fixtures for Tifton, Ocilla, and Vernon. No starter requirement is approved, no live DeepHow or HSI data has been imported, and no production authorization is issued.
+The SvelteKit app has server-owned records and explicitly synthetic fixtures for Tifton, Ocilla, and Vernon. The React preview has fictional organizations, sites, learners, and browser-stored assignment edits; its records are never migrated as production evidence. No starter requirement is approved, no live DeepHow or HSI data has been imported, and no production authorization is issued.
 
 The [private hosted React preview](https://hse-informer-training.clgibso91.chatgpt.site/) is published through Sites. The build and hosting metadata are in `admin-app`. The SvelteKit replacement has not been deployed.
 
 ## Repository workflow
 
-This repository tracks the app and docs as ordinary files, not submodules. In the original Codex workspace, `admin-app` also retains its independent Git history for Sites publishing. Commit app changes there first, then commit the updated app files and docs from this repository root. A fresh GitHub clone has one normal repository and can run locally with the commands above.
+This is one Git repository. Commit application, integration, and documentation changes from the repository root.
