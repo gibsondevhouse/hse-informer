@@ -15,11 +15,11 @@ Each client company has one self-hosted Moodle instance and one server-held serv
 | Need | Candidate documented function | Verification before use |
 |---|---|---|
 | Find/provision a mapped user | `core_user_get_users_by_field`, `core_user_create_users` | Exact unique field, OAuth 2 account linking, permissions, duplicate behavior, disabled users. |
-| Manage site cohort | `core_cohort_get_cohorts`, `core_cohort_add_cohort_members` | Cohort IDs, site membership changes, and site access behavior. |
+| Manage site cohort | `core_cohort_create_cohorts`, `core_cohort_get_cohorts`, `core_cohort_add_cohort_members`, `core_cohort_get_cohort_members` | Cohort IDs, site membership changes, and site access behavior. |
 | Enroll learner | `enrol_manual_enrol_users` | Manual-enrollment instance/role, idempotent retry, dates and unenrollment effects. |
 | Read enrollment | `core_enrol_get_enrolled_users` or `core_enrol_get_users_courses` | Visibility under integration credential and drift detection. |
 | Read course/activity completion | `core_completion_get_course_completion_status`, `core_completion_get_activities_completion_status` | Completion criteria, original timestamp, reset/re-enrollment/version behavior. |
-| Read SCORM attempts and tracking, if format fits | `mod_scorm_get_scorm_attempt_count`, `mod_scorm_get_scorm_sco_tracks` | Score, attempt and answer-history availability; retain raw source IDs. |
+| Read SCORM attempts and tracking, if format fits | `mod_scorm_get_scorm_attempt_count`, `mod_scorm_get_scorm_scoes`, `mod_scorm_get_scorm_sco_tracks` | Score, attempt and answer-history availability; retain raw source IDs. |
 
 Enable only tested functions and minimum required Moodle capabilities for the service account. Moodle is authoritative for new knowledge completion. There is no generic historical-date completion write in this contract: Moodle's [function index](https://docs.moodle.org/dev/Web_service_API_functions) lists specific completion functions with different purposes, so Gate C must test the chosen importer on the pinned release. Do not call a completion-write function to fabricate learner results. Do not change Moodle core files or directly update its core tables.
 
