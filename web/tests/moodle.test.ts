@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { addUserToCohort, enrollUser, findMoodleUserByHseId, moodleConnection, moodleCourseUrl,
+import { addUserToCohort, enrollUser, findMoodleUserByHseId, isUserEnrolled, moodleConnection, moodleCourseUrl,
   provisionMoodleUser, readCompletion } from '../src/lib/server/moodle';
 
 const tenant = 'ffef29ba-5d6b-4a7a-8bdd-07e9508303b5';
@@ -38,6 +38,21 @@ describe('Moodle server adapter', () => {
     expect(result.completedAt).toBeNull();
     expect(result.score).toBeNull();
     expect(result.attempts).toBeNull();
+  });
+
+  it('reads enrolled courses without requesting participant counts and rejects a malformed response', async () => {
+    process.env.MOODLE_CONNECTIONS_JSON = JSON.stringify({
+      [tenant]: { instanceId, baseUrl: 'https://moodle.example.test', token: 'secret-test-token' }
+    });
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify([{ id: 42 }]), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ unexpected: true }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+    expect(await isUserEnrolled(tenant, 42, 17)).toBe(true);
+    const body = (fetchMock.mock.calls[0][1] as RequestInit).body as URLSearchParams;
+    expect(body.get('wsfunction')).toBe('core_enrol_get_users_courses');
+    expect(body.get('returnusercount')).toBe('0');
+    await expect(isUserEnrolled(tenant, 42, 17)).rejects.toMatchObject({ code: 'invalid_response' });
   });
 
   it('reads Moodle 5.3 SCORM attemptscount while keeping completion time unverified', async () => {

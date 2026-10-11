@@ -132,8 +132,13 @@ export async function readCompletion(tenantId: string, courseId: number, userId:
 }
 
 export async function isUserEnrolled(tenantId: string, courseId: number, userId: number): Promise<boolean> {
-  const courses = await moodleCall<Array<{ id: number }>>(tenantId, 'core_enrol_get_users_courses', { userid: userId });
-  return Array.isArray(courses) && courses.some((course) => course.id === courseId);
+  const courses = await moodleCall<Array<{ id: number }>>(tenantId, 'core_enrol_get_users_courses', {
+    userid: userId, returnusercount: false
+  });
+  if (!Array.isArray(courses)) {
+    throw new MoodleError('Moodle did not return an enrolled-course list', 'core_enrol_get_users_courses', 'invalid_response');
+  }
+  return courses.some((course) => course.id === courseId);
 }
 
 export async function findMoodleUserByHseId(tenantId: string, hseId: string): Promise<number | null> {
