@@ -2,6 +2,13 @@
 @import 'tw-animate-css';
 @import 'shadcn/tailwind.css';
 @import './hse-tokens.css';
+@font-face {
+  font-family: 'Inter Variable';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('/fonts/inter-latin-wght-normal.woff2') format('woff2');
+}
 @custom-variant dark (&:is(.dark *));
 @theme inline {
   --color-background: var(--background);
@@ -899,6 +906,14 @@ button.status-pill {
 }
 @media (max-width: 767px) {
   .mobile-table-hint {
+    display: block;
+    padding: 0 16px 8px;
+    color: var(--hse-color-muted);
+    font-size: 12px;
+  }
+}
+@media (min-width: 768px) and (max-width: 1023px) {
+  .program-table-hint {
     display: block;
     padding: 0 16px 8px;
     color: var(--hse-color-muted);
@@ -3194,7 +3209,21 @@ fieldset {
   }
   .sheet-tabs [data-slot='tabs-list'] {
     margin-inline: 20px;
-    width: calc(100% - 36px);
+    width: calc(100% - 40px);
+    height: auto;
+    min-height: 48px;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .sheet-tabs [data-slot='tabs-trigger'] {
+    width: 100%;
+    height: auto;
+    min-height: 48px;
+    padding: 5px;
+    font-size: 12px;
+    line-height: 1.2;
+    white-space: normal;
+    text-align: center;
   }
 }
 @media (max-width: 850px) {
