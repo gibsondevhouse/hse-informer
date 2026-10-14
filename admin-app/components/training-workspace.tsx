@@ -823,6 +823,9 @@ export default function TrainingWorkspace() {
                     />
                   </div>
                 </div>
+                <p className="mobile-table-hint program-table-hint">
+                  Scroll horizontally to see all program columns.
+                </p>
                 <Table className="program-table">
                   <TableHeader>
                     <TableRow>
