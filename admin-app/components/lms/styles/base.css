@@ -4,14 +4,6 @@
  * Monospace is reserved for code in the author lab. Nothing glows, bounces, or tracks the pointer.
  */
 @font-face {
-  font-family: 'Inter Variable';
-  font-style: normal;
-  font-weight: 100 900;
-  font-display: swap;
-  src: url('/fonts/inter-latin-wght-normal.woff2') format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-@font-face {
   font-family: 'JetBrains Mono Variable';
   font-style: normal;
   font-weight: 100 800;
@@ -23,42 +15,42 @@
 .lms-player,
 .lms-overlay {
   /* Surfaces, darkest to lightest: frame, panel, raised. */
-  --lms-frame: #0b0b0e;
-  --lms-panel: #111114;
-  --lms-raised: #17171b;
-  --lms-raised-hover: #1d1d22;
-  --lms-field: rgba(255, 255, 255, 0.035);
-  --lms-wash: rgba(255, 255, 255, 0.04);
-  --lms-wash-strong: rgba(255, 255, 255, 0.07);
+  --lms-frame: var(--hse-night-frame);
+  --lms-panel: var(--hse-night-panel);
+  --lms-raised: var(--hse-night-raised);
+  --lms-raised-hover: var(--hse-night-raised-hover);
+  --lms-field: var(--hse-night-field);
+  --lms-wash: var(--hse-night-wash);
+  --lms-wash-strong: var(--hse-night-wash-strong);
 
   /* Hairlines and the single inner highlight shared by interactive surfaces. */
-  --lms-line: rgba(255, 255, 255, 0.07);
-  --lms-line-strong: rgba(255, 255, 255, 0.12);
-  --lms-sheen: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --lms-line: var(--hse-night-line);
+  --lms-line-strong: var(--hse-night-line-strong);
+  --lms-sheen: var(--hse-night-sheen);
 
   /* Text, strongest to quietest. All but faint meet 4.5:1 on every surface. */
-  --lms-text: #ecedf0;
-  --lms-text-2: #c5c8d0;
-  --lms-muted: #8e929d;
-  --lms-faint: #6b6f7a;
+  --lms-text: var(--hse-night-text);
+  --lms-text-2: var(--hse-night-text-2);
+  --lms-muted: var(--hse-night-muted);
+  --lms-faint: var(--hse-night-faint);
 
   /* Indigo accent: fill for actions, ink for text on dark, line for borders and focus. */
-  --lms-accent: #4f59c0;
-  --lms-accent-hover: #535dc6;
-  --lms-accent-press: #4b54ba;
-  --lms-accent-ink: #9aa3ff;
-  --lms-accent-line: #6f7ae8;
-  --lms-accent-tint: rgba(111, 122, 232, 0.09);
-  --lms-accent-edge: rgba(111, 122, 232, 0.3);
+  --lms-accent: var(--hse-night-accent);
+  --lms-accent-hover: var(--hse-night-accent-hover);
+  --lms-accent-press: var(--hse-night-accent-press);
+  --lms-accent-ink: var(--hse-night-accent-ink);
+  --lms-accent-line: var(--hse-night-accent-line);
+  --lms-accent-tint: var(--hse-night-accent-tint);
+  --lms-accent-edge: var(--hse-night-accent-edge);
 
   /* Status colors carry meaning only. */
-  --lms-success: #55c99a;
+  --lms-success: var(--hse-night-success);
   --lms-success-bg: rgba(85, 201, 154, 0.09);
   --lms-success-edge: rgba(85, 201, 154, 0.32);
-  --lms-warning: #e2a840;
+  --lms-warning: var(--hse-night-warning);
   --lms-warning-bg: rgba(226, 168, 64, 0.09);
   --lms-warning-edge: rgba(226, 168, 64, 0.32);
-  --lms-danger: #f26d78;
+  --lms-danger: var(--hse-night-danger);
   --lms-danger-bg: rgba(242, 109, 120, 0.1);
   --lms-danger-edge: rgba(242, 109, 120, 0.34);
   --lms-info: var(--lms-accent-ink);
@@ -88,7 +80,7 @@
   --lms-radius-lg: 12px;
   --lms-speed: 150ms;
   --lms-ease: cubic-bezier(0.4, 0, 0.2, 1);
-  --lms-font-sans: 'Inter Variable', Inter, 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif;
+  --lms-font-sans: var(--hse-night-font-sans);
   --lms-font-mono: 'JetBrains Mono Variable', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
 
   /* Bridge to the shadcn tokens the shared primitives read. */

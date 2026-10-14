@@ -1,0 +1,529 @@
+/* PBJ-101's graphite/indigo language, scoped to the sample admin workspace.
+   The :has() scope also reaches Base UI dialogs, sheets, and select popovers
+   that render in a portal beside the workspace rather than inside it. */
+html:has(.admin-preview) {
+  --hse-color-brand: var(--hse-night-accent);
+  --hse-color-brand-hover: var(--hse-night-accent-hover);
+  --hse-color-brand-active: var(--hse-night-accent-press);
+  --hse-color-brand-subtle: var(--hse-night-accent-tint);
+  --hse-color-ink: var(--hse-night-text);
+  --hse-color-muted: var(--hse-night-muted);
+  --hse-color-canvas: var(--hse-night-frame);
+  --hse-color-surface: var(--hse-night-panel);
+  --hse-color-surface-subtle: var(--hse-night-raised);
+  --hse-color-border: var(--hse-night-line);
+  --hse-color-divider: var(--hse-night-line);
+  --hse-color-control-border: var(--hse-night-line-strong);
+  --hse-color-focus: var(--hse-night-accent-line);
+  --hse-color-info: var(--hse-night-accent-ink);
+  --hse-color-info-bg: var(--hse-night-accent-tint);
+  --hse-color-success: var(--hse-night-success);
+  --hse-color-success-bg: rgba(85, 201, 154, .09);
+  --hse-color-warning: var(--hse-night-warning);
+  --hse-color-warning-bg: rgba(226, 168, 64, .09);
+  --hse-color-danger: var(--hse-night-danger);
+  --hse-color-danger-bg: rgba(242, 109, 120, .1);
+  --hse-color-disabled-bg: var(--hse-night-raised);
+  --hse-color-disabled-text: var(--hse-night-muted);
+  --hse-font-sans: var(--hse-night-font-sans);
+  --background: var(--hse-night-frame);
+  --foreground: var(--hse-night-text);
+  --card: var(--hse-night-panel);
+  --card-foreground: var(--hse-night-text);
+  --popover: var(--hse-night-raised);
+  --popover-foreground: var(--hse-night-text);
+  --primary: var(--hse-night-accent);
+  --primary-foreground: #fff;
+  --secondary: var(--hse-night-raised);
+  --secondary-foreground: var(--hse-night-text-2);
+  --muted: var(--hse-night-raised);
+  --muted-foreground: var(--hse-night-muted);
+  --accent: var(--hse-night-wash-strong);
+  --accent-foreground: var(--hse-night-text);
+  --destructive: var(--hse-night-danger);
+  --border: var(--hse-night-line);
+  --input: var(--hse-night-line-strong);
+  --ring: var(--hse-night-accent-line);
+  --sidebar: var(--hse-night-panel);
+  --sidebar-foreground: var(--hse-night-muted);
+  color-scheme: dark;
+}
+
+html:has(.admin-preview) body {
+  background: var(--hse-night-frame);
+  color: var(--hse-night-text);
+  font-family: var(--hse-night-font-sans);
+}
+
+html:has(.admin-preview) :where(button, a, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline-color: var(--hse-night-accent-line);
+}
+
+html:has(.admin-preview) .admin-preview {
+  background: var(--hse-night-frame);
+  color: var(--hse-night-text);
+  font-family: var(--hse-night-font-sans);
+}
+
+/* Frame and navigation */
+html:has(.admin-preview) .app-sidebar,
+html:has(.admin-preview) .app-sidebar [data-slot='sidebar-inner'] {
+  background: var(--hse-night-panel);
+  border-color: var(--hse-night-line);
+  color: var(--hse-night-text);
+}
+html:has(.admin-preview) .brand,
+html:has(.admin-preview) .organization,
+html:has(.admin-preview) .profile {
+  color: var(--hse-night-text);
+}
+html:has(.admin-preview) .brand small,
+html:has(.admin-preview) .organization small,
+html:has(.admin-preview) .profile small,
+html:has(.admin-preview) .nav-section > p {
+  color: var(--hse-night-muted);
+}
+html:has(.admin-preview) .brand-mark {
+  color: var(--hse-night-accent-ink);
+}
+html:has(.admin-preview) .organization,
+html:has(.admin-preview) .profile {
+  border-color: var(--hse-night-line);
+}
+html:has(.admin-preview) .org-icon,
+html:has(.admin-preview) .avatar,
+html:has(.admin-preview) .nav-count {
+  background: var(--hse-night-raised);
+  border-color: var(--hse-night-line);
+  color: var(--hse-night-text-2);
+}
+html:has(.admin-preview) .nav-item {
+  color: var(--hse-night-text-2);
+  border-radius: 8px;
+}
+html:has(.admin-preview) .nav-item:hover,
+html:has(.admin-preview) .nav-item.active,
+html:has(.admin-preview) .nav-item.active:hover {
+  background: var(--hse-night-wash-strong);
+  color: var(--hse-night-accent-ink);
+}
+html:has(.admin-preview) .nav-item.active {
+  box-shadow: inset 2px 0 0 var(--hse-night-accent-line);
+}
+html:has(.admin-preview) .sidebar-note {
+  background: var(--hse-night-raised);
+  border-color: var(--hse-night-line-strong);
+  box-shadow: var(--hse-night-sheen);
+}
+html:has(.admin-preview) .sidebar-note .mini-label,
+html:has(.admin-preview) .sidebar-note button {
+  color: var(--hse-night-accent-ink);
+}
+html:has(.admin-preview) .sidebar-note h3 {
+  color: var(--hse-night-text);
+}
+html:has(.admin-preview) .sidebar-note p {
+  color: var(--hse-night-text-2);
+}
+html:has(.admin-preview) .profile-dot {
+  background: var(--hse-night-success);
+}
+html:has(.admin-preview) .topbar {
+  background: var(--hse-night-panel);
+  border-color: var(--hse-night-line);
+}
+html:has(.admin-preview) .breadcrumb strong {
+  color: var(--hse-night-text-2);
+}
+html:has(.admin-preview) .library-scope-label,
+html:has(.admin-preview) .workspace-context > span:first-child {
+  color: var(--hse-night-text-2);
+}
+html:has(.admin-preview) .topbar-actions .picker {
+  color: var(--hse-night-text-2);
+}
+html:has(.admin-preview) .page-heading h1,
+html:has(.admin-preview) .panel-heading h2 {
+  color: var(--hse-night-text);
+}
+html:has(.admin-preview) .eyebrow {
+  color: var(--hse-night-accent-ink);
+}
+html:has(.admin-preview) .eyebrow > span {
+  background: var(--hse-night-accent-line);
+}
+html:has(.admin-preview) .mini-label {
+  color: var(--hse-night-accent-ink);
+}
+html:has(.admin-preview) .primary-button,
+html:has(.admin-preview) .primary-button:hover {
+  background: var(--hse-night-accent);
+  border-color: var(--hse-night-accent);
+  color: #fff;
+}
+html:has(.admin-preview) .primary-button:hover {
+  background: var(--hse-night-accent-hover);
+}
+html:has(.admin-preview) .context-divider {
+  background: var(--hse-night-line-strong);
+}
+html:has(.admin-preview) .demo-badge,
+html:has(.admin-preview) .count-badge,
+html:has(.admin-preview) .foundation-badge {
+  background: var(--hse-night-raised);
+  border-color: var(--hse-night-line-strong);
+  color: var(--hse-night-text-2);
+}
+html:has(.admin-preview) .skip-link {
+  background: var(--hse-night-raised);
+  border-color: var(--hse-night-accent-line);
+  color: var(--hse-night-text);
+}
+
+/* Summary, panels, and course lists */
+html:has(.admin-preview) .panel,
+html:has(.admin-preview) .stat-card,
+html:has(.admin-preview) .completion-status {
+  background: var(--hse-night-panel);
+  border-color: var(--hse-night-line);
+  color: var(--hse-night-text);
+  box-shadow: var(--hse-night-sheen);
+}
+html:has(.admin-preview) .stat-card:hover,
+html:has(.admin-preview) .completion-status:hover {
+  background: var(--hse-night-raised);
+  border-color: var(--hse-night-line-strong);
+  box-shadow: var(--hse-night-sheen);
+}
+html:has(.admin-preview) .stat-card[aria-pressed='true'],
+html:has(.admin-preview) .completion-status[aria-pressed='true'] {
+  background: var(--hse-night-accent-tint);
+  border-color: var(--hse-night-accent-edge);
+}
+html:has(.admin-preview) .stat-card:disabled:hover {
+  background: var(--hse-night-panel);
+  border-color: var(--hse-night-line);
+}
+html:has(.admin-preview) .stat-card > strong,
+html:has(.admin-preview) .completion-ring strong,
+html:has(.admin-preview) .assigned-number {
+  color: var(--hse-night-text);
+}
+html:has(.admin-preview) .stat-label,
+html:has(.admin-preview) .stat-detail,
+html:has(.admin-preview) .completion-status-count,
+html:has(.admin-preview) .completion-ring small {
+  color: var(--hse-night-muted);
+}
+html:has(.admin-preview) .stat-meter,
+html:has(.admin-preview) .completion-ring-track {
+  background: var(--hse-night-raised);
+  stroke: var(--hse-night-line-strong);
+}
+html:has(.admin-preview) .panel,
+html:has(.admin-preview) .library-card {
+  border-radius: 12px;
+}
+html:has(.admin-preview) .panel-heading,
+html:has(.admin-preview) .library-card > div:last-child,
+html:has(.admin-preview) .site-progress-footer,
+html:has(.admin-preview) .records-footer {
+  border-color: var(--hse-night-line);
+}
+html:has(.admin-preview) .course-name,
+html:has(.admin-preview) .attention-row strong,
+html:has(.admin-preview) .site-progress-info > strong,
+html:has(.admin-preview) .site-card-metrics strong,
+html:has(.admin-preview) .library-card h2,
+html:has(.admin-preview) .empty-state h3 {
+  color: var(--hse-night-text);
+}
+html:has(.admin-preview) .course-name:hover strong,
+html:has(.admin-preview) .text-action:hover,
+html:has(.admin-preview) .due-link:hover,
+html:has(.admin-preview) .edit-date:hover {
+  color: var(--hse-night-accent-ink);
+}
+html:has(.admin-preview) .course-icon,
+html:has(.admin-preview) .attention-icon,
+html:has(.admin-preview) .site-code {
+  background: var(--hse-night-raised);
+  border-color: var(--hse-night-line-strong);
+  color: var(--hse-night-accent-ink);
+}
+html:has(.admin-preview) .course-icon.amber,
+html:has(.admin-preview) .attention-icon.amber,
+html:has(.admin-preview) .course-icon.gold,
+html:has(.admin-preview) .course-icon.orange {
+  color: var(--hse-night-warning);
+}
+html:has(.admin-preview) .course-icon.teal,
+html:has(.admin-preview) .attention-icon.teal,
+html:has(.admin-preview) .course-icon.moss {
+  color: var(--hse-night-success);
+}
+html:has(.admin-preview) .course-icon.rose,
+html:has(.admin-preview) .course-icon.coral {
+  color: var(--hse-night-danger);
+}
+html:has(.admin-preview) .library-card-practice {
+  background: var(--hse-night-accent-tint);
+  border-color: var(--hse-night-accent-edge);
+}
+html:has(.admin-preview) .library-card-practice > div:last-child {
+  border-color: var(--hse-night-accent-edge);
+}
+html:has(.admin-preview) .library-card p,
+html:has(.admin-preview) .library-footer,
+html:has(.admin-preview) .site-card > p,
+html:has(.admin-preview) .site-card-metrics,
+html:has(.admin-preview) .site-card-completion > span,
+html:has(.admin-preview) .empty-state,
+html:has(.admin-preview) .edit-date,
+html:has(.admin-preview) .due-link {
+  color: var(--hse-night-muted);
+}
+html:has(.admin-preview) .site-card-completion strong,
+html:has(.admin-preview) .detail-stats strong,
+html:has(.admin-preview) .text-action,
+html:has(.admin-preview) .review-details dd {
+  color: var(--hse-night-accent-ink);
+}
+html:has(.admin-preview) .attention-row,
+html:has(.admin-preview) .site-progress-row {
+  border-color: var(--hse-night-line);
+  color: var(--hse-night-text-2);
+}
+html:has(.admin-preview) .attention-row:hover,
+html:has(.admin-preview) .site-progress-row:hover,
+html:has(.admin-preview) .program-table [data-slot='table-row']:hover,
+html:has(.admin-preview) .assignment-table [data-slot='table-row']:hover {
+  background: var(--hse-night-raised-hover);
+}
+html:has(.admin-preview) .attention-row > svg,
+html:has(.admin-preview) .site-progress-bar > strong,
+html:has(.admin-preview) .site-card-completion strong {
+  color: var(--hse-night-text-2);
+}
+html:has(.admin-preview) .site-progress-footer,
+html:has(.admin-preview) .table-footnote {
+  background: var(--hse-night-panel);
+  border-color: var(--hse-night-line);
+}
+html:has(.admin-preview) .legend-dot {
+  background: var(--hse-night-accent-line);
+}
+
+/* Data tables, controls, and status chips */
+html:has(.admin-preview) [data-slot='table-head'] {
+  background: var(--hse-night-raised);
+  color: var(--hse-night-muted);
+  border-color: var(--hse-night-line);
+}
+html:has(.admin-preview) [data-slot='table-cell'],
+html:has(.admin-preview) [data-slot='table-row'] {
+  border-color: var(--hse-night-line);
+}
+html:has(.admin-preview) .completion-cell strong,
+html:has(.admin-preview) .assignment-sort-button.is-sorted,
+html:has(.admin-preview) .assignment-sort-button.is-sorted > svg {
+  color: var(--hse-night-accent-ink);
+}
+html:has(.admin-preview) .assignment-sort-button:hover,
+html:has(.admin-preview) .manage-button:hover {
+  background: var(--hse-night-accent-tint);
+  color: var(--hse-night-accent-ink) !important;
+}
+html:has(.admin-preview) .manage-button {
+  color: var(--hse-night-text-2) !important;
+}
+html:has(.admin-preview) [data-slot='input'],
+html:has(.admin-preview) [data-slot='select-trigger'],
+html:has(.admin-preview) [data-slot='textarea'],
+html:has(.admin-preview) .search-field input {
+  background: var(--hse-night-field);
+  border-color: var(--hse-night-line-strong);
+  color: var(--hse-night-text);
+}
+html:has(.admin-preview) [data-slot='input']::placeholder,
+html:has(.admin-preview) .search-field input::placeholder {
+  color: var(--hse-night-muted);
+}
+html:has(.admin-preview) [data-slot='select-content'],
+html:has(.admin-preview) [data-slot='select-item'] {
+  background: var(--hse-night-raised);
+  color: var(--hse-night-text);
+  border-color: var(--hse-night-line-strong);
+}
+html:has(.admin-preview) [data-slot='select-item']:hover,
+html:has(.admin-preview) [data-slot='select-item'][data-highlighted] {
+  background: var(--hse-night-wash-strong);
+  color: var(--hse-night-text);
+}
+html:has(.admin-preview) .filter-control .picker {
+  color: var(--hse-night-text-2);
+}
+html:has(.admin-preview) [data-slot='progress-track'] {
+  background: var(--hse-night-raised);
+}
+html:has(.admin-preview) [data-slot='progress-indicator'],
+html:has(.admin-preview) .stat-meter::after {
+  background: var(--hse-night-accent-line);
+}
+html:has(.admin-preview) .status-pill.neutral {
+  color: var(--hse-night-text-2);
+  background: var(--hse-night-wash-strong);
+  border-color: var(--hse-night-line-strong);
+}
+html:has(.admin-preview) .status-pill.success {
+  color: var(--hse-night-success);
+  background: rgba(85, 201, 154, .09);
+  border-color: rgba(85, 201, 154, .32);
+}
+html:has(.admin-preview) .status-pill.danger {
+  color: var(--hse-night-warning);
+  background: rgba(226, 168, 64, .09);
+  border-color: rgba(226, 168, 64, .32);
+}
+html:has(.admin-preview) .status-pill.danger > span {
+  background: var(--hse-night-warning);
+}
+html:has(.admin-preview) .green-text {
+  color: var(--hse-night-success);
+}
+html:has(.admin-preview) .danger-text {
+  color: var(--hse-night-warning) !important;
+}
+
+/* Forms, drilldowns, and notices */
+html:has(.admin-preview) .notice,
+html:has(.admin-preview) .local-explainer,
+html:has(.admin-preview) .library-note,
+html:has(.admin-preview) .inline-info,
+html:has(.admin-preview) .review-course,
+html:has(.admin-preview) .audience-summary {
+  background: var(--hse-night-accent-tint);
+  border-color: var(--hse-night-accent-edge);
+  color: var(--hse-night-text-2);
+}
+html:has(.admin-preview) .local-explainer h2,
+html:has(.admin-preview) .library-note strong,
+html:has(.admin-preview) .review-course strong,
+html:has(.admin-preview) .audience-summary strong {
+  color: var(--hse-night-text);
+}
+html:has(.admin-preview) .local-explainer p,
+html:has(.admin-preview) .help-dialog > p,
+html:has(.admin-preview) .review-course small,
+html:has(.admin-preview) .audience-summary small {
+  color: var(--hse-night-text-2);
+}
+html:has(.admin-preview) .local-status,
+html:has(.admin-preview) .recipient-details,
+html:has(.admin-preview) .site-checkboxes label {
+  background: var(--hse-night-raised);
+  border-color: var(--hse-night-line-strong);
+  color: var(--hse-night-text-2);
+}
+html:has(.admin-preview) .local-status strong,
+html:has(.admin-preview) .recipient-details summary,
+html:has(.admin-preview) .recipient-details li,
+html:has(.admin-preview) .review-details dt {
+  color: var(--hse-night-text-2);
+}
+html:has(.admin-preview) .site-checkboxes label:has([data-checked]) {
+  background: var(--hse-night-accent-tint);
+  border-color: var(--hse-night-accent-line);
+}
+html:has(.admin-preview) .form-error {
+  color: var(--hse-night-danger);
+  background: rgba(242, 109, 120, .1);
+  border-color: rgba(242, 109, 120, .34);
+}
+html:has(.admin-preview) .form-actions,
+html:has(.admin-preview) .sheet-bottom,
+html:has(.admin-preview) .sheet-tabs [data-slot='tabs-list'],
+html:has(.admin-preview) .sheet-section,
+html:has(.admin-preview) .syllabus-list li {
+  border-color: var(--hse-night-line);
+}
+html:has(.admin-preview) [data-slot='dialog-overlay'],
+html:has(.admin-preview) [data-slot='sheet-overlay'] {
+  background: rgba(0, 0, 0, .72);
+}
+html:has(.admin-preview) [data-slot='dialog-content'],
+html:has(.admin-preview) [data-slot='sheet-content'] {
+  background: var(--hse-night-panel);
+  border: 1px solid var(--hse-night-line-strong);
+  color: var(--hse-night-text);
+  font-family: var(--hse-night-font-sans);
+  box-shadow: 0 24px 90px rgba(0, 0, 0, .5), var(--hse-night-sheen);
+}
+html:has(.admin-preview) [data-slot='dialog-description'],
+html:has(.admin-preview) [data-slot='sheet-description'],
+html:has(.admin-preview) .sheet-section p,
+html:has(.admin-preview) .regulatory-basis dt,
+html:has(.admin-preview) .syllabus-list li,
+html:has(.admin-preview) .review-details dt {
+  color: var(--hse-night-muted);
+}
+html:has(.admin-preview) .sheet-bottom {
+  background: var(--hse-night-panel);
+}
+html:has(.admin-preview) .sheet-tabs [data-slot='tabs-trigger'][data-active],
+html:has(.admin-preview) .regulatory-basis a,
+html:has(.admin-preview) .syllabus-list li > span {
+  color: var(--hse-night-accent-ink);
+}
+html:has(.admin-preview) .sheet-tabs [data-slot='tabs-trigger']:after {
+  background: var(--hse-night-accent-line);
+}
+html:has(.admin-preview) .program-title-row .preview-training-button {
+  background: var(--hse-night-accent-tint);
+  border-color: var(--hse-night-accent-edge);
+  color: var(--hse-night-accent-ink);
+}
+html:has(.admin-preview) .program-title-row .preview-training-button:hover {
+  background: var(--hse-night-wash-strong);
+  border-color: var(--hse-night-accent-line);
+  color: var(--hse-night-text);
+}
+html:has(.admin-preview) .preview-unavailable {
+  color: var(--hse-night-muted);
+}
+html:has(.admin-preview) .local-requirement,
+html:has(.admin-preview) .recipient-details li span {
+  color: var(--hse-night-text-2);
+}
+html:has(.admin-preview) .hollow-dot {
+  border-color: var(--hse-night-muted);
+}
+html:has(.admin-preview) .form-fields .picker,
+html:has(.admin-preview) .field-label,
+html:has(.admin-preview) .review-details dd {
+  color: var(--hse-night-text);
+}
+
+@media (max-width: 767px) {
+  html:has(.admin-preview) .main-content {
+    padding-top: 24px;
+  }
+  html:has(.admin-preview) .topbar {
+    background: var(--hse-night-panel);
+  }
+  html:has(.admin-preview) .mobile-menu {
+    color: var(--hse-night-text-2);
+  }
+  html:has(.admin-preview) .page-heading .primary-button {
+    min-height: var(--hse-control-default);
+  }
+}
+
+@media (forced-colors: active) {
+  html:has(.admin-preview) .panel,
+  html:has(.admin-preview) .stat-card,
+  html:has(.admin-preview) .nav-item.active,
+  html:has(.admin-preview) [data-slot='dialog-content'] {
+    border: 1px solid CanvasText;
+  }
+}

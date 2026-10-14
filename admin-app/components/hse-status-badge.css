@@ -38,6 +38,33 @@
   color: var(--hse-color-danger);
 }
 
+/* In the dark workspaces, use the same quiet status chips as the PB&J player. */
+:is(.pilot-shell, .qualification-shell, .learner-inbox) .hse-status-badge {
+  border-color: var(--hse-night-line-strong);
+  background: var(--hse-night-wash-strong);
+  color: var(--hse-night-text-2);
+}
+:is(.pilot-shell, .qualification-shell, .learner-inbox) .hse-status-badge--info {
+  border-color: var(--hse-night-accent-edge);
+  background: var(--hse-night-accent-tint);
+  color: var(--hse-night-accent-ink);
+}
+:is(.pilot-shell, .qualification-shell, .learner-inbox) .hse-status-badge--success {
+  border-color: rgb(85 201 154 / .32);
+  background: rgb(85 201 154 / .09);
+  color: var(--hse-night-success);
+}
+:is(.pilot-shell, .qualification-shell, .learner-inbox) .hse-status-badge--warning {
+  border-color: rgb(226 168 64 / .32);
+  background: rgb(226 168 64 / .09);
+  color: var(--hse-night-warning);
+}
+:is(.pilot-shell, .qualification-shell, .learner-inbox) .hse-status-badge--danger {
+  border-color: rgb(242 109 120 / .34);
+  background: rgb(242 109 120 / .1);
+  color: var(--hse-night-danger);
+}
+
 @media (forced-colors: active) {
   .hse-status-badge { border-color: CanvasText; }
 }

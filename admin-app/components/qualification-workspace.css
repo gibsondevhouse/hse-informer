@@ -1,5 +1,43 @@
-.qualification-shell { min-height: 100vh; background: var(--hse-color-canvas); color: var(--hse-color-ink); font-family: var(--hse-font-sans); font-size: var(--hse-text-base); line-height: var(--hse-leading-base); color-scheme: light; }
-.qualification-topbar { min-height: 58px; border-bottom: 1px solid var(--hse-color-divider); background: var(--hse-color-surface); display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 0 clamp(18px, 4vw, 48px); }
+.qualification-shell {
+  /* Match the protected workspace and PB&J player without changing the
+     SvelteKit workspace's shared light theme. */
+  --hse-color-brand: var(--hse-night-accent-ink);
+  --hse-color-brand-hover: var(--hse-night-accent-ink);
+  --hse-color-brand-subtle: var(--hse-night-accent-tint);
+  --hse-color-ink: var(--hse-night-text);
+  --hse-color-muted: var(--hse-night-muted);
+  --hse-color-canvas: var(--hse-night-frame);
+  --hse-color-surface: var(--hse-night-panel);
+  --hse-color-surface-subtle: var(--hse-night-raised);
+  --hse-color-border: var(--hse-night-line-strong);
+  --hse-color-divider: var(--hse-night-line);
+  --hse-color-control-border: rgb(255 255 255 / .28);
+  --hse-color-focus: var(--hse-night-accent-line);
+  --hse-color-info: var(--hse-night-accent-ink);
+  --hse-color-info-bg: var(--hse-night-accent-tint);
+  --hse-color-success: var(--hse-night-success);
+  --hse-color-success-bg: rgb(85 201 154 / .09);
+  --hse-color-warning: var(--hse-night-warning);
+  --hse-color-warning-bg: rgb(226 168 64 / .09);
+  --hse-color-danger: var(--hse-night-danger);
+  --hse-color-danger-bg: rgb(242 109 120 / .1);
+  --hse-font-sans: var(--hse-night-font-sans);
+  --hse-radius-control: 8px;
+  --hse-radius-card: 12px;
+  min-height: 100dvh;
+  background: var(--hse-color-canvas);
+  color: var(--hse-color-ink);
+  font-family: var(--hse-font-sans);
+  font-size: var(--hse-text-base);
+  line-height: var(--hse-leading-base);
+  color-scheme: dark;
+}
+.qualification-shell :focus-visible,
+.qualification-modal :focus-visible { outline: 3px solid var(--hse-color-focus); outline-offset: 3px; }
+.qualification-shell .skip-link { background: var(--hse-night-raised); color: var(--hse-night-text); border-color: var(--hse-night-accent-line); }
+.qualification-shell ::placeholder,
+.qualification-modal ::placeholder { color: var(--hse-night-muted); opacity: 1; }
+.qualification-topbar { min-height: 58px; border-bottom: 1px solid var(--hse-color-divider); background: var(--hse-night-frame); display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 0 clamp(18px, 4vw, 48px); }
 .qualification-brand { display: inline-flex; align-items: center; gap: 5px; color: var(--hse-color-ink); text-decoration: none; font-size: var(--hse-text-lg); font-weight: var(--hse-weight-semibold); white-space: nowrap; }
 .qualification-brand svg { color: var(--hse-color-brand); margin-right: 6px; }
 .qualification-brand strong { color: var(--hse-color-brand); }
@@ -11,14 +49,14 @@
 .qualification-heading p { color: var(--hse-color-muted); max-width: 730px; margin-top: 7px; }
 .qualification-heading-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
 .qualification-heading-actions > label { color: var(--hse-color-muted); font-weight: 600; margin-right: 3px; }
-.qualification-shell select, .qualification-shell input, .qualification-shell textarea { border: 1px solid var(--hse-color-control-border); border-radius: var(--hse-radius-control); background: var(--hse-color-surface); color: var(--hse-color-ink); min-height: var(--hse-control-default); padding: 8px 12px; font: inherit; }
+.qualification-shell select, .qualification-shell input, .qualification-shell textarea { border: 1px solid var(--hse-color-control-border); border-radius: var(--hse-radius-control); background: var(--hse-night-field); color: var(--hse-color-ink); min-height: var(--hse-control-default); padding: 8px 12px; font: inherit; }
 .qualification-shell textarea { min-height: 72px; resize: vertical; }
 .qualification-shell button { border: 0; background: none; color: var(--hse-color-brand); font-weight: 600; }
 .qualification-shell button:hover:not(:disabled), .qualification-shell a:hover { text-decoration: underline; }
 .qualification-shell button:disabled { opacity: .55; }
 .qualification-icon-button { width: var(--hse-control-default); height: var(--hse-control-default); display: grid; place-items: center; border: 1px solid var(--hse-color-border) !important; border-radius: var(--hse-radius-control); background: var(--hse-color-surface) !important; }
-.qualification-export { min-height: var(--hse-control-default); display: inline-flex; align-items: center; gap: 8px; color: var(--hse-color-surface); background: var(--hse-color-brand); padding: 8px 16px; border-radius: var(--hse-radius-control); font-weight: var(--hse-weight-semibold); text-decoration: none; }
-.qualification-export:hover { color: var(--hse-color-surface); }
+.qualification-export { min-height: var(--hse-control-default); display: inline-flex; align-items: center; gap: 8px; color: #fff; background: var(--hse-night-accent); padding: 8px 16px; border: 1px solid var(--hse-night-accent); border-radius: var(--hse-radius-control); font-weight: var(--hse-weight-semibold); text-decoration: none; }
+.qualification-export:hover { color: #fff; background: var(--hse-night-accent-hover); border-color: var(--hse-night-accent-hover); }
 .qualification-asof { display: block; color: var(--hse-color-muted); font-size: 13px; margin: 13px 0 25px; }
 .qualification-alert, .qualification-success { padding: 10px 13px; border-radius: 6px; margin: 12px 0; }
 .qualification-alert { border: 1px solid var(--hse-color-danger); color: var(--hse-color-danger); background: var(--hse-color-danger-bg); }
@@ -31,13 +69,14 @@
 .qualification-section-heading h2, .qualification-panel-heading h2 { font-size: var(--hse-text-lg); line-height: var(--hse-leading-lg); }
 .qualification-section-heading > span, .qualification-panel-heading > span { color: var(--hse-color-muted); font-size: 13px; }
 .qualification-metrics { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 9px; }
-.qualification-metric { text-align: left; min-height: 112px; padding: 14px !important; border: 1px solid var(--hse-color-border) !important; background: var(--hse-color-surface) !important; border-radius: var(--hse-radius-card); display: flex; flex-direction: column; align-items: flex-start; }
-.qualification-metric.selected { border-color: var(--hse-color-brand) !important; box-shadow: inset 0 0 0 1px var(--hse-color-brand); }
+.qualification-metric { text-align: left; min-height: 112px; padding: 14px !important; border: 1px solid var(--hse-color-border) !important; background: var(--hse-color-surface) !important; border-radius: var(--hse-radius-card); display: flex; flex-direction: column; align-items: flex-start; box-shadow: var(--hse-night-sheen); }
+.qualification-metric:hover { border-color: var(--hse-night-accent-line) !important; background: var(--hse-night-raised-hover) !important; text-decoration: none !important; }
+.qualification-metric.selected { border-color: var(--hse-night-accent-line) !important; box-shadow: inset 0 0 0 1px var(--hse-night-accent-line); }
 .qualification-metric > span { color: var(--hse-color-muted); line-height: 1.2; }
 .qualification-metric strong { color: var(--hse-color-ink); font-size: 26px; margin-top: 4px; line-height: 1.1; }
 .qualification-metric small { display: flex; align-items: center; gap: 4px; margin-top: auto; color: var(--hse-color-brand); }
 .qualification-columns { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(280px, .75fr); gap: 14px; margin-top: 20px; align-items: start; }
-.qualification-panel { background: var(--hse-color-surface); border: 1px solid var(--hse-color-border); border-radius: var(--hse-radius-card); padding: 18px; min-width: 0; }
+.qualification-panel { background: var(--hse-color-surface); border: 1px solid var(--hse-color-border); border-radius: var(--hse-radius-card); padding: 18px; min-width: 0; box-shadow: var(--hse-night-sheen); }
 .qualification-panel-heading > div { display: flex; align-items: center; gap: 9px; }
 .qualification-icon { width: 29px; height: 29px; color: var(--hse-color-brand); background: var(--hse-color-brand-subtle); display: inline-grid; place-items: center; border-radius: 6px; }
 .qualification-panel-subtitle { color: var(--hse-color-muted); font-size: 13px; margin: 6px 0 15px; }
@@ -48,7 +87,7 @@
 .qualification-shell td strong { font-weight: 600; }
 .qualification-shell td small { display: block; color: var(--hse-color-muted); margin-top: 2px; }
 .qualification-table-empty { padding: 20px 6px; color: var(--hse-color-muted); }
-.qualification-search { display: flex; align-items: center; gap: 7px; min-height: var(--hse-control-default); border: 1px solid var(--hse-color-control-border); border-radius: var(--hse-radius-control); padding: 0 10px; margin: 15px 0 8px; }
+.qualification-search { display: flex; align-items: center; gap: 7px; min-height: var(--hse-control-default); border: 1px solid var(--hse-color-control-border); border-radius: var(--hse-radius-control); background: var(--hse-night-field); padding: 0 10px; margin: 15px 0 8px; }
 .qualification-search input { border: 0; outline-offset: 0; width: 100%; }
 .qualification-roster { max-height: 400px; overflow-y: auto; }
 .qualification-roster button { width: 100%; min-height: var(--hse-control-default); display: flex; justify-content: space-between; text-align: left; align-items: center; gap: 8px; padding: 9px 7px; border-bottom: 1px solid var(--hse-color-divider); }
@@ -68,7 +107,7 @@
 .qualification-rule-list small { display: block; color: var(--hse-color-muted); }
 .qualification-course-tabs { display: flex; flex-wrap: wrap; gap: 7px; margin: 15px 0; border: 0; padding: 0; min-width: 0; }
 .qualification-course-tabs button { min-height: var(--hse-control-compact); border: 1px solid var(--hse-color-border); border-radius: var(--hse-radius-control); padding: 6px 12px; }
-.qualification-course-tabs button.selected { color: var(--hse-color-surface); background: var(--hse-color-brand); border-color: var(--hse-color-brand); }
+.qualification-course-tabs button.selected { color: #fff; background: var(--hse-night-accent); border-color: var(--hse-night-accent); }
 .qualification-readiness { border: 1px solid var(--hse-color-border); border-radius: var(--hse-radius-control); padding: 14px; }
 .qualification-readiness-heading { display: flex; align-items: center; flex-wrap: wrap; gap: var(--hse-space-2); }
 .qualification-readiness h3 { font-size: 16px; }
@@ -84,12 +123,13 @@
 .qualification-evidence-form label, .qualification-modal form > label { display: flex; flex-direction: column; gap: 5px; font-weight: 600; color: var(--hse-color-ink); }
 .qualification-evidence-form label > input, .qualification-evidence-form label > select, .qualification-evidence-form label > textarea { width: 100%; font-weight: 400; }
 .qualification-evidence-form > label { margin-top: 11px; }
-.qualification-evidence-form > button, .qualification-modal-actions button[type='submit'] { min-height: var(--hse-control-default); color: var(--hse-color-surface); background: var(--hse-color-brand); border-radius: var(--hse-radius-control); padding: 8px 16px; margin-top: 12px; }
+.qualification-evidence-form > button, .qualification-modal-actions button[type='submit'] { min-height: var(--hse-control-default); color: #fff; background: var(--hse-night-accent); border: 1px solid var(--hse-night-accent); border-radius: var(--hse-radius-control); padding: 8px 16px; margin-top: 12px; }
+.qualification-evidence-form > button:hover:not(:disabled), .qualification-modal-actions button[type='submit']:hover:not(:disabled) { color: #fff; background: var(--hse-night-accent-hover); border-color: var(--hse-night-accent-hover); text-decoration: none; }
 .qualification-form-warning { color: var(--hse-color-warning) !important; }
 .qualification-history { margin-top: 20px; }
 .qualification-history h3 { margin-bottom: 10px; }
 .qualification-modal::backdrop { background: rgb(13 15 18 / .60); }
-.qualification-modal { position: fixed; margin: auto; border: 0; width: min(540px, calc(100% - 32px)); max-height: calc(100vh - 32px); overflow-y: auto; background: var(--hse-color-surface); border-radius: var(--hse-radius-card); padding: var(--hse-space-6); box-shadow: var(--hse-shadow-overlay); }
+.qualification-modal { position: fixed; margin: auto; border: 1px solid var(--hse-color-border); width: min(540px, calc(100% - 32px)); max-height: calc(100dvh - 32px); overflow-y: auto; background: var(--hse-color-surface); color: var(--hse-color-ink); border-radius: var(--hse-radius-card); padding: var(--hse-space-6); box-shadow: 0 20px 60px rgb(0 0 0 / .55); color-scheme: dark; }
 .qualification-modal > p { color: var(--hse-color-muted); margin: 8px 0 18px; }
 .qualification-modal form { display: grid; gap: 13px; }
 .qualification-modal form > label > select, .qualification-modal form > label > textarea { width: 100%; }

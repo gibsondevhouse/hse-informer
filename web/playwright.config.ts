@@ -1,7 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
 const baseURL = 'http://127.0.0.1:5188';
-const reactPreviewURL = 'http://127.0.0.1:5189';
+const reactPreviewURL = process.env.REACT_PREVIEW_URL || 'http://127.0.0.1:5189';
 
 export default defineConfig({
   testDir: './e2e',
@@ -19,11 +19,11 @@ export default defineConfig({
       timeout: 60_000,
       env: { DEV_AUTH: 'synthetic', APP_ORIGIN: baseURL }
     },
-    {
+    ...(!process.env.REACT_PREVIEW_URL ? [{
       command: 'npm run dev --prefix ../admin-app -- --host 127.0.0.1 --port 5189 --strictPort',
       url: reactPreviewURL,
       reuseExistingServer: false,
       timeout: 60_000
-    }
+    }] : [])
   ]
 });

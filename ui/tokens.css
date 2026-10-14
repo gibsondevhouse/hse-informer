@@ -74,4 +74,32 @@
   --hse-z-popover: 40;
   --hse-z-modal: 60;
   --hse-z-toast: 80;
+
+  /* PBJ-101 player and React admin workspace share this dark visual system.
+     The light tokens above remain the SvelteKit workspace defaults. */
+  --hse-night-frame: #0b0b0e;
+  --hse-night-panel: #111114;
+  --hse-night-raised: #17171b;
+  --hse-night-raised-hover: #1d1d22;
+  --hse-night-field: rgba(255, 255, 255, .035);
+  --hse-night-wash: rgba(255, 255, 255, .04);
+  --hse-night-wash-strong: rgba(255, 255, 255, .07);
+  --hse-night-line: rgba(255, 255, 255, .07);
+  --hse-night-line-strong: rgba(255, 255, 255, .12);
+  --hse-night-sheen: inset 0 1px 0 rgba(255, 255, 255, .05);
+  --hse-night-text: #ecedf0;
+  --hse-night-text-2: #c5c8d0;
+  --hse-night-muted: #8e929d;
+  --hse-night-faint: #6b6f7a;
+  --hse-night-accent: #4f59c0;
+  --hse-night-accent-hover: #535dc6;
+  --hse-night-accent-press: #4b54ba;
+  --hse-night-accent-ink: #9aa3ff;
+  --hse-night-accent-line: #6f7ae8;
+  --hse-night-accent-tint: rgba(111, 122, 232, .09);
+  --hse-night-accent-edge: rgba(111, 122, 232, .3);
+  --hse-night-success: #55c99a;
+  --hse-night-warning: #e2a840;
+  --hse-night-danger: #f26d78;
+  --hse-night-font-sans: 'Inter Variable', Inter, 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif;
 }

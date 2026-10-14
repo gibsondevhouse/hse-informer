@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import Link from 'next/link';
 import './training-summary.css';
+import './training-theme.css';
 import { CompletionBreakdown } from '@/components/completion-breakdown';
 import { assignmentStatusLabel } from '@/components/hse-status-badge';
 import {
@@ -576,7 +577,7 @@ export default function TrainingWorkspace() {
   );
 
   return (
-    <SidebarProvider style={{ '--sidebar-width': '208px' } as CSSProperties}>
+    <SidebarProvider className="admin-preview" style={{ '--sidebar-width': '208px' } as CSSProperties}>
       <a className="skip-link" href="#main">
         Skip to content
       </a>

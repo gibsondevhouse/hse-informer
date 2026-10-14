@@ -181,6 +181,16 @@ jobs:
       - name: Install React preview for shared browser checks
         run: npm ci --prefix ../admin-app
       - run: npx playwright install --with-deps chromium
+      - name: Generate reviewed Linux PBJ admin snapshots
+        run: npx playwright test e2e/ui-standard.spec.ts --update-snapshots
+        env:
+          DEV_AUTH: synthetic
+      - name: Upload Linux PBJ admin snapshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-pbj-admin-snapshots
+          path: web/e2e/ui-standard.spec.ts-snapshots/*-chromium-linux.png
+          retention-days: 7
       - run: npm run test:e2e
         env:
           DEV_AUTH: synthetic

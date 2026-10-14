@@ -1,7 +1,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 
-const reactPreview = 'http://127.0.0.1:5189';
+const reactPreview = process.env.REACT_PREVIEW_URL || 'http://127.0.0.1:5189';
 const viewports = [
   { name: 'desktop', width: 1440, height: 900 },
   { name: 'tablet', width: 768, height: 1024 },
@@ -36,12 +36,11 @@ async function expectNoPageOverflow(page: Page) {
   expect(dimensions.content).toBeLessThanOrEqual(dimensions.viewport + 1);
 }
 
-test('both admin apps load the same HSE visual foundations', async ({ page }) => {
+test('workspaces load HSE tokens and the React admin uses the PBJ visual language', async ({ page }) => {
   const tokenNames = [
-    '--hse-color-brand', '--hse-color-ink', '--hse-color-muted',
-    '--hse-color-canvas', '--hse-color-surface', '--hse-color-border',
-    '--hse-color-success', '--hse-color-warning', '--hse-color-danger',
-    '--hse-font-sans', '--hse-control-compact', '--hse-control-default', '--hse-control-touch'
+    '--hse-night-frame', '--hse-night-panel', '--hse-night-accent',
+    '--hse-night-text', '--hse-night-font-sans', '--hse-control-compact',
+    '--hse-control-default', '--hse-control-touch'
   ];
   const read = async () => page.evaluate((names) => {
     const root = getComputedStyle(document.documentElement);
@@ -53,13 +52,37 @@ test('both admin apps load the same HSE visual foundations', async ({ page }) =>
   await page.goto(reactPreview);
   await expect(page.getByRole('heading', { level: 1, name: 'Training programs' })).toBeVisible();
   const react = await read();
+  const adminVisual = await page.locator('.admin-preview').evaluate((element) => ({
+    background: getComputedStyle(element).backgroundColor,
+    font: getComputedStyle(element).fontFamily
+  }));
+  await page.goto(`${reactPreview}/training/pb-and-j`);
+  const courseVisual = await page.locator('.lms-player').evaluate((element) => ({
+    background: getComputedStyle(element).backgroundColor,
+    font: getComputedStyle(element).fontFamily
+  }));
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Overview' })).toBeVisible();
   const svelte = await read();
   expect(react.values).toEqual(svelte.values);
-  expect(react.values[0]).toBe('#0056d2');
-  expect(react.bodyFont).toContain('Source Sans 3');
+  expect(react.values[0]).toBe('#0b0b0e');
+  expect(adminVisual.background).toBe(courseVisual.background);
+  expect(adminVisual.font).toContain('Inter Variable');
+  expect(courseVisual.font).toContain('Inter Variable');
   expect(svelte.bodyFont).toContain('Source Sans 3');
+});
+
+test('PBJ course remains the React admin visual reference at desktop and phone widths', async ({ page }) => {
+  for (const viewport of [viewports[0], viewports[2]]) {
+    await page.setViewportSize(viewport);
+    await page.goto(`${reactPreview}/training/pb-and-j`);
+    await expect(page.getByRole('heading', { level: 1, name: 'Peanut Butter and Jelly Sandwich Preparation' })).toBeVisible();
+    await ready(page);
+    await expectNoPageOverflow(page);
+    await expect(page).toHaveScreenshot(`react-pbj-${viewport.name}.png`, {
+      animations: 'disabled', caret: 'hide', maxDiffPixelRatio: 0.005
+    });
+  }
 });
 
 for (const viewport of viewports) {

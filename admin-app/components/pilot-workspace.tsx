@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type SyntheticEvent 
 import Link from 'next/link';
 import {
   AlertCircle, ArrowRight, BookOpen, Building2, CalendarDays, CheckCircle2,
-  ClipboardCheck, ClipboardList, Clock3, FileClock, Plus, RefreshCw,
+  ClipboardCheck, ClipboardList, Clock3, ExternalLink, FileClock, Plus, RefreshCw,
   Menu, Search, ShieldCheck, Users, X,
 } from 'lucide-react';
 import { queueRows, type QualificationSnapshot } from '@/lib/qualification';
@@ -385,7 +385,19 @@ export default function PilotWorkspace() {
           {visibleSites.length === 0 && <section className="pilot-panel pilot-state"><h2>No sites in scope</h2><p>Ask an organization administrator to provision a site or grant access.</p></section>}
         </div>}
         {snapshot && view === 'courses' && <section className="pilot-panel"><div className="pilot-panel-heading"><div><h2>Released course versions <span>{snapshot.releases.length}</span></h2><p>Assignments require approval, delivery readiness, and a course package in this build.</p></div></div>
-          <div className="pilot-practice-note"><BookOpen size={19} /><span><strong>Practice package available: {pbjCourse.title}</strong><small>PBJ-101 is a fictional sandbox for validating delivery and completion. It is not HSE training or workplace authorization.</small></span>{canAddSite && <button type="button" onClick={() => setReleaseAction({ action: 'approve', courseId: pbjCourse.id, version: pbjCourse.version, title: pbjCourse.title })} disabled={snapshot.releases.some((item) => item.course_id === pbjCourse.id && item.version === pbjCourse.version && item.deliverable === 1)}>Approve practice</button>}</div>
+          <div className="pilot-practice-note">
+            <BookOpen size={19} aria-hidden="true" />
+            <span>
+              <strong>Practice package available: {pbjCourse.title}</strong>
+              <small>PBJ-101 is a fictional sandbox for validating delivery and completion. It is not HSE training or workplace authorization.</small>
+            </span>
+            <div className="pilot-practice-actions">
+              <Link href="/training/pb-and-j" target="_blank" rel="noopener noreferrer" aria-label="Preview PB&J practice course (opens in a new tab)">
+                Preview practice <ExternalLink size={15} aria-hidden="true" />
+              </Link>
+              {canAddSite && <button type="button" onClick={() => setReleaseAction({ action: 'approve', courseId: pbjCourse.id, version: pbjCourse.version, title: pbjCourse.title })} disabled={snapshot.releases.some((item) => item.course_id === pbjCourse.id && item.version === pbjCourse.version && item.deliverable === 1)}>Approve practice</button>}
+            </div>
+          </div>
           <div className="pilot-table-scroll"><table><thead><tr><th scope="col">Course</th><th scope="col">Version</th><th scope="col">Approval</th><th scope="col">Delivery</th><th scope="col">Action</th></tr></thead><tbody>{snapshot.releases.map((release) => <tr key={`${release.course_id}@${release.version}`}><td><strong>{release.title}</strong><small>{release.course_id === pbjCourse.id ? 'Practice only · not HSE training' : release.course_id}</small></td><td>{release.version}</td><td>{formatDate(release.approved_at)}</td><td><StatusBadge tone={release.deliverable ? 'success' : 'warning'}>{release.deliverable ? 'Deliverable' : 'Not ready'}</StatusBadge></td><td>{canAddSite ? release.deliverable ? <button type="button" className="pilot-text-action" onClick={() => setReleaseAction({ action: 'revoke', courseId: release.course_id, version: release.version, title: release.title })}>Revoke release</button> : <button type="button" className="pilot-text-action" onClick={() => setReleaseAction({ action: 'approve', courseId: release.course_id, version: release.version, title: release.title })}>Approve release</button> : '—'}</td></tr>)}</tbody></table>{snapshot.releases.length === 0 && <p className="pilot-empty">No approved releases yet. An organization administrator can approve the packaged practice course for workflow validation.</p>}</div>
         </section>}
         {snapshot && view === 'audit' && <section className="pilot-panel"><div className="pilot-panel-heading"><div><h2>Audit events <span>{audit.length}</span></h2><p>{scope === 'all' ? 'All permitted sites' : siteById.get(scope)?.name} · Latest 500 events</p></div></div>
