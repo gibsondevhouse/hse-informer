@@ -5,10 +5,11 @@ import Link from 'next/link';
 import {
   AlertCircle, ArrowRight, BookOpen, Building2, CalendarDays, CheckCircle2,
   ClipboardCheck, ClipboardList, Clock3, FileClock, Plus, RefreshCw,
-  Search, ShieldCheck, Users, X,
+  Menu, Search, ShieldCheck, Users, X,
 } from 'lucide-react';
 import { queueRows, type QualificationSnapshot } from '@/lib/qualification';
 import { pbjCourse } from '@/lib/lms/pbj-course';
+import { StatusBadge, assignmentStatusLabel, assignmentStatusTone, type StatusTone } from './hse-status-badge';
 import './pilot-workspace.css';
 
 type Role = 'admin' | 'site_manager' | 'evaluator' | 'auditor';
@@ -64,6 +65,14 @@ function dueSoonEnd(today: string) {
 function isOpen(assignment: Assignment) {
   return assignment.status === 'Not started' || assignment.status === 'In progress';
 }
+function deliveryState(state: Assignment['delivery_state']): { label: string; tone: StatusTone } {
+  switch (state) {
+    case 'sent': return { label: 'Sent', tone: 'success' };
+    case 'failed': return { label: 'Failed', tone: 'danger' };
+    case 'configuration_required': return { label: 'Provider setup needed', tone: 'warning' };
+    default: return { label: 'Pending', tone: 'neutral' };
+  }
+}
 function errorMessage(body: unknown, fallback: string) {
   return body && typeof body === 'object' && 'error' in body && typeof body.error === 'string'
     ? body.error : fallback;
@@ -115,6 +124,41 @@ export default function PilotWorkspace() {
   const [audit, setAudit] = useState<Audit[]>([]);
   const [auditLoading, setAuditLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const navigationRef = useRef<HTMLElement>(null);
+
+  function closeMobileNav() {
+    setMobileNav(false);
+    window.requestAnimationFrame(() => menuButtonRef.current?.focus());
+  }
+
+  useEffect(() => {
+    if (!mobileNav) return;
+    const navigation = navigationRef.current;
+    navigation?.querySelector<HTMLButtonElement>('nav button')?.focus();
+    const onKeydown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setMobileNav(false);
+        window.requestAnimationFrame(() => menuButtonRef.current?.focus());
+        return;
+      }
+      if (event.key !== 'Tab' || !navigation) return;
+      const items = [...navigation.querySelectorAll<HTMLElement>('button:not([disabled]), a[href]')]
+        .filter((item) => item.getClientRects().length > 0);
+      if (!items.length) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (event.shiftKey && (document.activeElement === first || !navigation.contains(document.activeElement))) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && (document.activeElement === last || !navigation.contains(document.activeElement))) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    window.addEventListener('keydown', onKeydown);
+    return () => window.removeEventListener('keydown', onKeydown);
+  }, [mobileNav]);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -219,7 +263,8 @@ export default function PilotWorkspace() {
   } : null;
 
   function navigate(next: View, nextWorklist: Worklist = 'all') {
-    setView(next); setWorklist(nextWorklist); setSearch(''); setMobileNav(false);
+    setView(next); setWorklist(nextWorklist); setSearch('');
+    if (mobileNav) closeMobileNav();
     if (next === 'courses') setSite('all');
   }
   async function mutate<T>(url: string, method: 'POST' | 'PATCH', body: unknown, success: (result: T) => string) {
@@ -245,9 +290,11 @@ export default function PilotWorkspace() {
   }
 
   return <div className="pilot-shell">
-    <a className="pilot-skip" href="#pilot-main">Skip to content</a>
-    <aside className={`pilot-sidebar ${mobileNav ? 'open' : ''}`} aria-label="Admin navigation">
+    <a className="pilot-skip" href="#pilot-main" inert={mobileNav}>Skip to content</a>
+    <aside ref={navigationRef} id="pilot-navigation" className={`pilot-sidebar ${mobileNav ? 'open' : ''}`}
+      role={mobileNav ? 'dialog' : undefined} aria-modal={mobileNav || undefined} aria-label="Admin navigation" tabIndex={-1}>
       <div className="pilot-brand"><span><ShieldCheck size={23} /></span><strong>HSE Informer<small>PILOT ADMIN</small></strong></div>
+      {mobileNav && <button type="button" className="pilot-nav-close" onClick={closeMobileNav} aria-label="Close navigation"><X size={18} /> Close</button>}
       <nav aria-label="Workspace">
         {([
           ['overview', ClipboardCheck], ['assignments', ClipboardList], ['people', Users],
@@ -261,9 +308,9 @@ export default function PilotWorkspace() {
       </nav>
       <div className="pilot-sidebar-foot"><span className="pilot-live-dot" /> Shared records<br /><small>{snapshot?.actor.email ?? 'Account required'}</small></div>
     </aside>
-    <div className="pilot-body">
+    <div className="pilot-body" inert={mobileNav}>
       <header className="pilot-topbar">
-        <button type="button" className="pilot-menu" onClick={() => setMobileNav(!mobileNav)} aria-label={mobileNav ? 'Close navigation' : 'Open navigation'}>{mobileNav ? <X size={20} /> : <span>☰</span>}</button>
+        <button ref={menuButtonRef} type="button" className="pilot-menu" onClick={() => setMobileNav(!mobileNav)} aria-controls="pilot-navigation" aria-expanded={mobileNav} aria-label={mobileNav ? 'Close navigation' : 'Open navigation'}>{mobileNav ? <X size={20} /> : <Menu size={20} />}</button>
         <span>Administration <span aria-hidden="true">/</span> <strong>{viewLabels[view]}</strong></span>
         <div className="pilot-top-actions">
           {view === 'courses' ? <span>Shared release catalog</span> : <><label htmlFor="pilot-scope">Site scope</label>
@@ -325,7 +372,7 @@ export default function PilotWorkspace() {
         {snapshot && view === 'people' && <section className="pilot-panel"><div className="pilot-panel-heading"><div><h2>Worker roster <span>{matchingWorkers.length}</span></h2><p>Only workers at your permitted sites appear here.</p></div></div>
           <div className="pilot-toolbar"><label><Search size={17} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search name, email, or role" aria-label="Search workers" /></label>{(search || scope !== 'all') && <button type="button" onClick={() => { setSearch(''); setSite('all'); }}>Clear filters</button>}</div>
           <div className="pilot-table-scroll"><table><thead><tr><th scope="col">Worker</th><th scope="col">Site / role</th><th scope="col">Assignments</th><th scope="col">State</th><th scope="col">Action</th></tr></thead><tbody>
-            {matchingWorkers.map((worker) => <tr key={worker.id}><td><strong>{worker.name}</strong><small>{worker.email}</small></td><td>{siteById.get(worker.site_id)?.name}<small>{worker.group_name}</small></td><td>{scopedAssignments.filter((item) => item.worker_id === worker.id).length}</td><td>{worker.active ? 'Active' : 'Inactive'}</td><td><button type="button" className="pilot-text-action" onClick={() => setWorkerId(worker.id)}>View history <ArrowRight size={14} /></button></td></tr>)}
+            {matchingWorkers.map((worker) => <tr key={worker.id}><td><strong>{worker.name}</strong><small>{worker.email}</small></td><td>{siteById.get(worker.site_id)?.name}<small>{worker.group_name}</small></td><td>{scopedAssignments.filter((item) => item.worker_id === worker.id).length}</td><td><StatusBadge tone={worker.active ? 'success' : 'neutral'}>{worker.active ? 'Active' : 'Inactive'}</StatusBadge></td><td><button type="button" className="pilot-text-action" onClick={() => setWorkerId(worker.id)}>View history <ArrowRight size={14} /></button></td></tr>)}
           </tbody></table>{matchingWorkers.length === 0 && <p className="pilot-empty">No workers match. Clear filters or add a worker.</p>}</div>
         </section>}
         {snapshot && view === 'sites' && <div className="pilot-sites">
@@ -339,7 +386,7 @@ export default function PilotWorkspace() {
         </div>}
         {snapshot && view === 'courses' && <section className="pilot-panel"><div className="pilot-panel-heading"><div><h2>Released course versions <span>{snapshot.releases.length}</span></h2><p>Assignments require approval, delivery readiness, and a course package in this build.</p></div></div>
           <div className="pilot-practice-note"><BookOpen size={19} /><span><strong>Practice package available: {pbjCourse.title}</strong><small>PBJ-101 is a fictional sandbox for validating delivery and completion. It is not HSE training or workplace authorization.</small></span>{canAddSite && <button type="button" onClick={() => setReleaseAction({ action: 'approve', courseId: pbjCourse.id, version: pbjCourse.version, title: pbjCourse.title })} disabled={snapshot.releases.some((item) => item.course_id === pbjCourse.id && item.version === pbjCourse.version && item.deliverable === 1)}>Approve practice</button>}</div>
-          <div className="pilot-table-scroll"><table><thead><tr><th scope="col">Course</th><th scope="col">Version</th><th scope="col">Approval</th><th scope="col">Delivery</th><th scope="col">Action</th></tr></thead><tbody>{snapshot.releases.map((release) => <tr key={`${release.course_id}@${release.version}`}><td><strong>{release.title}</strong><small>{release.course_id === pbjCourse.id ? 'Practice only · not HSE training' : release.course_id}</small></td><td>{release.version}</td><td>{formatDate(release.approved_at)}</td><td>{release.deliverable ? 'Deliverable' : 'Not ready'}</td><td>{canAddSite ? release.deliverable ? <button type="button" className="pilot-text-action" onClick={() => setReleaseAction({ action: 'revoke', courseId: release.course_id, version: release.version, title: release.title })}>Revoke release</button> : <button type="button" className="pilot-text-action" onClick={() => setReleaseAction({ action: 'approve', courseId: release.course_id, version: release.version, title: release.title })}>Approve release</button> : '—'}</td></tr>)}</tbody></table>{snapshot.releases.length === 0 && <p className="pilot-empty">No approved releases yet. An organization administrator can approve the packaged practice course for workflow validation.</p>}</div>
+          <div className="pilot-table-scroll"><table><thead><tr><th scope="col">Course</th><th scope="col">Version</th><th scope="col">Approval</th><th scope="col">Delivery</th><th scope="col">Action</th></tr></thead><tbody>{snapshot.releases.map((release) => <tr key={`${release.course_id}@${release.version}`}><td><strong>{release.title}</strong><small>{release.course_id === pbjCourse.id ? 'Practice only · not HSE training' : release.course_id}</small></td><td>{release.version}</td><td>{formatDate(release.approved_at)}</td><td><StatusBadge tone={release.deliverable ? 'success' : 'warning'}>{release.deliverable ? 'Deliverable' : 'Not ready'}</StatusBadge></td><td>{canAddSite ? release.deliverable ? <button type="button" className="pilot-text-action" onClick={() => setReleaseAction({ action: 'revoke', courseId: release.course_id, version: release.version, title: release.title })}>Revoke release</button> : <button type="button" className="pilot-text-action" onClick={() => setReleaseAction({ action: 'approve', courseId: release.course_id, version: release.version, title: release.title })}>Approve release</button> : '—'}</td></tr>)}</tbody></table>{snapshot.releases.length === 0 && <p className="pilot-empty">No approved releases yet. An organization administrator can approve the packaged practice course for workflow validation.</p>}</div>
         </section>}
         {snapshot && view === 'audit' && <section className="pilot-panel"><div className="pilot-panel-heading"><div><h2>Audit events <span>{audit.length}</span></h2><p>{scope === 'all' ? 'All permitted sites' : siteById.get(scope)?.name} · Latest 500 events</p></div></div>
           {auditLoading ? <p className="pilot-empty">Loading audit history…</p> : <div className="pilot-table-scroll"><table><thead><tr><th scope="col">When</th><th scope="col">Actor</th><th scope="col">Record / action</th><th scope="col">Reason</th><th scope="col">Changes</th></tr></thead><tbody>{audit.map((event) => <tr key={event.id}><td>{formatDate(event.created_at, true)}</td><td>{event.actor_email}</td><td>{event.entity_type} · {event.action}<small>{event.entity_id}</small></td><td>{event.reason ?? 'System event'}</td><td><AuditChange event={event} /></td></tr>)}</tbody></table>{audit.length === 0 && <p className="pilot-empty">No audit events in this scope.</p>}</div>}
@@ -371,8 +418,8 @@ export default function PilotWorkspace() {
       {!assignmentDetail || assignmentDetail.assignment.id !== assignmentId ? <p>Loading assignment…</p> : <>
         <p className="pilot-detail-subtitle">{workerById.get(assignmentDetail.assignment.worker_id)?.name} · {courseTitle(assignmentDetail.assignment.course_id, assignmentDetail.assignment.course_version)}</p>
         <dl className="pilot-detail-grid">
-          <div><dt>Course version</dt><dd>{assignmentDetail.assignment.course_version}</dd></div><div><dt>Status</dt><dd>{assignmentDetail.assignment.status}</dd></div>
-          <div><dt>Due</dt><dd>{formatDate(assignmentDetail.assignment.due_date)}</dd></div><div><dt>Delivery</dt><dd>{assignmentDetail.assignment.delivery_state.replaceAll('_', ' ')}</dd></div>
+          <div><dt>Course version</dt><dd>{assignmentDetail.assignment.course_version}</dd></div><div><dt>Knowledge status</dt><dd><StatusBadge tone={assignmentStatusTone(assignmentDetail.assignment.status)}>{assignmentStatusLabel(assignmentDetail.assignment.status)}</StatusBadge></dd></div>
+          <div><dt>Due</dt><dd>{formatDate(assignmentDetail.assignment.due_date)}</dd></div><div><dt>Delivery</dt><dd><StatusBadge tone={deliveryState(assignmentDetail.assignment.delivery_state).tone}>{deliveryState(assignmentDetail.assignment.delivery_state).label}</StatusBadge></dd></div>
           <div><dt>Assigned</dt><dd>{formatDate(assignmentDetail.assignment.assigned_at, true)}</dd></div><div><dt>Completed</dt><dd>{formatDate(assignmentDetail.assignment.completed_at, true)}</dd></div>
           <div><dt>Reason</dt><dd>{assignmentDetail.assignment.reason}</dd></div><div><dt>Cadence</dt><dd>{assignmentDetail.assignment.cadence}{assignmentDetail.assignment.recurrence_months ? ` · every ${assignmentDetail.assignment.recurrence_months} months` : ''}</dd></div>
         </dl>
@@ -390,7 +437,7 @@ export default function PilotWorkspace() {
     {snapshot && workerId && <DetailDialog title="Worker history" onClose={() => { setWorkerId(null); setWorkerDetail(null); }}>
       {!workerDetail || workerDetail.worker.id !== workerId ? <p>Loading worker history…</p> : <><p className="pilot-detail-subtitle">{workerDetail.worker.name} · {workerDetail.worker.email}</p><p>{siteById.get(workerDetail.worker.site_id)?.name} · {workerDetail.worker.group_name} · {workerDetail.worker.active ? 'Active' : 'Inactive'}</p>
         {canManage && <div className="pilot-detail-actions"><button type="button" onClick={() => { setWorkerDraft(workerDetail.worker); setWorkerId(null); setShowWorker(true); }}>Edit worker</button><Link href={`/qualifications?worker=${encodeURIComponent(workerDetail.worker.id)}`}>Qualification evidence <ArrowRight size={14} /></Link></div>}
-        <h3>Assignments</h3><div className="pilot-history">{workerDetail.assignments.map((item) => <button type="button" key={item.id} onClick={() => { setWorkerId(null); setAssignmentId(item.id); }}><strong>{courseTitle(item.course_id, item.course_version)} · {item.course_version}</strong><span>{formatDate(item.assigned_at, true)} · {item.status}</span><p>{item.reason}</p></button>)}{workerDetail.assignments.length === 0 && <p>No assignment records.</p>}</div>
+        <h3>Assignments</h3><div className="pilot-history">{workerDetail.assignments.map((item) => <button type="button" key={item.id} onClick={() => { setWorkerId(null); setAssignmentId(item.id); }}><strong>{courseTitle(item.course_id, item.course_version)} · {item.course_version}</strong><span>{formatDate(item.assigned_at, true)} · {assignmentStatusLabel(item.status)}</span><p>{item.reason}</p></button>)}{workerDetail.assignments.length === 0 && <p>No assignment records.</p>}</div>
         <h3>Worker changes</h3><div className="pilot-history">{workerDetail.audit.map((item) => <div key={item.id}><strong>{item.action}</strong><span>{formatDate(item.created_at, true)} · {item.actor_email}</span><p>{item.reason ?? 'Record created'}</p></div>)}{workerDetail.audit.length === 0 && <p>No worker changes.</p>}</div>
       </>}
     </DetailDialog>}
@@ -402,7 +449,7 @@ function AssignmentTable({ rows, workerById, siteById, courseTitle, today, onOpe
   courseTitle: (id: string, version: string) => string; today: string; onOpen: (id: string) => void;
 }) {
   return <><p className="pilot-scroll-hint">Swipe the table for progress, delivery, due date, and actions.</p><div className="pilot-table-scroll"><table><thead><tr><th scope="col">Worker / site</th><th scope="col">Course / reason</th><th scope="col">Progress</th><th scope="col">Delivery</th><th scope="col">Due</th><th scope="col">Action</th></tr></thead><tbody>
-    {rows.map((item) => <tr key={item.id}><td><strong>{workerById.get(item.worker_id)?.name ?? 'Unknown worker'}</strong><small>{siteById.get(item.site_id)?.name ?? item.site_id}</small></td><td><strong>{courseTitle(item.course_id, item.course_version)}</strong><small>v{item.course_version} · {item.reason}</small></td><td><span className={`pilot-pill ${isOpen(item) && item.due_date < today ? 'warning' : ''}`}>{isOpen(item) && item.due_date < today ? 'Overdue' : item.status}</span></td><td>{item.delivery_state.replaceAll('_', ' ')}</td><td>{formatDate(item.due_date)}</td><td><button type="button" className="pilot-text-action" onClick={() => onOpen(item.id)}>View record <ArrowRight size={14} /></button></td></tr>)}
+    {rows.map((item) => <tr key={item.id}><td><strong>{workerById.get(item.worker_id)?.name ?? 'Unknown worker'}</strong><small>{siteById.get(item.site_id)?.name ?? item.site_id}</small></td><td><strong>{courseTitle(item.course_id, item.course_version)}</strong><small>v{item.course_version} · {item.reason}</small></td><td><div className="pilot-status-stack"><StatusBadge tone={assignmentStatusTone(item.status)}>{assignmentStatusLabel(item.status)}</StatusBadge>{isOpen(item) && item.due_date < today && <StatusBadge tone="warning">Overdue</StatusBadge>}</div></td><td><StatusBadge tone={deliveryState(item.delivery_state).tone}>{deliveryState(item.delivery_state).label}</StatusBadge></td><td>{formatDate(item.due_date)}</td><td><button type="button" className="pilot-text-action" onClick={() => onOpen(item.id)}>View record <ArrowRight size={14} /></button></td></tr>)}
     </tbody></table>{rows.length === 0 && <p className="pilot-empty">No assignment records match this view.</p>}</div></>;
 }
 

@@ -49,7 +49,7 @@ export function auditStatement(
   return context.db
     .prepare(`INSERT INTO audit_events
       (id, entity_type, entity_id, action, actor_sub, actor_email, site_id, reason, before_json, after_json, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
     .bind(
       crypto.randomUUID(),
       entityType,

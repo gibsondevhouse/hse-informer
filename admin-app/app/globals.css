@@ -6,7 +6,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: 'Source Sans 3', 'Segoe UI', sans-serif;
+  --font-sans: var(--hse-font-sans);
   --font-heading: var(--font-sans);
   --font-mono: Consolas, monospace;
   --color-card: var(--card);
@@ -33,35 +33,35 @@
   --color-sidebar-accent-foreground: var(--accent-foreground);
   --color-sidebar-border: var(--border);
   --color-sidebar-ring: var(--ring);
-  --radius-sm: 4px;
+  --radius-sm: var(--hse-radius-sm);
   --radius-md: 6px;
-  --radius-lg: 8px;
+  --radius-lg: var(--hse-radius-control);
   --radius-xl: 12px;
-  --radius-2xl: 16px;
+  --radius-2xl: var(--hse-radius-card);
 }
 :root,
 .dark {
-  --background: #f7f9fc;
+  --background: var(--hse-color-canvas);
   --foreground: var(--hse-color-ink);
-  --card: #fff;
+  --card: var(--hse-color-surface);
   --card-foreground: var(--hse-color-ink);
-  --popover: #fff;
+  --popover: var(--hse-color-surface);
   --popover-foreground: var(--hse-color-ink);
-  --primary: #0056d2;
-  --primary-foreground: #fff;
-  --secondary: #f0f6ff;
-  --secondary-foreground: #0048b1;
-  --muted: #eef2f8;
+  --primary: var(--hse-color-brand);
+  --primary-foreground: var(--hse-color-surface);
+  --secondary: var(--hse-color-brand-subtle);
+  --secondary-foreground: var(--hse-color-brand-hover);
+  --muted: var(--hse-color-surface-subtle);
   --muted-foreground: var(--hse-color-muted);
-  --accent: #edf4ff;
-  --accent-foreground: #0048b1;
-  --destructive: #b42318;
-  --border: #dce3ee;
+  --accent: var(--hse-color-brand-subtle);
+  --accent-foreground: var(--hse-color-brand-hover);
+  --destructive: var(--hse-color-danger);
+  --border: var(--hse-color-divider);
   --input: var(--hse-color-control-border);
-  --ring: #6b3ac7;
-  --sidebar: #fff;
-  --sidebar-foreground: #48546e;
-  --radius: 8px;
+  --ring: var(--hse-color-focus);
+  --sidebar: var(--hse-color-surface);
+  --sidebar-foreground: var(--hse-color-muted);
+  --radius: var(--hse-radius-control);
   --hse-ink: var(--hse-color-ink);
   --hse-muted: var(--hse-color-muted);
   color-scheme: light;
@@ -78,7 +78,7 @@ body {
   margin: 0;
   background: var(--background);
   color: var(--foreground);
-  font-family: 'Source Sans 3', 'Segoe UI', sans-serif;
+  font-family: var(--hse-font-sans);
   font-size: var(--hse-admin-type);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
@@ -101,7 +101,7 @@ summary,
   -webkit-tap-highlight-color: transparent;
 }
 :where(button, a, input, summary, [tabindex]):focus-visible {
-  outline: 3px solid #6b3ac7;
+  outline: 3px solid var(--hse-color-focus);
   outline-offset: 3px;
 }
 h1,
@@ -255,7 +255,7 @@ h1:focus {
   font-size: 11px;
   letter-spacing: 1.55px;
   font-weight: 600;
-  color: #768397;
+  color: var(--hse-color-muted);
   padding: 0 12px 8px;
 }
 .nav-section > p.nav-heading {
@@ -409,7 +409,7 @@ a.nav-item {
   align-items: center;
   gap: 8px;
   font-size: 14px;
-  color: #7a8598;
+  color: var(--hse-color-muted);
 }
 .breadcrumb strong {
   color: #374760;
@@ -422,10 +422,10 @@ a.nav-item {
 }
 .scope-label {
   font-size: 13px;
-  color: #758196;
+  color: var(--hse-color-muted);
 }
 .scope-building {
-  color: #758196;
+  color: var(--hse-color-muted);
 }
 .topbar-actions .picker {
   min-width: 140px;
@@ -460,7 +460,7 @@ a.nav-item {
   font-size: 10px;
   font-weight: 650;
   letter-spacing: 1.8px;
-  color: #65758d;
+  color: var(--hse-color-muted);
   margin-bottom: 5px;
 }
 .eyebrow > span {
@@ -494,7 +494,7 @@ a.nav-item {
   justify-content: space-between;
   align-items: center;
   margin: 20px 0 12px;
-  color: #6b7890;
+  color: var(--hse-color-muted);
   font-size: 13px;
   gap: 12px;
 }
@@ -520,7 +520,7 @@ a.nav-item {
   border: 1px solid #ccd7e7;
   background: #f0f4f9;
   border-radius: 4px;
-  color: #64738b;
+  color: var(--hse-color-muted);
 }
 .snapshot {
   font-size: 12px;
@@ -591,7 +591,7 @@ a.nav-item {
   border-radius: 5px;
   background: #f3f6fb;
   font-size: 11px;
-  color: #687a94;
+  color: var(--hse-color-muted);
   font-weight: 600;
 }
 .foundation-badge {
@@ -638,7 +638,7 @@ a.nav-item {
   line-height: var(--hse-leading-sm);
 }
 .search-field input::placeholder {
-  color: #8a96a9;
+  color: var(--hse-color-muted);
 }
 .filter-control {
   display: flex;
@@ -669,7 +669,7 @@ a.nav-item {
   background: #f9fafc;
   font-size: 12px;
   font-weight: 500;
-  color: #75839a;
+  color: var(--hse-color-muted);
   height: 32px;
   padding: 0 12px;
   border-top: 1px solid #e4e9f1;
@@ -827,7 +827,7 @@ a.text-action {
 }
 .completion-cell small {
   font-size: 11px;
-  color: #8a96a9;
+  color: var(--hse-color-muted);
 }
 .deadline-cell {
   display: flex;
@@ -860,7 +860,7 @@ a.text-action {
   border-radius: 50%;
 }
 .status-pill.neutral {
-  color: #6a7b91;
+  color: var(--hse-color-muted);
   background: #f3f6fa;
   border-color: #e8edf4;
 }
@@ -946,7 +946,7 @@ button.status-pill {
 .tiny-label {
   font-size: 9px;
   letter-spacing: 1px;
-  color: #8490a4;
+  color: var(--hse-color-muted);
   white-space: nowrap;
 }
 .attention-row {
@@ -1030,7 +1030,7 @@ button.status-pill {
   height: 29px;
   border-radius: 5px;
   background: #f2f5fa;
-  color: #73859f;
+  color: var(--hse-color-muted);
   border: 1px solid #e2e8f0;
   font-size: 11px;
   font-weight: 600;
@@ -1069,7 +1069,7 @@ button.status-pill {
 .site-progress-footer {
   border-top: 1px solid #edf0f5;
   font-size: 11px;
-  color: #8290a6;
+  color: var(--hse-color-muted);
   display: flex;
   align-items: center;
   gap: 8px;
@@ -1088,7 +1088,7 @@ button.status-pill {
   gap: 12px;
   padding: 16px 0;
   font-size: 11px;
-  color: #8794a8;
+  color: var(--hse-color-muted);
 }
 .page-footer > span,
 .page-footer > button {
@@ -1104,7 +1104,7 @@ button.status-pill {
   border: 0;
   font-size: 11px;
   min-height: 36px;
-  color: #8190a8;
+  color: var(--hse-color-muted);
 }
 .assignment-toolbar {
   flex-wrap: wrap;
@@ -1141,7 +1141,7 @@ button.status-pill {
   justify-content: space-between;
   padding: 12px 16px;
   font-size: 13px;
-  color: #74839a;
+  color: var(--hse-color-muted);
   border-top: 1px solid #e3e9f1;
 }
 .empty-state {
@@ -1641,7 +1641,7 @@ fieldset {
   gap: 8px;
   margin-bottom: 16px;
   font-size: 12px;
-  color: #7c8ca2;
+  color: var(--hse-color-muted);
 }
 .detail-stats strong {
   display: block;

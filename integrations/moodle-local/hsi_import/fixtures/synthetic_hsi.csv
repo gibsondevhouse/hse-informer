@@ -1,0 +1,2 @@
+hsi_record_id,tenant_id,site_id,person_id,course_id,completed_at,expires_at,original_completed_raw,original_expires_raw,original_timezone
+synthetic-hsi-1,synthetic-company,tifton,synthetic-person-1,respiratory-protection,2026-01-01T00:00:00Z,2027-01-01T00:00:00Z,2026-01-01T00:00:00Z,2027-01-01T00:00:00Z,UTC

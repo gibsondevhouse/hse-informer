@@ -27,7 +27,7 @@ Set `HSE_JOB_TOKEN` to a secret of at least 24 characters and schedule authentic
 
 After setup, an authenticated admin should receive a live `asOf` from `GET /api/admin/bootstrap`. Verify that an unprovisioned identity cannot read it, that a site-scoped account cannot read another site's assignment, and that a worker can see only their own assignment. Verify notification acceptance and learner completion against the same assignment ID before entering real records.
 
-The pilot is ready for operational acceptance only after D1, Access, user grants, notification delivery, a scheduler, and an approved HSE course package are configured and verified end to end. The October 7, 2026 dependency audit still reports nine production advisories (six high, three moderate) in the Vinext dependency chain; resolve or formally assess them before a pilot release.
+The pilot is ready for operational acceptance only after D1, Access, user grants, notification delivery, a scheduler, and an approved HSE course package are configured and verified end to end. An `npm audit --omit=dev` on the merged lockfile reported nine production advisories (six high, three moderate); resolve or formally assess them before a pilot release.
 
 When D1 and Access are configured, `/` switches to the live pilot workspace. It shows site-scoped assignments, workers, sites, course releases, and audit history with a live `asOf` time. An admin can approve or revoke a packaged release, select a role/site cohort plus individual exceptions, review recipients, create assignments, queue reminders, and make reasoned due-date, cancellation, or reassignment changes. Workers use `/learn` to open their own assignments and save server-scored progress. Evaluators use `/qualifications` to record separate local instruction, prerequisite, practical evaluation, and employer authorization evidence. The worklists and CSV report expose the supporting records and later corrections.
 
@@ -62,7 +62,7 @@ PBJ-101 at `/training/pb-and-j` remains unassigned browser-local practice. If an
 
 `npm run build`
 
-Lint excludes the generated Shadcn component catalog and its generated mobile hook, which have inherited rule incompatibilities; application code uses the original strict rules. Generated primitives are unmodified. The sample admin was visually checked at 390 × 844 and at desktop width, including assignment-table scrolling; a filtered worklist was checked across a browser refresh. The live protected workspace and assistive-technology behavior still need acceptance testing with configured services.
+Lint excludes the remaining generated Shadcn primitives and mobile hook, which have inherited rule incompatibilities; application code uses the original strict rules. Unused generated primitives were removed during repository cleanup. The sample admin was visually checked at 390 × 844 and at desktop width, including assignment-table scrolling; a filtered worklist was checked across a browser refresh. The live protected workspace and assistive-technology behavior still need acceptance testing with configured services.
 
 The locally bundled Source Sans 3 font uses the SIL Open Font License in `public/OFL.txt`.
 

@@ -1,4 +1,8 @@
-# Bottom line
+# Product direction (unapproved draft)
+
+This is a planning document, not approved regulatory guidance. Its legal interpretations, assignment intervals, and course claims are hypotheses until a named qualified HSE reviewer verifies the applicable jurisdiction, source, employer program, and site conditions. The five [starter requirement records](../requirements/starter-records.md) remain unapproved and cannot activate production assignments.
+
+## Core principle
 
 A large course catalog **will not make HSE Informer legally defensible**.
 
@@ -21,7 +25,7 @@ I am assuming the initial market is **U.S. private-sector general industry**, es
 
 ---
 
-# 1. Use four different completion states
+# 1. Track five distinct evidence milestones
 
 HSE Informer should not have one universal status called **Certified**.
 

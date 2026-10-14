@@ -1,0 +1,47 @@
+{
+  "realm": "moodle-company-b",
+  "displayName": "Synthetic company B Moodle sign-in",
+  "enabled": true,
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "clients": [
+    {
+      "clientId": "moodle-company-b",
+      "name": "Moodle synthetic company B",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${MOODLE_B_OIDC_CLIENT_SECRET}",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": ["http://localhost:8082/admin/oauth2callback.php"],
+      "webOrigins": ["http://localhost:8082"]
+    },
+    {
+      "clientId": "moodle-b-isolation-probe",
+      "name": "Development-only company B credential probe",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false
+    }
+  ],
+  "users": [
+    {
+      "id": "55555555-5555-4555-8555-555555555555",
+      "username": "synthetic.worker.b",
+      "email": "worker.b@example.invalid",
+      "firstName": "Synthetic",
+      "lastName": "Worker B",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [{"type": "password", "value": "${DEV_WORKER_PASSWORD}", "temporary": false}]
+    }
+  ]
+}

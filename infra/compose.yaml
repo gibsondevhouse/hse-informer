@@ -1,0 +1,135 @@
+# Local integration environment only; never deploy this Compose file to production.
+services:
+  hse-db:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: hse
+      POSTGRES_USER: hse
+      POSTGRES_PASSWORD: ${HSE_DB_PASSWORD:?Set HSE_DB_PASSWORD in infra/.env}
+    ports:
+      - "127.0.0.1:54329:5432"
+    volumes:
+      - hse-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hse -d hse"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  auth-db:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?Set KEYCLOAK_DB_PASSWORD in infra/.env}
+    volumes:
+      - auth-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keycloak -d keycloak"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.7.3
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://auth-db:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?Set KEYCLOAK_DB_PASSWORD in infra/.env}
+      KC_HOSTNAME: http://auth.localhost:8080
+      KC_HTTP_ENABLED: "true"
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?Set KEYCLOAK_ADMIN_PASSWORD in infra/.env}
+      HSE_OIDC_CLIENT_SECRET: ${HSE_OIDC_CLIENT_SECRET:?Set HSE_OIDC_CLIENT_SECRET in infra/.env}
+      MOODLE_A_OIDC_CLIENT_SECRET: ${MOODLE_A_OIDC_CLIENT_SECRET:?Set MOODLE_A_OIDC_CLIENT_SECRET in infra/.env}
+      MOODLE_B_OIDC_CLIENT_SECRET: ${MOODLE_B_OIDC_CLIENT_SECRET:?Set MOODLE_B_OIDC_CLIENT_SECRET in infra/.env}
+      DEV_WORKER_PASSWORD: ${DEV_WORKER_PASSWORD:?Set DEV_WORKER_PASSWORD in infra/.env}
+    ports:
+      - "127.0.0.1:8080:8080"
+    networks:
+      default:
+        aliases:
+          - auth.localhost
+    volumes:
+      - ./keycloak/hse-dev-realm.json:/opt/keycloak/data/import/hse-dev-realm.json:ro
+      - ./keycloak/moodle-company-a-realm.json:/opt/keycloak/data/import/moodle-company-a-realm.json:ro
+      - ./keycloak/moodle-company-b-realm.json:/opt/keycloak/data/import/moodle-company-b-realm.json:ro
+    depends_on:
+      auth-db:
+        condition: service_healthy
+
+  moodle-a-db:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: moodle_a
+      POSTGRES_USER: moodle_a
+      POSTGRES_PASSWORD: ${MOODLE_A_DB_PASSWORD:?Set MOODLE_A_DB_PASSWORD in infra/.env}
+    volumes:
+      - moodle-a-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U moodle_a -d moodle_a"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  moodle-b-db:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: moodle_b
+      POSTGRES_USER: moodle_b
+      POSTGRES_PASSWORD: ${MOODLE_B_DB_PASSWORD:?Set MOODLE_B_DB_PASSWORD in infra/.env}
+    volumes:
+      - moodle-b-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U moodle_b -d moodle_b"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  moodle-a:
+    build: ./moodle
+    environment:
+      MOODLE_DB_HOST: moodle-a-db
+      MOODLE_DB_NAME: moodle_a
+      MOODLE_DB_USER: moodle_a
+      MOODLE_DB_PASSWORD: ${MOODLE_A_DB_PASSWORD:?Set MOODLE_A_DB_PASSWORD in infra/.env}
+      MOODLE_WWWROOT: http://localhost:8081
+      MOODLE_ADMIN_PASSWORD: ${MOODLE_ADMIN_PASSWORD:?Set MOODLE_ADMIN_PASSWORD in infra/.env}
+      MOODLE_SITE_FULLNAME: HSE synthetic company A
+      MOODLE_SITE_SHORTNAME: HSE-A
+    ports:
+      - "127.0.0.1:8081:80"
+    volumes:
+      - moodle-a-data:/var/moodledata
+    depends_on:
+      moodle-a-db:
+        condition: service_healthy
+
+  moodle-b:
+    build: ./moodle
+    environment:
+      MOODLE_DB_HOST: moodle-b-db
+      MOODLE_DB_NAME: moodle_b
+      MOODLE_DB_USER: moodle_b
+      MOODLE_DB_PASSWORD: ${MOODLE_B_DB_PASSWORD:?Set MOODLE_B_DB_PASSWORD in infra/.env}
+      MOODLE_WWWROOT: http://localhost:8082
+      MOODLE_ADMIN_PASSWORD: ${MOODLE_ADMIN_PASSWORD:?Set MOODLE_ADMIN_PASSWORD in infra/.env}
+      MOODLE_SITE_FULLNAME: HSE synthetic company B
+      MOODLE_SITE_SHORTNAME: HSE-B
+    ports:
+      - "127.0.0.1:8082:80"
+    volumes:
+      - moodle-b-data:/var/moodledata
+    depends_on:
+      moodle-b-db:
+        condition: service_healthy
+
+volumes:
+  hse-db-data:
+  auth-db-data:
+  moodle-a-db-data:
+  moodle-b-db-data:
+  moodle-a-data:
+  moodle-b-data:

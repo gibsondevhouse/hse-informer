@@ -1,0 +1,45 @@
+{
+  "name": "hse-informer-web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "imports": {
+    "#lib/*": "./src/lib/*"
+  },
+  "engines": {
+    "node": ">=22.17"
+  },
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build",
+    "preview": "vite preview",
+    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+    "test": "vitest run --exclude '**/*.integration.test.ts'",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "test:e2e": "playwright test",
+    "db:migrate": "tsx scripts/migrate.ts",
+    "db:seed:synthetic": "tsx scripts/seed-synthetic.ts",
+    "jobs:run": "tsx scripts/run-jobs.ts",
+    "jobs:reassignment": "tsx scripts/run-reassignment.ts"
+  },
+  "dependencies": {
+    "@sveltejs/adapter-node": "^6.0.0",
+    "@sveltejs/kit": "^3.0.1",
+    "jose": "^6.2.12",
+    "pg": "^8.23.1",
+    "svelte": "^5.57.2",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
+    "@playwright/test": "^1.58.2",
+    "@sveltejs/vite-plugin-svelte": "^7.3.1",
+    "@types/node": "^22.15.0",
+    "@types/pg": "^8.15.0",
+    "svelte-check": "^4.3.3",
+    "tsx": "^4.20.0",
+    "typescript": "^6.0.3",
+    "vite": "^8.3.4",
+    "vitest": "^5.0.3"
+  }
+}

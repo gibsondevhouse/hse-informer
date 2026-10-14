@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ArrowRight, ShieldCheck } from 'lucide-react';
+import { StatusBadge, assignmentStatusLabel, assignmentStatusTone } from './hse-status-badge';
 import './learner-assignments.css';
 
 type Assignment = {
@@ -58,7 +59,8 @@ export function LearnerAssignments() {
               <div>
                 <small>{assignment.version} · {assignment.reason}</small>
                 <h2>{assignment.title}</h2>
-                <p>Due {new Date(`${assignment.dueDate}T12:00:00Z`).toLocaleDateString()} · {assignment.status}</p>
+                <p>Due {new Date(`${assignment.dueDate}T12:00:00Z`).toLocaleDateString()}</p>
+                <StatusBadge tone={assignmentStatusTone(assignment.status)}>{assignmentStatusLabel(assignment.status)}</StatusBadge>
               </div>
               {assignment.launchable ? (
                 <Link href={assignment.href} className="learner-inbox-action">
