@@ -57,7 +57,7 @@ test('workspaces load HSE tokens and the React admin uses the PBJ visual languag
     font: getComputedStyle(element).fontFamily
   }));
   await page.goto(`${reactPreview}/training/pb-and-j`);
-  const courseVisual = await page.locator('.lms-player').evaluate((element) => ({
+  const courseVisual = await page.locator('.pbj-presentation').evaluate((element) => ({
     background: getComputedStyle(element).backgroundColor,
     font: getComputedStyle(element).fontFamily
   }));

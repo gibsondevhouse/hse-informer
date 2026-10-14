@@ -181,6 +181,16 @@ jobs:
       - name: Install React preview for shared browser checks
         run: npm ci --prefix ../admin-app
       - run: npx playwright install --with-deps chromium
+      - name: Generate PBJ presentation Linux snapshots for review
+        run: npx playwright test e2e/ui-standard.spec.ts --grep "PBJ course remains" --update-snapshots
+        env:
+          DEV_AUTH: synthetic
+      - name: Upload PBJ presentation Linux snapshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: pbj-presentation-linux-snapshots
+          path: web/e2e/ui-standard.spec.ts-snapshots/react-pbj-*-chromium-linux.png
+          retention-days: 7
       - run: npm run test:e2e
         env:
           DEV_AUTH: synthetic
