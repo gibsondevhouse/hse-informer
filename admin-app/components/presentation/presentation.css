@@ -1,4 +1,4 @@
-/* PBJ's presentation studio. The stage is a viewport, never a reading page. */
+/* Shared presentation studio; legacy class names preserve existing course styling. */
 .pbj-presentation,
 .pbj-dialog {
   --pbj-frame: var(--hse-night-frame);
@@ -287,6 +287,7 @@
   outline: none;
 }
 .pbj-deck-heading {
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: 14px;
@@ -1408,6 +1409,12 @@
   }
 }
 @media (pointer: coarse) and (max-width: 360px) and (max-height: 700px) {
+  .pbj-deck-heading {
+    gap: 3px;
+  }
+  .pbj-deck-breadcrumb > span {
+    display: none;
+  }
   .pbj-slide-count {
     display: none;
   }
@@ -1485,5 +1492,102 @@
   .pbj-dialog * {
     animation: none !important;
     transition: none !important;
+  }
+}
+
+/* Keep the stage and supporting reading independently scrollable. */
+.training-stage-area {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+}
+.training-stage-area[data-details='true'] {
+  grid-template-columns: minmax(0, 1fr) 340px;
+}
+.training-details-panel {
+  min-width: 0;
+  min-height: 0;
+  margin: 0 24px 20px 0;
+  padding: 18px;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  background: #1b1b23;
+  border: 1px solid #393742;
+  border-radius: 12px;
+  outline-offset: -3px;
+}
+.training-details-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.training-details-heading h2 {
+  font-size: 18px;
+}
+.training-details-heading button {
+  min-height: 48px;
+  min-width: 48px;
+}
+.training-details-context {
+  margin-block: 8px 18px !important;
+  font-size: 14px;
+  color: var(--pbj-muted);
+}
+.training-details-scroll {
+  position: relative;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 3px;
+}
+.training-details-trigger {
+  margin-left: auto;
+}
+.training-details-trigger + .pbj-browse {
+  margin-left: 0;
+}
+.training-details-trigger[aria-expanded='true'] {
+  color: #d7d1ff;
+  background: #28243e;
+  border-color: #494264;
+}
+.training-details-dialog {
+  max-height: calc(100dvh - 40px);
+}
+.pbj-thumbnail-art .training-thumbnail-type {
+  position: static;
+  font-size: 12px;
+  text-transform: capitalize;
+  color: #c9c3e4;
+  background: none;
+  padding: 0;
+}
+.pbj-thumbnail-art:has(.training-thumbnail-type) {
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #2a263d, #191920);
+}
+@media (max-width: 750px) {
+  .training-details-trigger > span {
+    display: none;
+  }
+  .training-details-trigger {
+    width: 40px;
+    padding: 0;
+  }
+  .pbj-deck-breadcrumb {
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+}
+@media (max-width: 600px) {
+  .training-details-dialog {
+    inset: 12px;
+    width: auto;
+    max-height: none;
+    transform: none;
   }
 }

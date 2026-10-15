@@ -17,6 +17,7 @@
     "test": "vitest run --exclude '**/*.integration.test.ts'",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:e2e": "playwright test",
+    "test:e2e:presentation": "playwright test --config playwright.presentation.config.ts",
     "db:migrate": "tsx scripts/migrate.ts",
     "db:seed:synthetic": "tsx scripts/seed-synthetic.ts",
     "jobs:run": "tsx scripts/run-jobs.ts",
