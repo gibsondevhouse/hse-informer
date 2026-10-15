@@ -6,7 +6,7 @@ This is the product UI contract for the React pilot and the SvelteKit replacemen
 
 - Use Inter and the PBJ-101 graphite/indigo palette in the React admin, qualifications, and learner workspace. Use the same `--hse-night-*` color values as the course player: a near-black frame, raised panels, hairline dividers, indigo actions, and readable neutral text. The SvelteKit workspace currently uses Source Sans 3 and the light HSE palette. Do not use color alone to identify a state.
 - Use the 4px spacing scale, the tokenized card/control radii, and the 44px default control height. Keep touch controls at least 48px when a coarse pointer is detected. The compact 36px size is for dense, non-touch controls only.
-- The course player keeps its own layout and interaction rules, but shares the React workspace's visual foundations. Its full-height lesson shell and browser-local practice state must not leak into the admin workspace.
+- The course presentation and generic player keep their own layout and interaction rules, while sharing the React workspace's visual foundations. Their full-height shells must not leak into the admin workspace. The PBJ presentation keeps only temporary viewing state; the generic author lab retains its existing browser-local practice state.
 - Use the same responsive intent in both apps: preserve primary actions and readable cards at phone widths, let wide data tables scroll, and avoid horizontal overflow of the page itself. Treat 320px, 390px, 768px, and desktop widths as review points.
 - Prefer outlined SVG icons with an accessible name where the icon is the only label. Decorative icons are hidden from assistive technology.
 
@@ -25,6 +25,14 @@ This is the product UI contract for the React pilot and the SvelteKit replacemen
 
 React and Svelte implement their own components, consume the same token source, and follow these behaviors. Visual parity between the React pilot and SvelteKit replacement remains a separate release check. New screens should reuse local components before adding a one-off visual rule.
 
+## PBJ course presentation
+
+`/training/pb-and-j` is the presentation design reference. Render the overview and all instruction as slides in a single viewport-contained course component. Keep the current slide, position, and previous/next controls visible together. Split dense material into additional slides; do not hide overflowing text or turn the main stage into a scrolling article.
+
+The course outline and slide browser allow direct navigation. Captions are an explicit toggle with pressed state; the transcript is a named dialog containing the current slide's authored narration. Dialogs contain keyboard focus, close with Escape, and restore focus to their trigger. Supplementary panels may scroll within their own bounds. Fullscreen and presentation settings expose their current state, and slide motion respects reduced-motion preferences. Settings allow learners to disable the single-letter C, T, and F shortcuts while keeping button controls available. Text captions do not imply that recorded audio is available.
+
+Presentation navigation describes position only. Slide visits, captions, and viewing preferences are held in memory and reset when the page reloads. They do not create saved learning progress, grades, training records, or authorization. The generic component lab and recorded assignment workflow remain separate consumers of `CoursePlayer`.
+
 ## Status language
 
 | Axis | User-facing labels | Meaning |
@@ -41,5 +49,9 @@ Stored values and external service payloads may use different casing or machine 
 ## Stability gate
 
 Use deterministic synthetic records for browser checks. Cover the React admin, PBJ-101 visual reference, assignment filters/table, learner/course preview, and dialogs at desktop and phone widths, plus a tablet layout check. Validate focus order and dialog keyboard behavior. Record screenshots in CI on a pinned browser/runtime so visual changes require review. The protected D1/Access pilot also needs a provisioned browser review before release. The screenshots are UI fixtures, never evidence of training completion or HSE approval.
+
+For the PBJ presentation, check every slide with captions hidden and shown at 1089 × 865, 1440 × 900, 768 × 1024, 390 × 844, 320 × 844, 390 × 568, 844 × 390, and a short 1280 × 600 viewport. Verify no page, main-region, slide, or instructional-copy overflow; navigation remains in view; transcript and slide selection work with the keyboard; and presentation actions make no training-service or storage writes. Each newly selected transcript starts at its beginning, including after scrolling a long transcript on a short phone. The presentation's accessibility checks include the opening slide, a dense slide, transcript, and mobile outline.
+
+Also exercise real touch events at 390 × 568 and 320 × 568, verifying every slide with captions off/on and at least 48px targets for the visible presentation controls.
 
 The two applications remain visible during parity work. React is the pilot reference; SvelteKit becomes the replacement only after the behavior and evidence gates in `docs/refactor-001.md` are met.

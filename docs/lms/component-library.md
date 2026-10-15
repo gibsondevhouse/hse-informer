@@ -1,8 +1,19 @@
 # HSE Informer learning player and component library
 
-**Status:** learner practice course and separate author lab · **Learner route:** `/training/pb-and-j` · **Author lab:** `/training/pb-and-j/component-lab` · **Code:** `admin-app/lib/lms/`, `admin-app/components/lms/`
+**Status:** PBJ presentation scratch pad and separate author lab · **Presentation:** `/training/pb-and-j` · **Author lab:** `/training/pb-and-j/component-lab` · **Code:** `admin-app/lib/lms/`, `admin-app/components/pbj-presentation/`, `admin-app/components/lms/`
 
-The library is a reusable shell for course playback. A course is plain serializable data; the player renders it, grades interactions, tracks progress, and persists state. PBJ-101 presents a complete 15-lesson learner path with a printable job aid. The separate author lab retains the component catalog and media placeholders to exercise all 34 block types. Neither route is part of the assignable HSE course library or creates a training record.
+The PBJ route is a presentation scratch pad for course design. Its overview and instruction are slides inside one contained stage. `lib/lms/pbj-presentation.ts` owns the authored slide data; `components/pbj-presentation/` owns its rendering and local viewing controls. The presentation does not use the generic player's grading engine or saved course state.
+
+The generic `CoursePlayer` and block library remain available in the author lab and assigned practice workflow. A `Course` is plain serializable data; that player renders it, grades interactions, and tracks progress. The author lab exercises all 34 block types. The existing PBJ recorded package retains its 15-lesson path and assessment; changing presentation slides does not change the immutable recorded package. Neither PBJ presentation nor author lab creates a training record. Recorded assignments are separate practice workflow tests, not HSE compliance training or workplace authorization.
+
+## PBJ presentation contract
+
+- The overview is the opening slide, with the same stage and navigation as every later slide. Each slide communicates one instructional idea. Content fits the available stage; it does not become a long scrolling page or get clipped to simulate a fit.
+- Previous/next navigation, the course outline, and slide browser provide unrestricted access to the deck. The position indicator describes the current slide, not completion. Keyboard controls and dialogs follow the [UI standard](../ui-standard.md).
+- Captions show authored text for the current slide. The transcript presents the slide's fuller narration text and can step between slides. These are text presentation tools; recorded audio and timed media are not supplied.
+- The player provides presentation settings and fullscreen viewing. Captions, outline, transcript, and settings remain accessible at narrow widths and short viewport heights. Only supplemental panels may scroll independently.
+- Slide position and viewing preferences live in React state and reset on reload. The component makes no training-service calls and writes no stored progress, score, completion, or authorization.
+- Scope is PBJ course design. Real media, DeepHow integration, delivery tracking, assessments, and course publishing remain outside this presentation component.
 
 ## Research basis
 
@@ -74,7 +85,9 @@ Every block carries an optional `devNote`. In the author lab, the **Component no
 
 A result is **correct** only at full credit. Partial scores feed the assessment percentage.
 
-## Player contracts
+## Generic player contracts
+
+These contracts apply to `CoursePlayer` in the author lab and existing assigned practice workflow. They do not apply to the PBJ presentation scratch pad.
 
 **Slides.** A lesson is presented one slide at a time. `lessonSlides(lesson)` derives the slides from the flat block list, so authors never maintain two structures: a `heading` starts a new slide, a `divider` forces a break, every interaction or activity stands on its own slide (keeping a heading placed directly above it), and other content fills a slide up to a visual budget of 3 (paragraph, callout, definition, resource, references = 1; lists, objectives, key takeaways, glossary, figure, media, steps, accordion, tabs, flashcards = 2; table, timeline, hotspots = 3). Block order is preserved. Next and Back step through slides and cross lesson boundaries; required activities on the current slide must be satisfied before continuing. The completion control appears on the last slide, where the requirements panel links to any slide that still needs attention. The current slide index is part of `PlayerState` so a learner resumes where they stopped.
 

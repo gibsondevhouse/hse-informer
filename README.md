@@ -12,7 +12,7 @@ Training administration for chemical manufacturing sites. This repository curren
 - [Product direction](docs/vision/phases.txt): planning notes and evidence boundaries.
 - [B0 beta administration plan](docs/vision/B0-beta-admin-system.md): pilot acceptance proposal.
 - [Regulatory training source map](docs/regulatory/training-source-map.md) and [Respiratory Protection analysis](docs/regulatory/rp-compliance.md): unapproved content and applicability planning.
-- [Learning player and component library](docs/lms/component-library.md): reusable course blocks and the PBJ-101 practice course.
+- [Learning player and component library](docs/lms/component-library.md): PBJ-101 presentation scratch pad and reusable course blocks.
 
 ## Run locally
 
@@ -26,7 +26,7 @@ npm ci
 npm run dev
 ```
 
-The sample admin workspace is at `/`, PBJ-101 practice is at `/training/pb-and-j`, and the Respiratory Protection lesson preview is at `/training/respiratory-protection`. The protected pilot routes require Cloudflare D1 and Access configuration described in the [React app README](admin-app/README.md#pilot-server-setup).
+The sample admin workspace is at `/`, the PBJ-101 presentation scratch pad is at `/training/pb-and-j`, and the Respiratory Protection lesson preview is at `/training/respiratory-protection`. PBJ presents one slide at a time, including its overview, with captions, a transcript, and presentation controls. Its state lasts only while the page is open. The protected pilot routes require Cloudflare D1 and Access configuration described in the [React app README](admin-app/README.md#pilot-server-setup).
 
 On Windows PowerShell, use `npm.cmd` if script execution policy blocks `npm`.
 
