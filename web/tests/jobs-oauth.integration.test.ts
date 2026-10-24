@@ -159,4 +159,56 @@ describe.skipIf(!enabled)('OAuth enrollment identity boundary', () => {
       expect(job.rows[0].state).toBe('failed'); expect(job.rows[0].last_error).toContain('inactive or awaiting account activation');
     } finally {releaseProvision(); await Promise.allSettled([enrollment,change,...(synchronization?[synchronization]:[])]);}
   });
+
+  it('keeps absent-account suspension pending after a provisioning timeout, including a cancelled assignment', async () => {
+    const db=database();
+    await db.query(`UPDATE people SET active=true,account_access_locked=false WHERE id=$1`,[id.person]);
+    await db.query(`UPDATE principals SET active=true WHERE tenant_id=$1 AND person_id=$2`,[id.tenant,id.person]);
+    await db.query('DELETE FROM moodle_enrollments WHERE tenant_id=$1',[id.tenant]);
+    await db.query(`DELETE FROM person_external_ids WHERE tenant_id=$1 AND person_id=$2 AND source='moodle'`,[id.tenant,id.person]);
+    await db.query(`UPDATE integration_outbox SET state='done',completed_at=now() WHERE tenant_id=$1`,[id.tenant]);
+    let remote: {id:number;suspended:boolean}|null=null;
+    mock.find.mockImplementation(async()=>remote?.id??null);
+    mock.provision.mockClear();mock.suspend.mockClear();mock.enrol.mockClear();
+    // Models the bounded HTTP call returning an error before the remote server
+    // finishes its create; no wall-clock sleep or real credential is involved.
+    mock.provision.mockRejectedValueOnce(new Error('Moodle HTTP timeout'));
+    mock.suspend.mockImplementation(async(_tenant:string,userId:number,suspended:boolean)=>{
+      expect(userId).toBe(remote!.id);remote!.suspended=suspended;
+    });
+    await retry();expect(await runJobs(1,id.tenant)).toEqual({done:0,failed:1});
+    expect(mock.provision).toHaveBeenCalledOnce();expect(mock.enrol).not.toHaveBeenCalled();
+    await editPerson(actor,id.person,{active:false,reason:'Synthetic deactivation after uncertain provisioning'},provider);
+    await db.query('UPDATE assignments SET cancelled_at=now() WHERE id=$1',[id.assignment]);
+    const before=await db.query(`SELECT count(*) FROM audit_log WHERE tenant_id=$1 AND entity_id=$2 AND action='person.moodle_state_synced'`,[id.tenant,id.person]);
+    expect(await runJobs(1,id.tenant)).toEqual({done:0,failed:1});
+    const pending=await db.query(`SELECT state,last_error FROM integration_outbox
+      WHERE tenant_id=$1 AND aggregate_id=$2 AND kind='moodle_user_state'`,[id.tenant,id.person]);
+    expect(pending.rows[0].state).toBe('failed');
+    expect(pending.rows[0].last_error).toContain('awaiting absence or provisioning confirmation');
+    expect(mock.suspend).not.toHaveBeenCalled();
+    const after=await db.query(`SELECT count(*) FROM audit_log WHERE tenant_id=$1 AND entity_id=$2 AND action='person.moodle_state_synced'`,[id.tenant,id.person]);
+    expect(after.rows).toEqual(before.rows);
+    remote={id:83,suspended:false}; // The timed-out remote create commits later.
+    await db.query(`UPDATE integration_outbox SET next_attempt_at=now()
+      WHERE tenant_id=$1 AND aggregate_id=$2 AND kind='moodle_user_state'`,[id.tenant,id.person]);
+    expect(await runJobs(1,id.tenant)).toEqual({done:1,failed:0});
+    expect(remote.suspended).toBe(true);
+    expect(mock.suspend).toHaveBeenCalledWith(id.tenant,83,true);
+    const done=await db.query(`SELECT state FROM integration_outbox
+      WHERE tenant_id=$1 AND aggregate_id=$2 AND kind='moodle_user_state'`,[id.tenant,id.person]);
+    expect(done.rows[0].state).toBe('done');
+  });
+
+  it('confirms absence for an inactive person with no enrollment attempt',async()=>{
+    const db=database(),personId=randomUUID();
+    await db.query(`INSERT INTO people(id,tenant_id,display_name,person_type,synthetic,active)
+      VALUES($1,$2,'Never provisioned worker','employee',false,false)`,[personId,id.tenant]);
+    await db.query(`INSERT INTO integration_outbox(tenant_id,kind,aggregate_id) VALUES($1,'moodle_user_state',$2)`,[id.tenant,personId]);
+    mock.find.mockResolvedValue(null);mock.suspend.mockClear();
+    expect(await runJobs(1,id.tenant)).toEqual({done:1,failed:0});
+    expect(mock.suspend).not.toHaveBeenCalled();
+    const result=await db.query(`SELECT after_value FROM audit_log WHERE tenant_id=$1 AND entity_id=$2 AND action='person.moodle_state_synced'`,[id.tenant,personId]);
+    expect(result.rows[0].after_value).toEqual({suspended:true,mappedAccountFound:false});
+  });
 });

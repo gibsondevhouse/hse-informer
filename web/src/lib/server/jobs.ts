@@ -96,6 +96,19 @@ async function syncMoodleUserState(job: Job): Promise<void> {
       [job.tenant_id, job.aggregate_id, connection.instanceId]);
     if (mappings.rows.length > 1) throw new Error('Ambiguous Moodle account mapping');
     const userId = mappings.rows[0] ? Number(mappings.rows[0].external_id) : await findMoodleUserByHseId(job.tenant_id, person.hse_id);
+    if (userId === null && !person.active) {
+      // An HTTP timeout does not prove Moodle rolled back a remote create. Keep
+      // checking current state until a potentially late account can be suspended.
+      // Include cancelled assignments: cancellation cannot cancel an in-flight
+      // remote write that an earlier enrollment attempt may have started.
+      const attempted = await client.query(`SELECT 1 FROM integration_outbox o
+        JOIN assignments a ON a.tenant_id=o.tenant_id AND a.id=o.aggregate_id
+        WHERE o.tenant_id=$1 AND a.person_id=$2 AND o.kind='moodle_enrol' AND o.attempt_count>0 LIMIT 1`,
+      [job.tenant_id, job.aggregate_id]);
+      if (attempted.rowCount) {
+        throw new Error('Moodle suspension is awaiting absence or provisioning confirmation after an enrollment attempt');
+      }
+    }
     if (userId !== null) await suspendMoodleUser(job.tenant_id, userId, !person.active);
     await client.query(`INSERT INTO audit_log (tenant_id,action,entity_type,entity_id,after_value)
       VALUES ($1,'person.moodle_state_synced','person',$2,$3::jsonb)`,
@@ -255,8 +268,8 @@ export async function runJobs(limit = 100, tenantId?: string): Promise<{ done: n
           if (person.rows[0] && (!person.rows[0].active || person.rows[0].account_access_locked)) {
             throw new Error('Moodle enrollment is blocked while the profile is inactive or awaiting account activation');
           }
-          // Use this client for FK writes too: another connection would wait on
-          // our own people lock while trying to acquire its foreign-key lock.
+          // Keep mapping, enrollment, and success writes on this client so they
+          // commit atomically before releasing the shared person guard.
           await perform(job, client);
           await finishJob(job, client);
         });
