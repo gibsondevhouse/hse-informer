@@ -2,6 +2,8 @@
 
 **Goal:** one reviewed course in Moodle with a graded assessment.
 
+Prepared source: [Getting started with HSE Informer · 1.0.0](../../../content/beta-practice/1.0.0/README.md) contains three text lessons, a ten-question Moodle Quiz import, assessment settings, and source hashes. Administrator review, installation in the chosen Moodle site, and participant verification are pending; the source files do not claim those gates have passed.
+
 - [ ] Author a clearly labeled practice course in Moodle to prove learning mechanics, including lessons, assessment pass mark, attempt limit, and remediation.
 - [ ] Register the reviewed Moodle course/activity mapping and exact content version/checksum in HSE Informer.
 - [ ] Publish/retire course mappings through authorized administrator/reviewer controls. Published content mappings are immutable; updates create new versions.

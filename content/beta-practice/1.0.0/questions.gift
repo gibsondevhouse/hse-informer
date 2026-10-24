@@ -1,0 +1,72 @@
+// HSE Informer beta practice 1.0.0. Import into Moodle's question bank.
+// This answer key is operator material. Do not publish it as a learner resource.
+
+::BETA-1.0.0-Q01::Where do you find the training assigned to you in HSE Informer? {
+=My training#Correct. My training lists your assigned courses and due dates.
+~Another person's profile#Use your own account and assignments.
+~The administrator's completion export#Learners use My training.
+~A new account for each course#Use your existing account.
+}
+
+::BETA-1.0.0-Q02::Which system delivers the beta course lessons and assessments? {
+=Moodle#Correct. Moodle delivers the learning and stores progress and assessment results.
+~A spreadsheet attachment#The beta course runs in Moodle.
+~A profile-editing form#Profile editing is separate from learning.
+~The completion-record correction form#Corrections preserve record history; they do not deliver a course.
+}
+
+::BETA-1.0.0-Q03::You leave a course before finishing. How should you return? {
+=Open the same assigned course through My training and follow Moodle's resume instructions#Correct. Check the saved progress for the same course.
+~Create another account#Keep using your existing account.
+~Ask a colleague to finish on their account#Your training belongs to your own account.
+~Ask an administrator to invent a passing score#A score must come from the assessment.
+}
+
+::BETA-1.0.0-Q04::You do not pass the practice check and still have an attempt available. What should you do? {
+=Read the feedback, review the lesson, and retry in Moodle#Correct. Use the feedback to prepare for an allowed retry.
+~Delete your previous attempt yourself#Moodle retains assessment attempts.
+~Make another account to bypass the attempt limit#Contact your administrator when you need help.
+~Edit your completion history to add a passing score#Learners cannot create assessment scores.
+}
+
+::BETA-1.0.0-Q05::You passed in Moodle but the completion has not yet appeared in HSE Informer. What should you do first? {
+=Allow a few minutes for synchronization, refresh your history, and contact your administrator if it remains missing#Correct. The two systems synchronize completion evidence.
+~Immediately create another account#Keep using your own existing account.
+~Change your profile to completed#Profile details do not record assessment completion.
+~Assume the course record has been deleted#Ask your administrator to investigate a missing record.
+}
+
+::BETA-1.0.0-Q06::Where should you check your profile and edit the contact or language fields available to you? {
+=My profile#Correct. Ask your administrator about fields you cannot edit.
+~Another learner's profile#Use your own profile.
+~The quiz answer key#The answer key is not a profile editor.
+~The completion correction form#An administrator uses corrections for record errors.
+}
+
+::BETA-1.0.0-Q07::What happens to earlier completion records when your profile details change? {
+=The earlier records retain their historical details#Correct. Profile changes do not rewrite completion history.
+~All earlier records are deleted#Historical evidence is retained.
+~Every earlier score becomes a passing score#A profile change does not change assessment scores.
+~The records move to another person's account#Your stable person identifier connects your history.
+}
+
+::BETA-1.0.0-Q08::You notice an error in a completion record. What is the appropriate next step? {
+=Ask your administrator to investigate and correct or void it with a reason while retaining its history#Correct. The original evidence and amendment history are retained.
+~Delete the original evidence yourself#Original evidence is preserved.
+~Change another learner's record to match yours#Use only your own record and contact your administrator.
+~Create a new identity to hide the error#Your administrator can investigate the existing record.
+}
+
+::BETA-1.0.0-Q09::What should you do before leaving a shared device? {
+=Sign out through HSE Informer, read any sign-out warning, and follow its instructions#Correct. Ask your administrator for help if sign-out cannot be confirmed.
+~Leave your account open for the next person#Each person must use their own account.
+~Give the next person your password#Do not share your sign-in details.
+~Change your display name to the next person's name#Changing a name does not safely switch accounts.
+}
+
+::BETA-1.0.0-Q10::What does completing this beta practice course authorize you to do? {
+=It provides a practice completion record; it does not authorize a workplace task#Correct. This course demonstrates using HSE Informer.
+~Perform any hazardous task#Practice completion is not workplace authorization.
+~Approve another person's safety qualification#This practice course does not grant evaluator authority.
+~Ignore the training requirements set by your organization#Follow your organization's training and authorization requirements.
+}
