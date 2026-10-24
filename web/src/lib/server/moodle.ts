@@ -207,6 +207,96 @@ export interface MoodleCompletion {
   sourceCompletionId?: number;
 }
 
+export interface MoodleLearningProgress {
+  courseId: number;
+  userId: number;
+  /** Null means Moodle supplied no usable negative or positive access signal. */
+  started: boolean | null;
+  courseLastAccessAt: Date | null;
+  activitiesWithProgress: number;
+  trackedActivities: number;
+  startedAttempts: number | null;
+  readStartedAt: Date;
+  observedAt: Date;
+  activities: Array<{ moduleId: number; instanceId: number; module: string; state: number; updatedAt: Date | null }>;
+}
+
+/** Read-only source activity; enrollment and portal clicks are never start signals. */
+export async function readMoodleLearningProgress(tenantId: string, courseId: number, userId: number,
+  completion: MoodleCompletion, readStartedAt = new Date()): Promise<MoodleLearningProgress> {
+  const enrolFn = 'core_enrol_get_users_courses';
+  if (!Number.isFinite(readStartedAt.getTime()) || readStartedAt.getTime() > Date.now() + 1000) {
+    throw new MoodleError('Invalid progress read start time', enrolFn, 'invalid_response');
+  }
+  positiveInteger(courseId, enrolFn); positiveInteger(userId, enrolFn);
+  const courses = await moodleCall<unknown>(tenantId, enrolFn, { userid: userId, returnusercount: false });
+  if (!Array.isArray(courses)) throw new MoodleError('Malformed Moodle enrollment response', enrolFn, 'invalid_response');
+  const matching = courses.filter((item: unknown) => item && typeof item === 'object' && !Array.isArray(item)
+    && (item as Record<string, unknown>).id === courseId);
+  if (matching.length !== 1) throw new MoodleError('Progress course is missing or ambiguous', enrolFn, 'invalid_mapping');
+  const course = responseObject(matching[0], enrolFn);
+  const timestamp = (value: unknown, fn: MoodleFunction): Date | null => {
+    if (value === null || value === undefined || value === 0) return null;
+    const result = new Date(positiveInteger(value, fn) * 1000);
+    if (!Number.isFinite(result.getTime()) || result.getTime() > Date.now() + 1000) {
+      throw new MoodleError('Invalid Moodle progress timestamp', fn, 'invalid_response');
+    }
+    return result;
+  };
+  // Moodle returns null for both a hidden last-access field and no recorded visit.
+  const lastAccessKnown = course.lastaccess !== null && course.lastaccess !== undefined;
+  const courseLastAccessAt = timestamp(course.lastaccess, enrolFn);
+  const activityFn = 'core_completion_get_activities_completion_status';
+  const response = responseObject(await moodleCall<unknown>(tenantId, activityFn, { courseid: courseId, userid: userId }), activityFn);
+  checkedWarnings(response.warnings, activityFn);
+  if (!Array.isArray(response.statuses)) throw new MoodleError('Missing Moodle progress activities', activityFn, 'invalid_response');
+  const seen = new Set<number>();
+  const activities: MoodleLearningProgress['activities'] = [];
+  for (const item of response.statuses) {
+    const activity = responseObject(item, activityFn);
+    const moduleId = positiveInteger(activity.cmid, activityFn);
+    const instanceId = positiveInteger(activity.instance, activityFn);
+    if (seen.has(moduleId) || typeof activity.modname !== 'string' || !/^[a-z][a-z0-9_]*$/.test(activity.modname)
+      || ![0, 1, 2, 3, 4].includes(activity.state as number)
+      || (activity.tracking !== undefined && ![0, 1, 2].includes(activity.tracking as number))
+      || (activity.uservisible !== undefined && typeof activity.uservisible !== 'boolean')
+      || (activity.istrackeduser !== undefined && typeof activity.istrackeduser !== 'boolean')) {
+      throw new MoodleError('Malformed or duplicate Moodle progress activity', activityFn, 'invalid_response');
+    }
+    seen.add(moduleId);
+    if (activity.timecompleted === undefined) throw new MoodleError('Activity progress lacks its source timestamp', activityFn, 'invalid_response');
+    const updatedAt = timestamp(activity.timecompleted, activityFn);
+    if (activity.state !== 0 && !updatedAt) throw new MoodleError('Activity progress lacks its source timestamp', activityFn, 'invalid_response');
+    if (activity.tracking === 0 || activity.uservisible === false || activity.istrackeduser === false) continue;
+    activities.push({ moduleId, instanceId, module: activity.modname, state: activity.state as number, updatedAt });
+  }
+  let startedAttempts: number | null = null;
+  if (completion.quizObservation) {
+    const quiz = completion.quizObservation;
+    if (quiz.courseId !== courseId) throw new MoodleError('Progress Quiz belongs to another course', activityFn, 'invalid_mapping');
+    const activity = activities.find(item => item.moduleId === quiz.activityModuleId && item.module === 'quiz' && item.instanceId === quiz.quizId);
+    if (!activity) throw new MoodleError('Progress Quiz differs from the pinned activity', activityFn, 'invalid_mapping');
+    startedAttempts = quiz.attempts.filter(attempt => attempt.state !== 'notstarted').length;
+    for (const attempt of quiz.attempts) {
+      for (const value of [attempt.startedAt, attempt.submittedAt, attempt.modifiedAt]) {
+        if (value && (!Number.isFinite(value.getTime()) || value.getTime() > Date.now() + 1000)) {
+          throw new MoodleError('Invalid Quiz progress timestamp', 'mod_quiz_get_user_quiz_attempts', 'invalid_response');
+        }
+      }
+    }
+  } else if (completion.scormObservation) {
+    const scorm = completion.scormObservation;
+    const activity = activities.find(item => item.moduleId === scorm.activityModuleId && item.module === 'scorm' && item.instanceId === scorm.scormId);
+    if (!activity) throw new MoodleError('Progress SCORM differs from the pinned activity', activityFn, 'invalid_mapping');
+    startedAttempts = completion.attempts;
+  }
+  const activitiesWithProgress = activities.filter(activity => activity.state !== 0).length;
+  const started = courseLastAccessAt || activitiesWithProgress > 0 || (startedAttempts ?? 0) > 0
+    ? true : lastAccessKnown ? false : null;
+  return { courseId, userId, started, courseLastAccessAt, activitiesWithProgress,
+    trackedActivities: activities.length, startedAttempts, readStartedAt, observedAt: new Date(), activities };
+}
+
 /** Read the exact mapped course; the token must be able to inspect its settings. */
 export async function inspectMoodleCourse(tenantId: string, courseId: number) {
   const fn = 'core_course_get_courses_by_field';
@@ -321,7 +411,9 @@ function quizTimestamp(value: unknown): Date | null {
   if (value === 0 || value === null) return null;
   const fn = 'mod_quiz_get_user_quiz_attempts';
   const date = new Date(positiveInteger(value, fn) * 1000);
-  if (!Number.isFinite(date.getTime())) throw new MoodleError('Invalid Quiz attempt timestamp', fn, 'invalid_response');
+  if (!Number.isFinite(date.getTime()) || date.getTime() > Date.now() + 1000) {
+    throw new MoodleError('Invalid Quiz attempt timestamp', fn, 'invalid_response');
+  }
   return date;
 }
 
@@ -352,8 +444,12 @@ function quizAttempts(value: unknown, quizId: number, userId: number): MoodleQui
     const submittedAt = quizTimestamp(attempt.timefinish);
     const modifiedAt = quizTimestamp(attempt.timemodified);
     if ((attempt.state !== 'notstarted' && !startedAt)
-      || (attempt.state === 'finished' && !submittedAt)
-      || (startedAt && submittedAt && submittedAt < startedAt)) {
+      || (attempt.state === 'notstarted' && (startedAt || submittedAt))
+      || (['inprogress', 'overdue'].includes(attempt.state as string) && submittedAt)
+      || (['finished', 'submitted'].includes(attempt.state as string) && !submittedAt)
+      || (startedAt && submittedAt && submittedAt < startedAt)
+      || (startedAt && modifiedAt && modifiedAt < startedAt)
+      || (submittedAt && modifiedAt && modifiedAt < submittedAt)) {
       throw new MoodleError('Quiz attempt timestamps do not match its state', fn, 'invalid_response');
     }
     return { id, attemptNumber, state: attempt.state as MoodleQuizObservation['attempts'][number]['state'],

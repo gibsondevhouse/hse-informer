@@ -66,6 +66,52 @@ test('learner portal launches mapped Moodle course and protects profiles and com
   expect(a11y.violations).toEqual([]);
   for(const width of [320,390,768,1440]){await page.setViewportSize({width,height:900});expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);}
 });
+test('Moodle observations distinguish unknown, not started and in progress without granting completion', async ({page,context}) => {
+  const db = new Pool({connectionString: process.env.DATABASE_URL});
+  const progressPerson=randomUUID(), progressAssignment=randomUUID();
+  const progressPrincipal={id:randomUUID(),subject:randomUUID()};
+  const instance='37b4d73b-eddd-4ba0-94d3-38a8d938ee21';
+  try {
+    const pinned=(await db.query('SELECT requirement_id,requirement_version_id,course_version_id FROM assignments WHERE id=$1',[assignment])).rows[0];
+    await db.query(`INSERT INTO people(id,tenant_id,display_name,person_type,synthetic)
+      VALUES($1,$2,'Progress observation learner','employee',true)`,[progressPerson,tenant]);
+    await db.query('INSERT INTO person_site_memberships(tenant_id,person_id,site_id) VALUES($1,$2,$3)',[tenant,progressPerson,site]);
+    await db.query(`INSERT INTO principals(id,tenant_id,oidc_issuer,oidc_subject,person_id,role)
+      VALUES($1,$2,$3,$4,$5,'learner')`,[progressPrincipal.id,tenant,issuer,progressPrincipal.subject,progressPerson]);
+    await db.query(`INSERT INTO person_external_ids(tenant_id,person_id,source,external_id,instance_key)
+      VALUES($1,$2,'moodle','18',$3)`,[tenant,progressPerson,instance]);
+    await db.query(`INSERT INTO assignments(id,tenant_id,person_id,site_id,requirement_id,requirement_version_id,
+      course_version_id,reason,trigger_kind,due_at,created_by)
+      VALUES($1,$2,$3,$4,$5,$6,$7,'Progress observation fixture','manual',now()+interval '2 days',$8)`,
+    [progressAssignment,tenant,progressPerson,site,pinned.requirement_id,pinned.requirement_version_id,pinned.course_version_id,admin.id]);
+    await db.query(`INSERT INTO moodle_enrollments(tenant_id,assignment_id,moodle_user_id,moodle_course_id,enrolled_at)
+      VALUES($1,$2,18,42,now())`,[tenant,progressAssignment]);
+    await session(context,progressPrincipal);
+    await page.goto('/learn');
+    const card=page.locator('article').filter({has:page.getByRole('heading',{name:'Practice learning',exact:true})});
+    await expect(card.getByText('Progress not confirmed',{exact:true})).toBeVisible();
+    await expect(card.getByText('Due soon',{exact:true})).toBeVisible();
+    await db.query(`INSERT INTO moodle_learning_progress(tenant_id,assignment_id,course_version_id,instance_key,
+      moodle_course_id,moodle_user_id,started,activities_with_progress,tracked_activities,started_attempts,
+      read_started_at,observed_at,source_observation)
+      VALUES($1,$2,$3,$4,42,18,false,0,1,0,now()-interval '1 second',now(),'{"synthetic":true}')`,
+    [tenant,progressAssignment,pinned.course_version_id,instance]);
+    await page.reload();
+    await expect(card.getByText('Not started',{exact:true})).toBeVisible();
+    await expect(card.getByText('Progress not confirmed',{exact:true})).toHaveCount(0);
+    await db.query(`UPDATE moodle_learning_progress SET started=true,course_last_access_at=now()-interval '1 second',
+      read_started_at=now(),observed_at=now(),source_observation='{"synthetic":true,"courseVisited":true}'
+      WHERE tenant_id=$1 AND assignment_id=$2`,[tenant,progressAssignment]);
+    await page.reload();
+    await expect(card.getByText('In progress',{exact:true})).toBeVisible();
+    const result=await page.request.get('/api/completions');
+    expect(result.status()).toBe(200);expect((await result.json()).items).toEqual([]);
+    expect((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations).toEqual([]);
+    await page.setViewportSize({width:320,height:900});
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
+  } finally {await db.end();}
+});
+
 test('identity administration fails closed and disabled profiles revoke existing sessions',async({page,context,browser})=>{
   await session(context,learner);
   const adminContext=await browser.newContext();

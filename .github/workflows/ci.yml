@@ -201,9 +201,47 @@ jobs:
             infra/practice-browser-failure.png
           if-no-files-found: ignore
           retention-days: 7
-      - name: Show stack logs on failure
+      - name: Verify the joined beta account and Moodle learning journey
+        id: beta_journey
+        if: ${{ !cancelled() && steps.scorm_browser.outcome == 'success' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          set -a
+          source infra/.env
+          set +a
+          docker compose --env-file infra/.env -f infra/compose.yaml up -d --wait hse-db
+          DATABASE_URL="$(node -e 'if(!process.env.HSE_DB_PASSWORD)throw new Error("Disposable database password missing");const url=new URL("postgres://hse@localhost:54329/hse");url.password=process.env.HSE_DB_PASSWORD;process.stdout.write(url.toString())')"
+          echo "::add-mask::$DATABASE_URL"
+          export DATABASE_URL
+          npm --prefix web run db:migrate
+          A="$(docker compose --env-file infra/.env -f infra/compose.yaml exec -T -u www-data moodle-a php /opt/hse/bootstrap-pilot.php)"
+          echo "::add-mask::$(jq -er .token <<<"$A")"
+          SCORM="$(docker compose --env-file infra/.env -f infra/compose.yaml exec -T -u www-data \
+            -e SCORM_LEARNER_PASSWORD="$SCORM_LEARNER_PASSWORD" moodle-a php /opt/hse/bootstrap-scorm.php)"
+          OAUTH="$(docker compose --env-file infra/.env -f infra/compose.yaml exec -T -u www-data \
+            -e MOODLE_A_OIDC_CLIENT_SECRET="$MOODLE_A_OIDC_CLIENT_SECRET" moodle-a php /opt/hse/bootstrap-oauth.php)"
+          echo "::add-mask::$(jq -er .bridgeToken <<<"$OAUTH")"
+          export MOODLE_A_PILOT="$A" MOODLE_SCORM_FIXTURE="$SCORM" MOODLE_OAUTH_FIXTURE="$OAUTH"
+          export HSE_BETA_JOURNEY_FIXTURE=1
+          node --test infra/scripts/test-beta-journey.cjs
+          ./web/node_modules/.bin/tsx infra/scripts/verify-beta-journey.ts
+      - name: Upload joined beta journey evidence
+        if: ${{ !cancelled() && (steps.beta_journey.outcome == 'success' || steps.beta_journey.outcome == 'failure') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: joined-beta-journey-evidence
+          path: |
+            infra/beta-journey-evidence.json
+            infra/beta-journey-admin-failure.png
+            infra/beta-journey-worker-failure.png
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Show stack service status on failure
         if: failure()
-        run: docker compose --env-file infra/.env -f infra/compose.yaml logs --tail=100
+        # Access logs can contain one-time OIDC callback codes and query values.
+        # The browser probes retain separately redacted failure evidence.
+        run: docker compose --env-file infra/.env -f infra/compose.yaml ps --all
       - name: Stop synthetic stack
         if: always()
         run: docker compose --env-file infra/.env -f infra/compose.yaml down -v

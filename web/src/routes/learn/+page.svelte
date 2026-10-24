@@ -1,13 +1,24 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { invalidateAll } from '$app/navigation';
   import type { PageData } from './$types';
   let { data }: { data: PageData } = $props();
   let filter = $state('open');
   let interactive = $state(false);
-  onMount(() => { interactive = true; });
+  onMount(() => {
+    interactive = true;
+    const refresh = () => { if (!document.hidden) void invalidateAll(); };
+    const timer = window.setInterval(refresh, 60_000);
+    window.addEventListener('focus', refresh);
+    return () => { window.clearInterval(timer); window.removeEventListener('focus', refresh); };
+  });
   const visible = $derived(data.assignments.filter(a => filter === 'all' || (filter === 'completed' ? a.knowledgeComplete : !a.knowledgeComplete)));
-  const date = (value: string, zone?: string | null) => new Intl.DateTimeFormat('en-US', { dateStyle: 'medium', timeZone: zone || 'UTC' }).format(new Date(value));
-  const labels: Record<string, string> = { not_started:'Not started', in_progress:'In progress', knowledge_complete:'Knowledge complete', overdue:'Overdue', needs_review:'Needs review', closed:'Closed' };
+  const date = (value: string, zone = 'UTC') => {
+    try { return new Intl.DateTimeFormat('en-US', { dateStyle: 'medium', timeZone: zone }).format(new Date(value)); }
+    catch { return 'Time zone pending'; }
+  };
+  const dueDate = (value: string, zone?: string | null) => zone ? date(value, zone) : 'Time zone pending';
+  const labels: Record<string, string> = { not_started:'Not started', progress_unknown:'Progress not confirmed', in_progress:'In progress', knowledge_complete:'Knowledge complete', overdue:'Overdue', needs_review:'Needs review', closed:'Closed' };
 </script>
 <svelte:head><title>My training · HSE Informer</title></svelte:head>
 <main class="learning-page">
@@ -15,8 +26,14 @@
   <aside class="beta-note">Beta test records · Course completion records knowledge gained. It does not grant workplace authorization.</aside>
   <section aria-labelledby="assigned-heading">
     <div class="section-head"><h2 id="assigned-heading">Assigned training</h2><label>Show <select bind:value={filter} disabled={!interactive}><option value="open">To complete</option><option value="completed">Completed</option><option value="all">All training</option></select></label></div>
+    <p class="due">Due dates use the site's time zone. Due soon means today through seven calendar days ahead. Moodle progress is checked during synchronization.</p>
     <div class="course-grid">{#each visible as assignment (assignment.id)}
-      <article><p class="eyebrow">{assignment.site.name}</p><h3>{assignment.requirement.title}</h3><span class:overdue={assignment.state === 'overdue'} class="status">{labels[assignment.state] || assignment.state}</span><p>{assignment.reason}</p><p class="due">Due {date(assignment.dueAt, data.siteZones[assignment.site.id])}</p>
+      <article><p class="eyebrow">{assignment.site.name}</p><h3>{assignment.requirement.title}</h3><span class:overdue={assignment.state === 'overdue'} class="status">{labels[assignment.state] || assignment.state}</span>{#if assignment.dueSoon}<span class="status">Due soon</span>{/if}<p>{assignment.reason}</p><p class="due">Due {dueDate(assignment.dueAt, data.siteZones[assignment.site.id])}</p>
+        {#if !assignment.knowledgeComplete && assignment.progress.observedAt}
+          <p class="due">Moodle progress checked {date(assignment.progress.observedAt, data.siteZones[assignment.site.id] || 'UTC')}.
+            {#if assignment.progress.status === 'unknown'}No start could be confirmed from the available Moodle activity.{:else if assignment.progress.activitiesWithProgress !== null}{assignment.progress.activitiesWithProgress} of {assignment.progress.trackedActivities} tracked activities have recorded progress.{/if}
+          </p>
+        {/if}
         {#if assignment.launchUrl}<a class="primary" href={assignment.launchUrl}>Open course in Moodle ↗</a>{:else}<p class="pending">Enrollment is being prepared. Contact your administrator if this persists.</p>{/if}
       </article>
     {:else}<p class="empty">{filter === 'open' ? 'You have no outstanding training.' : 'No training matches this view.'}</p>{/each}</div>

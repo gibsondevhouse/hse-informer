@@ -89,6 +89,7 @@ foreach ([
     'enrol_manual_enrol_users',
     'core_enrol_get_users_courses',
     'core_completion_get_course_completion_status',
+    'core_completion_get_activities_completion_status',
     // Native Quiz evidence reads belong to the regular learning service,
     // never the separate identity bridge or an assessment-write service.
     'mod_quiz_get_quizzes_by_courses',

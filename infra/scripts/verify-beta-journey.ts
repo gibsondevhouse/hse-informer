@@ -230,7 +230,42 @@ async function main() {
     assert.equal(identityUser.emailVerified, false); assert.deepEqual(identityUser.attributes.hse_person_id, [personId]);
     assert.deepEqual(identityUser.requiredActions || [], []);
     evidence.checkpoints.productionEnrollmentAndTechnicalIdentity = { userId: moodleUserId, hseId, emailUnverified: true, notificationsDisabled: true };
-    phase = 'learner launches Moodle from actual portal and commits SCORM';
+    async function incompleteProgress() {
+      await enqueueReconciliation(TENANT); await jobs();
+      const rows = (await db.query(`SELECT * FROM moodle_learning_progress
+        WHERE tenant_id=$1 AND assignment_id=$2`, [TENANT, assignmentId])).rows;
+      assert.equal(rows.length, 1, 'Incomplete reconciliation must retain one current source observation');
+      const observed = rows[0];
+      assert.equal(observed.tenant_id, TENANT); assert.equal(observed.assignment_id, assignmentId);
+      assert.equal(observed.course_version_id, courseId); assert.equal(observed.instance_key, INSTANCE);
+      assert.equal(Number(observed.moodle_course_id), scorm.courseid); assert.equal(Number(observed.moodle_user_id), moodleUserId);
+      assert.equal(observed.source_observation.courseId, scorm.courseid);
+      assert.equal(observed.source_observation.userId, moodleUserId);
+      assert.ok(observed.observed_at >= observed.read_started_at);
+      assert.equal(observed.source_observation.observedAt, observed.observed_at.toISOString());
+      assert.equal(observed.source_observation.started, observed.started);
+      const sourcePositive = observed.course_last_access_at !== null || observed.activities_with_progress > 0
+        || (observed.started_attempts ?? 0) > 0;
+      assert.equal(observed.started === true, sourcePositive, 'Only positive Moodle source activity may establish a start');
+      assert.equal((await db.query('SELECT count(*) AS count FROM knowledge_evidence WHERE tenant_id=$1 AND assignment_id=$2',
+        [TENANT, assignmentId])).rows[0].count, '0', 'Progress must not create a completion record');
+      assert.equal((await moodle('local_hse_evidence_get_completion', { courseid: scorm.courseid, userid: moodleUserId! })).completed, false);
+      const visible = (await portal(workerContext, '/api/assignments')).items.find((item: any) => item.id === assignmentId);
+      assert.ok(visible, 'The learner must see the exact reconciled assignment');
+      assert.equal(visible.person.id, personId); assert.equal(visible.courseVersionId, courseId);
+      assert.equal(visible.knowledgeComplete, false); assert.equal(visible.deliveryState, 'enrolled');
+      assert.equal(visible.progress.observedAt, observed.observed_at.toISOString());
+      assert.equal(visible.progress.status, observed.started === true ? 'in_progress' : observed.started === false ? 'not_started' : 'unknown');
+      if (!sourcePositive) assert.notEqual(visible.state, 'in_progress', 'Enrollment alone must not imply learning has started');
+      return { started: observed.started, lastAccessAt: observed.course_last_access_at?.toISOString() ?? null,
+        activitiesWithProgress: observed.activities_with_progress, trackedActivities: observed.tracked_activities,
+        startedAttempts: observed.started_attempts, observedAt: observed.observed_at.toISOString(),
+        assignmentState: visible.state, progressStatus: visible.progress.status, completionCount: 0,
+        courseVersionId: courseId, courseId: scorm.courseid, userId: moodleUserId };
+    }
+    phase = 'production reconciliation observes incomplete progress before course launch';
+    evidence.checkpoints.progressBeforeCourseLaunch = await incompleteProgress();
+    phase = 'learner launches Moodle from actual portal';
     await workerPage.reload();
     await expect(workerPage.getByRole('link', { name: 'Open course in Moodle ↗', exact: true })).toHaveAttribute('href', `${MOODLE}/course/view.php?id=${scorm.courseid}`);
     await workerPage.getByRole('link', { name: 'Open course in Moodle ↗', exact: true }).click();
@@ -241,6 +276,15 @@ async function main() {
     await workerPage.locator('input[name="password"]').fill(workerPassword); await workerPage.locator('#kc-login').click();
     await workerPage.waitForURL((url: URL) => url.origin === MOODLE && url.pathname === '/course/view.php' && url.searchParams.get('id') === String(scorm.courseid));
     assert.equal(await workerPage.evaluate(() => (window as any).M?.cfg?.userId), moodleUserId);
+    phase = 'production reconciliation observes real course visit while still incomplete';
+    let visitedProgress: Awaited<ReturnType<typeof incompleteProgress>> | undefined;
+    // The course request records access at shutdown. Poll actual reconciliation
+    // for that source write; do not turn browser navigation into a start signal.
+    await expect.poll(async () => { visitedProgress = await incompleteProgress(); return visitedProgress.started; },
+      { timeout: 45000, intervals: [500, 1000, 2000] }).toBe(true);
+    assert.equal(visitedProgress!.assignmentState, 'in_progress');
+    evidence.checkpoints.progressAfterCourseVisit = visitedProgress;
+    phase = 'learner commits actual SCORM completion';
     await workerPage.goto(`${MOODLE}/mod/scorm/player.php?cm=${scorm.cmid}&scoid=${scorm.scoid}`, { waitUntil: 'domcontentloaded' });
     const sco = workerPage.frameLocator('iframe#scorm_object');
     await sco.getByRole('button', { name: 'Record synthetic completion', exact: true }).click();

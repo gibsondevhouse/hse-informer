@@ -5,6 +5,7 @@ Never deploys, starts public TLS, sends invitations, or uploads private settings
 archives, database dumps, file contents, or recovery keys.
 """
 import argparse
+import hashlib
 from datetime import datetime, timezone
 import importlib.util
 import json
@@ -222,6 +223,19 @@ def phase(name):
     print(json.dumps({"event": "recovery-ci.phase", "phase": name}), flush=True)
 
 
+PROGRESS_SQL = """SELECT COALESCE(jsonb_agg(to_jsonb(p) ORDER BY p.tenant_id,p.assignment_id),'[]'::jsonb)
+                  FROM moodle_learning_progress p"""
+
+
+def verify_progress_snapshot(original, restored):
+    source.require(isinstance(original, list) and len(original) == 1,
+                   "The synthetic recovery fixture must contain one learning observation")
+    source.require(original == restored,
+                   "Restored learning observation mapping, state or source facts differ from the recovery point")
+    digest = hashlib.sha256(json.dumps(original, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    return {"rows": len(original), "sourceEqualsRestored": True, "sha256": digest}
+
+
 def assert_frozen(work):
     for service in ("web", "jobs", "keycloak", "moodle"):
         identifier = source.compose(work / "source", "--profile", "operations", "ps", "--all", "--quiet", service).stdout.strip()
@@ -299,6 +313,7 @@ def drill(work, evidence):
     source.compose(source_work, "--profile", "operations", "stop", "web", "jobs", "keycloak", "moodle", timeout=180)
     assert_frozen(work)
     copy_frozen_code(work)
+    source_progress = json.loads(source.query(source_work, "hse_app", "hse", "HSE_DB_PASSWORD", PROGRESS_SQL).stdout)
     source_files = tree_state(work, {"moodlecode": EXTRA_VOLUMES["code"],
         "moodledata": model["volumes"]["moodle-data"]["name"], "uploads": model["volumes"]["app-uploads"]["name"]})
     source.require(all(item["entries"] and item["bytes"] for item in source_files.values()), "Every recovery file set must contain actual content")
@@ -319,6 +334,8 @@ def drill(work, evidence):
     source.require(restored.get("event") == "restore.verified" and restored.get("countsVerified") and restored.get("evidencePacketVerified")
                    and restored.get("serviceDatabaseCountsVerified") == ["hse", "keycloak", "moodle"], "The exact recovery tool did not verify the complete restored set")
     source.require(restored.get("archiveSha256") == backup.get("archiveSha256"), "Restore did not use the measured encrypted archive")
+    progress = verify_progress_snapshot(source_progress,
+        json.loads(target_query(work, "hse_app", "hse", "HSE_DB_PASSWORD", PROGRESS_SQL)))
     # Promote only restored bytes into fresh runtime volumes. The image's Moodle
     # code is hidden by the restored code volume; it cannot mask a missing file.
     for key in ("moodle-code", "moodle-data", "app-uploads"):
@@ -341,6 +358,7 @@ def drill(work, evidence):
         "sourceWritersStopped": True, "targetDatabasesInitiallyEmpty": True,
         "separateComposeProjectsAndStorage": True, "encryptedArchiveSha256": backup["archiveSha256"],
         "restore": restored, "fileSets": target_files, "recoveredStartup": startup,
+        "learningProgress": progress,
         "publicPortsPublishedOnTarget": False, "externalRuntimeNetwork": False,
         "settingsOrKeysUploaded": False, "syntheticHseRecordsOnly": True,
         "limitations": ["Ephemeral Linux CI, not the chosen deployment host", "No public DNS/TLS or human SSO/course playback",

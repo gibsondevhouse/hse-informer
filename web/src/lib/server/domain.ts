@@ -1,10 +1,14 @@
-export type AssignmentState = 'not_started' | 'in_progress' | 'knowledge_complete' | 'overdue' | 'needs_review' | 'closed';
+import { localDate } from '../site-date';
+
+export type AssignmentState = 'not_started' | 'progress_unknown' | 'in_progress' | 'knowledge_complete' | 'overdue' | 'needs_review' | 'closed';
 export type DeliveryState = 'draft' | 'queued' | 'enrolled';
 
 export interface AssignmentSignals {
   dueAt: Date;
   closedAt?: Date | null;
   enrolled: boolean;
+  /** Only a Moodle source observation can establish learning activity. */
+  learningStarted?: boolean | null;
   knowledgeCompletedAt: Date | null;
   authorizationDecision: 'authorized' | 'restricted' | 'revoked' | null;
   authorizationExpiresAt: Date | null;
@@ -26,8 +30,20 @@ export function assignmentState(signals: AssignmentSignals, now: Date): Assignme
   if (signals.hasBlockingDrift) return 'needs_review';
   if (signals.knowledgeCompletedAt && signals.needsReview && !authorizationCurrent(signals, now)) return 'needs_review';
   if (signals.knowledgeCompletedAt) return 'knowledge_complete';
-  if (signals.enrolled) return 'in_progress';
+  if (signals.learningStarted === true) return 'in_progress';
+  if (signals.enrolled && signals.learningStarted !== false) return 'progress_unknown';
   return 'not_started';
+}
+
+/** Due today through seven calendar days ahead in the assignment site's zone. */
+export function assignmentDueSoon(dueAt: Date, now: Date, timeZone: string | null, open: boolean): boolean {
+  if (!open || !timeZone || dueAt < now) return false;
+  try {
+    const dueDay = Date.parse(`${localDate(dueAt.toISOString(), timeZone)}T00:00:00Z`);
+    const today = Date.parse(`${localDate(now.toISOString(), timeZone)}T00:00:00Z`);
+    const days = (dueDay - today) / 86_400_000;
+    return days >= 0 && days <= 7;
+  } catch { return false; }
 }
 
 export type Recurrence = { kind: 'event_only' } | { kind: 'annual' } | { kind: 'three_year' };

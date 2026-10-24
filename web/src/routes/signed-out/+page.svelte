@@ -2,7 +2,7 @@
   import { page } from '$app/state';
 </script>
 <svelte:head><title>Signed out · HSE Informer</title></svelte:head>
-<main><h1>You’re signed out of HSE Informer</h1>
+<main><p>Beta test workspace</p><h1>You’re signed out of HSE Informer</h1>
   {#if page.url.searchParams.has('portal')}<p role="alert">Your local sign-in cookie was removed, but revocation of other portal sessions could not be confirmed. Contact your administrator if this persists.</p>{/if}
   {#if page.url.searchParams.has('moodle')}<p role="alert">Moodle sign-out could not be confirmed. Use Moodle’s own Sign out control in any open course tab.</p>{/if}
   {#if page.url.searchParams.has('identity')}<p role="alert">Your identity-provider sign-out could not be confirmed. If you share this device, also sign out of your identity account and close other training tabs.</p>{/if}

@@ -1,6 +1,6 @@
 import { database, query, transaction } from './db';
 import type { PoolClient } from 'pg';
-import { addUserToCohort, enrollUser, findMoodleUserByHseId, isUserEnrolled, linkMoodleUser, moodleConnection, provisionMoodleUser, readCompletion, suspendMoodleUser, suppressMoodleEmail } from './moodle';
+import { addUserToCohort, enrollUser, findMoodleUserByHseId, isUserEnrolled, linkMoodleUser, moodleConnection, provisionMoodleUser, readCompletion, readMoodleLearningProgress, suspendMoodleUser, suppressMoodleEmail } from './moodle';
 
 interface Job { id: string; tenant_id: string; kind: 'moodle_enrol' | 'moodle_reconcile' | 'moodle_user_state'; aggregate_id: string; attempt_count: number }
 type JobClient = Pick<PoolClient, 'query'>;
@@ -191,6 +191,7 @@ async function perform(job: Job, client: JobClient = database()): Promise<void> 
     return;
   }
   await resolveDrifts(job, ['completion_criteria_unverified']);
+  const progressReadStartedAt = new Date();
   const completion = await readCompletion(job.tenant_id, courseId, userId,
     assignment.moodle_scorm_id ? Number(assignment.moodle_scorm_id) : null,
     assignment.moodle_activity_id ? Number(assignment.moodle_activity_id) : null,
@@ -215,6 +216,23 @@ async function perform(job: Job, client: JobClient = database()): Promise<void> 
     if (previous.length) await recordDrift(job, 'completion_missing', {
       prior: previous[0].moodle_timecompleted.toISOString(), userId, courseId
     });
+    const progress = await readMoodleLearningProgress(job.tenant_id, courseId, userId, completion, progressReadStartedAt);
+    await database().query(`INSERT INTO moodle_learning_progress
+      (tenant_id,assignment_id,course_version_id,instance_key,moodle_course_id,moodle_user_id,
+       started,course_last_access_at,activities_with_progress,tracked_activities,started_attempts,
+       read_started_at,observed_at,source_observation)
+      VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14::jsonb)
+      ON CONFLICT(tenant_id,assignment_id) DO UPDATE SET
+        course_version_id=EXCLUDED.course_version_id,instance_key=EXCLUDED.instance_key,
+        moodle_course_id=EXCLUDED.moodle_course_id,moodle_user_id=EXCLUDED.moodle_user_id,
+        started=EXCLUDED.started,course_last_access_at=EXCLUDED.course_last_access_at,
+        activities_with_progress=EXCLUDED.activities_with_progress,tracked_activities=EXCLUDED.tracked_activities,
+        started_attempts=EXCLUDED.started_attempts,read_started_at=EXCLUDED.read_started_at,
+        observed_at=EXCLUDED.observed_at,source_observation=EXCLUDED.source_observation
+      WHERE moodle_learning_progress.read_started_at < EXCLUDED.read_started_at`,
+    [job.tenant_id, job.aggregate_id, assignment.course_version_id, connection.instanceId, courseId, userId,
+      progress.started, progress.courseLastAccessAt, progress.activitiesWithProgress, progress.trackedActivities,
+      progress.startedAttempts, progress.readStartedAt, progress.observedAt, JSON.stringify(progress)]);
     return;
   }
   if (!completion.completedAt) {

@@ -61,7 +61,7 @@ describe.skipIf(!enabled)('PostgreSQL tenant isolation and evidence', () => {
   });
 
   it('rejects cross-company due-date changes', async () => {
-    await expect(changeDueDate(actorB, ids.assignmentA, { dueAt: '2027-02-01T00:00:00Z' })).rejects.toMatchObject({ status: 404 });
+    await expect(changeDueDate(actorB, ids.assignmentA, { dueAt: '2027-02-01T00:00:00Z', reason: 'Wrong tenant edit' })).rejects.toMatchObject({ status: 404 });
   });
 
   it('scopes learner identity to issuer, subject, and site membership', async () => {
@@ -145,15 +145,15 @@ describe.skipIf(!enabled)('PostgreSQL tenant isolation and evidence', () => {
     [versionId, tenantId, requirementId]);
     await db.query(`UPDATE requirements SET active_version_id = $3
       WHERE tenant_id = $1 AND id = $2`, [tenantId, requirementId, versionId]);
-    await db.query(`INSERT INTO course_versions
+    const course = await db.query<{ id: string }>(`INSERT INTO course_versions
       (tenant_id, requirement_version_id, deephow_content_id, deephow_version,
        package_sha256, export_format, moodle_course_id, review_status, reviewed_by, reviewed_at)
       VALUES ($1,$2,$3,'v1',repeat('f',64),'scorm_1_2',42,
-        'approved','Synthetic reviewer',now())`, [tenantId, versionId, `synthetic-${randomUUID()}`]);
+        'approved','Synthetic reviewer',now()) RETURNING id`, [tenantId, versionId, `synthetic-${randomUUID()}`]);
     const actor: Actor = { id: principalId, tenantId, tenantName: 'Live-boundary test',
       tenantSynthetic: false, personId: null, displayName: 'Synthetic admin', role: 'tenant_admin', siteIds: [] };
     await expect(createAssignments(actor, { personIds: [personId], siteId, requirementId,
-      dueAt: '2027-01-01T00:00:00Z', reason: 'Synthetic boundary check' }))
+      courseVersionId: course.rows[0].id, dueAt: '2027-01-01T00:00:00Z', reason: 'Synthetic boundary check' }))
       .rejects.toMatchObject({ status: 400 });
     await expect(db.query(`INSERT INTO assignments
       (tenant_id, person_id, site_id, requirement_id, requirement_version_id,
@@ -174,7 +174,15 @@ describe.skipIf(!enabled)('PostgreSQL tenant isolation and evidence', () => {
       [ids.assignmentA, ids.versionB])).rejects.toThrow(/assignment identity and pinned versions/);
     await expect(db.query(`DELETE FROM assignments WHERE id = $1`, [ids.assignmentA]))
       .rejects.toThrow(/assignment decisions cannot be deleted/);
-    await changeDueDate(actorA, ids.assignmentA, { dueAt: '2027-02-01T00:00:00Z' });
+    const dueAt = '2027-02-01T00:00:00Z';
+    await expect(changeDueDate(actorA, ids.assignmentA, { dueAt })).rejects.toMatchObject({ status: 400 });
+    await expect(changeDueDate(actorA, ids.assignmentA, { dueAt, reason: '  ' })).rejects.toMatchObject({ status: 400 });
+    await changeDueDate(actorA, ids.assignmentA, { dueAt, reason: '  Approved schedule change  ' });
+    const audit = await db.query(`SELECT before_value, after_value FROM audit_log
+      WHERE tenant_id=$1 AND entity_id=$2 AND action='assignment.due_date_changed'`, [ids.tenantA, ids.assignmentA]);
+    expect(audit.rows).toHaveLength(1);
+    expect(audit.rows[0].before_value.dueAt).toBe('2027-01-01T00:00:00.000Z');
+    expect(audit.rows[0].after_value).toEqual({ dueAt, reason: 'Approved schedule change' });
   });
 
   it('withdraws current authorization when a later clearance revokes it', async () => {
@@ -303,7 +311,7 @@ describe.skipIf(!enabled)('PostgreSQL tenant isolation and evidence', () => {
       'approved','Synthetic test reviewer',now())`,
       [courseId, ids.tenantA, versionId, `synthetic-${courseId}`]);
     const input = { personIds: [ids.personA], siteId: ids.siteA, requirementId,
-      dueAt: '2027-02-01T00:00:00Z', reason: 'Synthetic site trigger',
+      courseVersionId: courseId, dueAt: '2027-02-01T00:00:00Z', reason: 'Synthetic site trigger',
       triggerKind: 'event', triggerRef: 'equipment-change-001' };
     await expect(createAssignments(actorA, input)).rejects.toMatchObject({ status: 409 });
     await db.query(`INSERT INTO site_addendum_versions (id, tenant_id, site_id, requirement_id,

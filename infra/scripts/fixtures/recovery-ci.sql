@@ -38,6 +38,12 @@ BEGIN
     course_version_id,reason,trigger_kind,due_at,created_by)
     VALUES (assignment,tenant,person,site,requirement,revision,course,'Synthetic recovery CI record',
       'manual',now()+interval '1 year',administrator);
+  INSERT INTO moodle_learning_progress (tenant_id,assignment_id,course_version_id,instance_key,
+    moodle_course_id,moodle_user_id,started,course_last_access_at,activities_with_progress,
+    tracked_activities,started_attempts,read_started_at,observed_at,source_observation)
+    VALUES (tenant,assignment,course,'11111111-2222-4333-8444-555555555555',42,99,true,
+      '2020-03-14T09:00:00Z',1,2,2,now(),now(),
+      '{"synthetic":true,"courseId":42,"userId":99,"activityStates":[1,0],"startedAttempts":2}');
   INSERT INTO knowledge_evidence (id,tenant_id,assignment_id,course_version_id,moodle_course_id,
     moodle_user_id,moodle_timecompleted,score,attempts,delivery_method,source_payload)
     VALUES (original,tenant,assignment,course,42,99,'2020-03-14T10:00:00Z',85,2,'scorm',

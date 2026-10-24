@@ -1,22 +1,23 @@
 import { error } from '@sveltejs/kit';
 import { z } from 'zod';
 import { query, transaction } from './db';
-import { assignmentState, authorizationCurrent, evidenceSnapshotCurrent, type AssignmentState, type DeliveryState } from './domain';
+import { assignmentDueSoon, assignmentState, authorizationCurrent, evidenceSnapshotCurrent, type AssignmentState, type DeliveryState } from './domain';
 import { requireRole, requireSite, type Actor } from './auth';
-import { moodleCourseUrl } from './moodle';
+import { moodleConnection, moodleCourseUrl } from './moodle';
 import { endOfSiteDay } from '../site-date';
 
-const createSchema = z.object({
+const createSchema = z.strictObject({
   personIds: z.array(z.uuid()).min(1),
-  siteId: z.uuid(), requirementId: z.uuid(),
+  siteId: z.uuid(), requirementId: z.uuid(), courseVersionId: z.uuid(),
   dueAt: z.iso.datetime({ offset: true }), reason: z.string().trim().min(3).max(500),
   triggerKind: z.enum(['manual','applicability','recurrence','event']).default('manual'),
   triggerRef: z.string().trim().max(200).optional()
 });
-const patchSchema = z.object({ dueAt: z.iso.datetime({ offset: true }) });
+const patchSchema = z.strictObject({ dueAt: z.iso.datetime({ offset: true }),
+  reason: z.string().trim().min(3).max(500) });
 const bulkCreateSchema = z.strictObject({
   recipients: z.array(z.strictObject({ personId: z.uuid(), siteId: z.uuid() })).min(1).max(500),
-  requirementId: z.uuid(), dueDate: z.iso.date(), reason: z.string().trim().min(3).max(500)
+  requirementId: z.uuid(), courseVersionId: z.uuid(), dueDate: z.iso.date(), reason: z.string().trim().min(3).max(500)
 });
 type Recipient = { personId: string; siteId: string };
 type RecipientResult = Recipient & { id: string };
@@ -32,6 +33,9 @@ interface AssignmentRow {
   authorization_prerequisites: string[];
   prerequisites_current: boolean;
   completion_drift: boolean; knowledge_delivery_source: string | null;
+  time_zone: string | null; progress_started: boolean | null; progress_observed_at: Date | null;
+  progress_instance_key: string | null; course_last_access_at: Date | null;
+  activities_with_progress: number | null; tracked_activities: number | null; started_attempts: number | null;
   knowledge_evidence_id: string | null; site_evidence_id: string | null; practical_evidence_id: string | null;
   medical_evidence_id: string | null; fit_evidence_id: string | null; external_evidence_id: string | null;
 }
@@ -47,6 +51,10 @@ export interface AssignmentItem {
   authorizationDecision: 'authorized' | 'restricted' | 'revoked' | null;
   authorizationRestrictions: string | null; launchUrl: string | null;
   completionDrift: boolean;
+  dueSoon: boolean;
+  progress: { status: 'not_started' | 'in_progress' | 'unknown'; observedAt: string | null;
+    lastAccessAt: string | null; activitiesWithProgress: number | null; trackedActivities: number | null;
+    startedAttempts: number | null };
 }
 
 function visibleSiteClause(actor: Actor, start = 2): { sql: string; params: unknown[] } {
@@ -58,7 +66,7 @@ function visibleSiteClause(actor: Actor, start = 2): { sql: string; params: unkn
 export async function listAssignments(actor: Actor, now = new Date()): Promise<AssignmentItem[]> {
   const scope = visibleSiteClause(actor, 3);
   const rows = await query<AssignmentRow>(`SELECT a.id, a.course_version_id, a.tenant_id, a.person_id, p.display_name AS person_name,
-    a.site_id, s.name AS site_name, a.requirement_id, r.title AS requirement_title, r.code AS requirement_code,
+    a.site_id, s.name AS site_name, s.time_zone, a.requirement_id, r.title AS requirement_title, r.code AS requirement_code,
     a.reason, a.assigned_at, a.due_at, a.closed_at, me.enrolled_at,
     ke.completed_at AS knowledge_completed_at, au.decision AS auth_decision,
     au.expires_at AS auth_expires_at, au.restrictions AS auth_restrictions,
@@ -66,7 +74,9 @@ export async function listAssignments(actor: Actor, now = new Date()): Promise<A
     ke.id AS knowledge_evidence_id, ke.delivery_source AS knowledge_delivery_source, site_latest.id AS site_evidence_id,
     practical_latest.id AS practical_evidence_id, medical_latest.id AS medical_evidence_id,
     fit_latest.id AS fit_evidence_id, external_latest.id AS external_evidence_id,
-    drift.completion_drift,
+    drift.completion_drift, mp.started AS progress_started, mp.observed_at AS progress_observed_at,
+    mp.instance_key AS progress_instance_key, mp.course_last_access_at,
+    mp.activities_with_progress, mp.tracked_activities, mp.started_attempts,
     rv.review_status, rv.authorization_prerequisites, cv.review_status AS course_review_status, cv.moodle_course_id,
     (rv.review_status = 'approved') AND NOT COALESCE(cv.practice_only, false)
     AND jsonb_array_length(rv.authorization_prerequisites) > 0
@@ -87,6 +97,13 @@ export async function listAssignments(actor: Actor, now = new Date()): Promise<A
     JOIN requirement_versions rv ON rv.tenant_id = a.tenant_id AND rv.id = a.requirement_version_id
     LEFT JOIN course_versions cv ON cv.tenant_id = a.tenant_id AND cv.id = a.course_version_id
     LEFT JOIN moodle_enrollments me ON me.tenant_id = a.tenant_id AND me.assignment_id = a.id
+    LEFT JOIN moodle_learning_progress mp ON mp.tenant_id=a.tenant_id AND mp.assignment_id=a.id
+      AND mp.course_version_id=a.course_version_id AND mp.moodle_course_id=cv.moodle_course_id
+      AND mp.observed_at <= $2
+      AND mp.moodle_user_id=me.moodle_user_id AND mp.moodle_course_id=me.moodle_course_id
+      AND EXISTS(SELECT 1 FROM person_external_ids px WHERE px.tenant_id=a.tenant_id AND px.person_id=a.person_id
+        AND px.source='moodle' AND px.instance_key=mp.instance_key AND px.external_id=mp.moodle_user_id::text
+        AND px.superseded_at IS NULL)
     LEFT JOIN LATERAL (SELECT EXISTS (SELECT 1 FROM integration_drifts d
       WHERE d.tenant_id = a.tenant_id AND d.assignment_id = a.id AND d.resolved_at IS NULL
         AND d.kind LIKE 'completion_%') AS completion_drift) drift ON true
@@ -125,12 +142,15 @@ export async function listAssignments(actor: Actor, now = new Date()): Promise<A
     WHERE a.tenant_id = $1 AND a.cancelled_at IS NULL ${scope.sql}
     ORDER BY a.due_at ASC, p.display_name ASC`, [actor.tenantId, now, ...scope.params]);
   return rows.map((row) => {
+    const progressMatches = !!row.progress_observed_at
+      && row.progress_instance_key === moodleConnection(actor.tenantId)?.instanceId;
+    const learningStarted = progressMatches ? row.progress_started : null;
     const currentEvidence = { knowledge: row.knowledge_evidence_id, site: row.site_evidence_id,
       practical: row.practical_evidence_id, medical: row.medical_evidence_id,
       fitTest: row.fit_evidence_id, externalCredential: row.external_evidence_id };
     const evidenceCurrent = row.prerequisites_current === true
       && evidenceSnapshotCurrent(row.authorization_prerequisites, row.auth_evidence, currentEvidence);
-    const signals = { dueAt: row.due_at, closedAt: row.closed_at, enrolled: !!row.enrolled_at,
+    const signals = { dueAt: row.due_at, closedAt: row.closed_at, enrolled: !!row.enrolled_at, learningStarted,
       knowledgeCompletedAt: row.knowledge_completed_at, authorizationDecision: row.auth_decision,
       authorizationExpiresAt: row.auth_expires_at, prerequisitesCurrent: evidenceCurrent,
       needsReview: row.authorization_prerequisites.some((item) => item !== 'knowledge'),
@@ -138,19 +158,42 @@ export async function listAssignments(actor: Actor, now = new Date()): Promise<A
     const state = assignmentState(signals, now);
     const deliveryState: DeliveryState = row.enrolled_at ? 'enrolled' : row.review_status === 'approved'
       && ['approved','retired'].includes(row.course_review_status ?? '') && row.moodle_course_id ? 'queued' : 'draft';
+    const knowledgeComplete = !!row.knowledge_completed_at && (!row.completion_drift || row.knowledge_delivery_source === 'manual');
     return {
       id: row.id, courseVersionId: row.course_version_id, person: { id: row.person_id, displayName: row.person_name },
       site: { id: row.site_id, name: row.site_name },
       requirement: { id: row.requirement_id, code: row.requirement_code, title: row.requirement_title,
         reviewStatus: row.review_status },
       reason: row.reason, assignedAt: row.assigned_at.toISOString(), dueAt: row.due_at.toISOString(),
-      state, deliveryState, knowledgeComplete: !!row.knowledge_completed_at && (!row.completion_drift || row.knowledge_delivery_source === 'manual'),
+      state, deliveryState, knowledgeComplete,
+      dueSoon: assignmentDueSoon(row.due_at, now, row.time_zone, !row.closed_at && !knowledgeComplete),
+      progress: { status: learningStarted === true ? 'in_progress' : learningStarted === false ? 'not_started' : 'unknown',
+        observedAt: progressMatches ? row.progress_observed_at!.toISOString() : null,
+        lastAccessAt: progressMatches ? row.course_last_access_at?.toISOString() ?? null : null,
+        activitiesWithProgress: progressMatches ? row.activities_with_progress : null,
+        trackedActivities: progressMatches ? row.tracked_activities : null,
+        startedAttempts: progressMatches ? row.started_attempts : null },
       authorized: authorizationCurrent(signals, now),
       authorizationDecision: row.auth_decision, authorizationRestrictions: row.auth_restrictions,
       completionDrift: row.completion_drift,
       launchUrl: row.enrolled_at && row.moodle_course_id ? moodleCourseUrl(actor.tenantId, Number(row.moodle_course_id)) : null
     };
   });
+}
+
+export async function assignmentCourseOptions(actor: Actor) {
+  requireRole(actor, ['tenant_admin','site_admin']);
+  const rows = await query<{ id: string; requirement_id: string; title: string; version: string; moodle_course_id: string }>(
+    `SELECT cv.id, r.id AS requirement_id, COALESCE(cv.title, r.title) AS title,
+       COALESCE(cv.content_version, cv.deephow_version, rv.version) AS version, cv.moodle_course_id
+     FROM requirements r JOIN requirement_versions rv ON rv.tenant_id = r.tenant_id AND rv.id = r.active_version_id
+     JOIN course_versions cv ON cv.tenant_id = rv.tenant_id AND cv.requirement_version_id = rv.id
+     WHERE r.tenant_id = $1 AND rv.review_status = 'approved' AND cv.review_status = 'approved'
+       AND cv.moodle_course_id IS NOT NULL
+       AND (cv.retired_at IS NULL OR cv.retired_at > now()) AND (cv.effective_at IS NULL OR cv.effective_at <= now())
+     ORDER BY r.title, cv.effective_at DESC NULLS LAST, cv.created_at DESC, cv.id`, [actor.tenantId]);
+  return rows.map((row) => ({ id: row.id, requirementId: row.requirement_id, title: row.title,
+    version: row.version, moodleCourseId: Number(row.moodle_course_id) }));
 }
 
 export async function createAssignments(actor: Actor, input: unknown): Promise<{ created: string[]; skipped: string[] }> {
@@ -164,7 +207,7 @@ export async function createAssignments(actor: Actor, input: unknown): Promise<{
   const peopleIds = [...new Set(value.personIds)];
   if (peopleIds.length > 500) throw error(400, 'At most 500 recipients per request');
   const result = await createAssignmentBatch(actor, peopleIds.map((personId) => ({ personId, siteId: value.siteId })),
-    value.requirementId, value.reason, value.triggerKind,
+    value.requirementId, value.courseVersionId, value.reason, value.triggerKind,
     value.triggerKind === 'manual' ? null : value.triggerRef!.trim(), () => value.dueAt);
   return { created: result.created.map((item) => item.id), skipped: result.skipped.map((item) => item.personId) };
 }
@@ -175,7 +218,7 @@ export async function createBulkAssignments(actor: Actor, input: unknown): Promi
   const parsed = bulkCreateSchema.safeParse(input);
   if (!parsed.success) throw error(400, parsed.error.message);
   const value = parsed.data;
-  return createAssignmentBatch(actor, value.recipients, value.requirementId, value.reason,
+  return createAssignmentBatch(actor, value.recipients, value.requirementId, value.courseVersionId, value.reason,
     'manual', null, (siteTimeZone) => {
       if (!siteTimeZone) throw error(409, 'Confirm each site time zone before setting a deadline');
       try { return endOfSiteDay(value.dueDate, siteTimeZone); }
@@ -183,7 +226,7 @@ export async function createBulkAssignments(actor: Actor, input: unknown): Promi
     });
 }
 
-async function createAssignmentBatch(actor: Actor, requested: Recipient[], requirementId: string,
+async function createAssignmentBatch(actor: Actor, requested: Recipient[], requirementId: string, courseVersionId: string,
   reason: string, triggerKind: 'manual' | 'applicability' | 'recurrence' | 'event', triggerRef: string | null,
   dueAtForSite: (timeZone: string | null) => string): Promise<BatchResult> {
   const recipients = [...new Map(requested.map((item) => [`${item.siteId}:${item.personId}`, item])).values()];
@@ -194,20 +237,23 @@ async function createAssignmentBatch(actor: Actor, requested: Recipient[], requi
       'SELECT id, time_zone FROM sites WHERE tenant_id = $1 AND id = ANY($2::uuid[])', [actor.tenantId, siteIds]);
     if (sites.rowCount !== siteIds.length) throw error(404, 'Site not found');
     const dueBySite = new Map(sites.rows.map((site) => [site.id, dueAtForSite(site.time_zone)]));
+    // Lock the exact reviewed mapping and its active requirement until every
+    // recipient is saved. Publishing a newer course never substitutes its ID.
     const requirement = await client.query<{ version_id: string; review_status: string;
-      course_version_id: string | null;
+      course_version_id: string; moodle_course_id: string; course_version: string; package_sha256: string;
       authorization_prerequisites: string[] }>(
       `SELECT rv.id AS version_id, rv.review_status, rv.authorization_prerequisites,
-       (SELECT cv.id FROM course_versions cv WHERE cv.tenant_id = r.tenant_id
-         AND cv.requirement_version_id = rv.id AND cv.review_status = 'approved'
+         cv.id AS course_version_id, cv.moodle_course_id, cv.package_sha256,
+         COALESCE(cv.content_version, cv.deephow_version, rv.version) AS course_version
+       FROM course_versions cv
+       JOIN requirement_versions rv ON rv.tenant_id = cv.tenant_id AND rv.id = cv.requirement_version_id
+       JOIN requirements r ON r.tenant_id = rv.tenant_id AND r.id = rv.requirement_id AND r.active_version_id = rv.id
+       WHERE r.tenant_id = $1 AND r.id = $2 AND cv.id = $3 AND cv.review_status = 'approved'
          AND cv.moodle_course_id IS NOT NULL
          AND (cv.retired_at IS NULL OR cv.retired_at > now()) AND (cv.effective_at IS NULL OR cv.effective_at <= now())
-         ORDER BY cv.effective_at DESC NULLS LAST, cv.created_at DESC LIMIT 1) AS course_version_id
-       FROM requirements r JOIN requirement_versions rv ON rv.tenant_id = r.tenant_id AND rv.id = r.active_version_id
-       WHERE r.tenant_id = $1 AND r.id = $2`, [actor.tenantId, requirementId]);
-    if (!requirement.rowCount) throw error(404, 'Requirement not found');
-    if (requirement.rows[0].review_status !== 'approved' || !requirement.rows[0].course_version_id) {
-      throw error(409, 'An approved requirement and published course version are required before assignment');
+       FOR SHARE OF cv, rv, r`, [actor.tenantId, requirementId, courseVersionId]);
+    if (!requirement.rowCount || requirement.rows[0].review_status !== 'approved') {
+      throw error(409, 'The reviewed course version is no longer assignable. Review a published version in the active approved program.');
     }
     const addenda = await client.query<{ site_id: string; id: string }>(
       `SELECT DISTINCT ON (site_id) site_id, id FROM site_addendum_versions
@@ -279,7 +325,9 @@ async function createAssignmentBatch(actor: Actor, requested: Recipient[], requi
       await client.query(`INSERT INTO audit_log (tenant_id, actor_principal_id, action, entity_type, entity_id, after_value)
         VALUES ($1,$2,'assignment.created','assignment',$3,$4::jsonb)`,
         [actor.tenantId, actor.id, id, JSON.stringify({ personId, siteId,
-          requirementId, dueAt: dueBySite.get(siteId), reason,
+          requirementId, courseVersionId: requirement.rows[0].course_version_id,
+          courseVersion: requirement.rows[0].course_version, moodleCourseId: requirement.rows[0].moodle_course_id,
+          packageSha256: requirement.rows[0].package_sha256, dueAt: dueBySite.get(siteId), reason,
           triggerId, supersedesAssignmentId: supersedes })]);
       await client.query(`INSERT INTO integration_outbox (tenant_id, kind, aggregate_id)
         VALUES ($1,'moodle_enrol',$2) ON CONFLICT DO NOTHING`, [actor.tenantId, id]);
@@ -303,16 +351,17 @@ export async function changeDueDate(actor: Actor, assignmentId: string, input: u
     await client.query(`INSERT INTO audit_log (tenant_id, actor_principal_id, action, entity_type, entity_id, before_value, after_value)
       VALUES ($1,$2,'assignment.due_date_changed','assignment',$3,$4::jsonb,$5::jsonb)`,
       [actor.tenantId, actor.id, assignmentId, JSON.stringify({ dueAt: before.rows[0].due_at.toISOString() }),
-        JSON.stringify({ dueAt: parsed.data.dueAt })]);
+        JSON.stringify({ dueAt: parsed.data.dueAt, reason: parsed.data.reason })]);
     return parsed.data.dueAt;
   });
 }
 
 export function summarize(items: AssignmentItem[], now = new Date()) {
-  const base = { total: 0, notStarted: 0, inProgress: 0, knowledgeComplete: 0, overdue: 0, needsReview: 0, authorized: 0 };
+  const base = { total: 0, notStarted: 0, progressUnknown: 0, inProgress: 0, knowledgeComplete: 0, overdue: 0, needsReview: 0, authorized: 0 };
   const add = (counts: typeof base, item: AssignmentItem) => {
     counts.total++;
     if (item.state === 'not_started') counts.notStarted++;
+    if (item.state === 'progress_unknown') counts.progressUnknown++;
     if (item.state === 'in_progress') counts.inProgress++;
     if (item.knowledgeComplete) counts.knowledgeComplete++;
     if (item.state === 'overdue') counts.overdue++;

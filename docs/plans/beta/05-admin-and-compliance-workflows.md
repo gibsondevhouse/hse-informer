@@ -6,9 +6,9 @@
 
 ## Assignments
 
-- [x] Create individual and bulk assignments with recipient review, course version, reason, and due date.
-- [x] Edit deadlines, cancel, and reassign with a reason and audit history; prevent duplicate open assignments.
-- [x] Show not started, in progress, Knowledge Complete, and overdue separately from workplace qualification.
+- [x] Create individual and bulk assignments with recipient review, an explicitly selected published course version, reason, and due date. Save the reviewed version without substituting a newer mapping; reject retired, stale or mismatched selections.
+- [x] Edit deadlines, cancel, and reassign with a mandatory reason and audit history; prevent duplicate open assignments.
+- [x] Show not started, progress not confirmed, in progress, Knowledge Complete, due soon and overdue separately from workplace qualification. Moodle source activity establishes progress; enrollment alone does not.
 
 ## Completion records
 

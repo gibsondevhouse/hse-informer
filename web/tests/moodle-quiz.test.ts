@@ -129,7 +129,12 @@ describe('exact native Moodle Quiz observations', () => {
     ['unknown state', { state: 'graded' }], ['negative page', { currentpage: -1 }],
     ['marks in submitted state', { state: 'submitted', sumgrades: 10 }],
     ['invalid marks', { sumgrades: '10' }], ['missing start', { timestart: 0 }],
-    ['missing finish', { timefinish: 0 }], ['invalid modified time', { timemodified: -1 }]
+    ['missing finish', { timefinish: 0 }], ['invalid modified time', { timemodified: -1 }],
+    ['future start', { timestart: 9_999_999_999 }],
+    ['precreated start', { state: 'notstarted', sumgrades: null, timefinish: 0 }],
+    ['finish while in progress', { state: 'inprogress', sumgrades: null }],
+    ['submitted without finish', { state: 'submitted', sumgrades: null, timefinish: 0 }],
+    ['modified before start', { timemodified: canonicalTime - 2000 }]
   ])('rejects %s in an attempt response', async (_label, change) => {
     const { values } = fixture();
     values.mod_quiz_get_user_quiz_attempts = { attempts: [{ ...finished(1), ...change }], warnings: [] };

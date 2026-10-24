@@ -25,6 +25,17 @@ def production_model():
 
 
 class RecoveryCiGuardrails(unittest.TestCase):
+    def test_same_row_count_cannot_hide_changed_learning_source_facts(self):
+        original = [{"tenant_id": "synthetic-tenant", "assignment_id": "synthetic-assignment",
+            "course_version_id": "original-version", "started": True,
+            "source_observation": {"startedAttempts": 2}}]
+        result = verifier.verify_progress_snapshot(original, json.loads(json.dumps(original)))
+        self.assertTrue(result["sourceEqualsRestored"])
+        for change in ({"course_version_id": "different-version"}, {"started": False},
+                       {"source_observation": {"startedAttempts": 0}}):
+            with self.assertRaisesRegex(RuntimeError, "Restored learning observation"):
+                verifier.verify_progress_snapshot(original, [{**original[0], **change}])
+
     def test_refuses_operations_outside_github_ci(self):
         with patch.dict(os.environ, {"CI": "true", "GITHUB_ACTIONS": "false"}, clear=False):
             with self.assertRaisesRegex(ValueError, "only in GitHub"):
