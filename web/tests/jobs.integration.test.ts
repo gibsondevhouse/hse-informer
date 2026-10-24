@@ -156,21 +156,25 @@ describe.skipIf(!enabled)('Moodle reconciliation drift lifecycle', () => {
     expect(await runJobs(1,id.tenant)).toEqual({done:1,failed:0});
   });
 
-  it('repairs enrollment skipped while a printed account awaited activation', async () => {
+  it('keeps activation-blocked enrollment retryable without claiming success or discarding backoff', async () => {
     const db=database();
     await db.query('DELETE FROM moodle_enrollments WHERE tenant_id=$1 AND assignment_id=$2',[id.tenant,id.assignment]);
     await db.query('UPDATE people SET account_access_locked=true WHERE id=$1',[id.person]);
     await db.query(`INSERT INTO integration_outbox(tenant_id,kind,aggregate_id) VALUES($1,'moodle_enrol',$2)`,[id.tenant,id.assignment]);
-    expect(await runJobs(1,id.tenant)).toEqual({done:1,failed:0});
+    expect(await runJobs(1,id.tenant)).toEqual({done:0,failed:1});
     await enqueueReconciliation(id.tenant);
     let row=await db.query(`SELECT state FROM integration_outbox WHERE tenant_id=$1 AND aggregate_id=$2 AND kind='moodle_enrol'`,[id.tenant,id.assignment]);
-    expect(row.rows[0].state).toBe('done');
+    expect(row.rows[0].state).toBe('failed');
     await db.query('UPDATE people SET account_access_locked=false WHERE id=$1',[id.person]);
     await db.query(`INSERT INTO site_moodle_cohorts(tenant_id,site_id,moodle_cohort_id,instance_key)
       VALUES($1,$2,3,'f5a21bbd-1582-45fa-8b7f-71d01d66a4f8')`,[id.tenant,id.site]);
     await enqueueReconciliation(id.tenant);
     row=await db.query(`SELECT state FROM integration_outbox WHERE tenant_id=$1 AND aggregate_id=$2 AND kind='moodle_enrol'`,[id.tenant,id.assignment]);
-    expect(row.rows[0].state).toBe('pending');
+    expect(row.rows[0].state).toBe('failed');
+    // Activation wakes the retry in the account API (covered separately); this
+    // direct-SQL fixture makes the failed job due without bypassing its guard.
+    await db.query(`UPDATE integration_outbox SET next_attempt_at=now()
+      WHERE tenant_id=$1 AND aggregate_id=$2 AND kind='moodle_enrol'`,[id.tenant,id.assignment]);
     mock.isUserEnrolled.mockResolvedValue(false);
     expect(await runJobs(3,id.tenant)).toEqual({done:2,failed:0});
     const enrollment=await db.query('SELECT moodle_user_id FROM moodle_enrollments WHERE tenant_id=$1 AND assignment_id=$2',[id.tenant,id.assignment]);

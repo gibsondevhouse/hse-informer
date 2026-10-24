@@ -1,7 +1,9 @@
 import { database, query, transaction } from './db';
+import type { PoolClient } from 'pg';
 import { addUserToCohort, enrollUser, findMoodleUserByHseId, isUserEnrolled, linkMoodleUser, moodleConnection, provisionMoodleUser, readCompletion, suspendMoodleUser, suppressMoodleEmail } from './moodle';
 
 interface Job { id: string; tenant_id: string; kind: 'moodle_enrol' | 'moodle_reconcile' | 'moodle_user_state'; aggregate_id: string; attempt_count: number }
+type JobClient = Pick<PoolClient, 'query'>;
 
 export async function enqueueReconciliation(tenantId?: string): Promise<number> {
   // A job skipped while an account was awaiting activation must not strand its assignment.
@@ -40,8 +42,8 @@ async function takeJob(tenantId?: string): Promise<Job | null> {
   });
 }
 
-async function assignmentForJob(job: Job, instanceKey: string) {
-  const rows = await query<{ id: string; tenant_id: string; person_id: string; hse_id: string; moodle_user_ids: string[];
+async function assignmentForJob(job: Job, instanceKey: string, client: JobClient) {
+  const result = await client.query<{ id: string; tenant_id: string; person_id: string; hse_id: string; moodle_user_ids: string[];
     moodle_course_id: string | null; moodle_scorm_id: string | null; moodle_activity_id: string | null;
     course_version_id: string | null;
     display_name: string; email: string | null; identity_email: string; identity_email_technical: boolean; synthetic: boolean; person_synthetic: boolean; assigned_at: Date;
@@ -61,7 +63,7 @@ async function assignmentForJob(job: Job, instanceKey: string) {
         AND smc.instance_key = $3
       WHERE a.tenant_id = $1 AND a.id = $2 AND a.cancelled_at IS NULL AND p.active AND NOT p.account_access_locked`,
   [job.tenant_id, job.aggregate_id, instanceKey]);
-  return rows[0] ?? null;
+  return result.rows[0] ?? null;
 }
 
 async function recordDrift(job: Job, kind: string, details: Record<string, unknown>) {
@@ -72,8 +74,8 @@ async function recordDrift(job: Job, kind: string, details: Record<string, unkno
   [job.tenant_id, job.aggregate_id, kind, JSON.stringify(details)]);
 }
 
-async function resolveDrifts(job: Job, kinds: string[]) {
-  await database().query(`UPDATE integration_drifts SET resolved_at = now()
+async function resolveDrifts(job: Job, kinds: string[], client: JobClient = database()) {
+  await client.query(`UPDATE integration_drifts SET resolved_at = now()
     WHERE tenant_id = $1 AND assignment_id = $2 AND kind = ANY($3::text[])
       AND resolved_at IS NULL`, [job.tenant_id, job.aggregate_id, kinds]);
 }
@@ -101,11 +103,11 @@ async function syncMoodleUserState(job: Job): Promise<void> {
   });
 }
 
-async function perform(job: Job): Promise<void> {
+async function perform(job: Job, client: JobClient = database()): Promise<void> {
   if (job.kind === 'moodle_user_state') return syncMoodleUserState(job);
   const connection = moodleConnection(job.tenant_id);
   if (!connection) throw new Error('Moodle connection is not configured');
-  const assignment = await assignmentForJob(job, connection.instanceId);
+  const assignment = await assignmentForJob(job, connection.instanceId, client);
   if (!assignment) return;
   if (assignment.synthetic || assignment.person_synthetic) {
     throw new Error('Synthetic data must not be sent to Moodle');
@@ -122,13 +124,13 @@ async function perform(job: Job): Promise<void> {
     }
     const issuer = process.env.OIDC_ISSUER?.replace(/\/$/, '');
     if (!issuer) throw new Error('The expected portal OIDC issuer is not configured');
-    const principals = await query<{ oidc_subject: string; oidc_issuer: string }>(`SELECT pr.oidc_subject,pr.oidc_issuer
+    const principals = await client.query<{ oidc_subject: string; oidc_issuer: string }>(`SELECT pr.oidc_subject,pr.oidc_issuer
       FROM principals pr JOIN people p ON p.tenant_id=pr.tenant_id AND p.id=pr.person_id
       WHERE pr.tenant_id=$1 AND pr.person_id=$2 AND pr.oidc_issuer=$3
-        AND pr.active AND p.active AND NOT p.account_access_locked`,
+        AND pr.active AND p.active AND NOT p.account_access_locked FOR SHARE OF pr`,
     [job.tenant_id, assignment.person_id, issuer]);
-    if (principals.length !== 1) throw new Error('Moodle enrollment awaits one active portal account for this person and issuer');
-    oauthIdentity = { subject: principals[0].oidc_subject, issuer: principals[0].oidc_issuer };
+    if (principals.rows.length !== 1) throw new Error('Moodle enrollment awaits one active portal account for this person and issuer');
+    oauthIdentity = { subject: principals.rows[0].oidc_subject, issuer: principals.rows[0].oidc_issuer };
   }
   if (assignment.moodle_user_ids.length > 1) throw new Error('Ambiguous active Moodle user mapping for this instance');
   let userId = assignment.moodle_user_ids[0] ? Number(assignment.moodle_user_ids[0]) : null;
@@ -143,7 +145,7 @@ async function perform(job: Job): Promise<void> {
       }, connection.authMethod);
     }
     if (!userId) throw new Error('Moodle user is not mapped; a verified external authMethod and matching sign-in identifier are required for provisioning');
-    await database().query(`INSERT INTO person_external_ids
+    await client.query(`INSERT INTO person_external_ids
       (tenant_id, person_id, source, external_id, instance_key)
       SELECT a.tenant_id, a.person_id, 'moodle', $3, $4 FROM assignments a
       WHERE a.tenant_id = $1 AND a.id = $2 ON CONFLICT DO NOTHING`,
@@ -158,11 +160,11 @@ async function perform(job: Job): Promise<void> {
     if (!connection.learnerRoleId) throw new Error('Moodle learnerRoleId is not configured');
     await addUserToCohort(job.tenant_id, Number(assignment.moodle_cohort_id), userId);
     await enrollUser(job.tenant_id, courseId, userId, connection.learnerRoleId);
-    await database().query(`INSERT INTO moodle_enrollments
+    await client.query(`INSERT INTO moodle_enrollments
       (tenant_id, assignment_id, moodle_user_id, moodle_course_id, enrolled_at, last_verified_at)
       VALUES ($1,$2,$3,$4,now(),now()) ON CONFLICT (tenant_id, assignment_id)
       DO UPDATE SET last_verified_at = now()`, [job.tenant_id, job.aggregate_id, userId, courseId]);
-    await resolveDrifts(job, ['moodle_enrollment_missing']);
+    await resolveDrifts(job, ['moodle_enrollment_missing'], client);
     return;
   }
   const enrolled = await isUserEnrolled(job.tenant_id, courseId, userId);
@@ -238,9 +240,30 @@ export async function runJobs(limit = 100, tenantId?: string): Promise<{ done: n
     const job = await takeJob(tenantId);
     if (!job) break;
     try {
-      await perform(job);
-      await database().query(`UPDATE integration_outbox SET state = 'done', completed_at = now(), last_error = NULL
-        WHERE id = $1 AND state = 'running' AND attempt_count = $2`, [job.id, job.attempt_count + 1]);
+      if (job.kind === 'moodle_enrol') {
+        await transaction(async (client) => {
+          await client.query("SET LOCAL lock_timeout='30s'");
+          // Profile/account transitions and Moodle state sync lock this same
+          // row. NO KEY UPDATE blocks state changes while allowing FK checks
+          // from assignment writers, avoiding assignment/person lock inversion.
+          // Hold it through remote effects and the local success commit.
+          const person = await client.query<{ active: boolean; account_access_locked: boolean }>(
+            `SELECT p.active,p.account_access_locked FROM assignments a
+             JOIN people p ON p.tenant_id=a.tenant_id AND p.id=a.person_id
+             WHERE a.tenant_id=$1 AND a.id=$2 AND a.cancelled_at IS NULL FOR NO KEY UPDATE OF p`,
+            [job.tenant_id, job.aggregate_id]);
+          if (person.rows[0] && (!person.rows[0].active || person.rows[0].account_access_locked)) {
+            throw new Error('Moodle enrollment is blocked while the profile is inactive or awaiting account activation');
+          }
+          // Use this client for FK writes too: another connection would wait on
+          // our own people lock while trying to acquire its foreign-key lock.
+          await perform(job, client);
+          await finishJob(job, client);
+        });
+      } else {
+        await perform(job);
+        await finishJob(job, database());
+      }
       done++;
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : String(cause);
@@ -251,4 +274,9 @@ export async function runJobs(limit = 100, tenantId?: string): Promise<{ done: n
     }
   }
   return { done, failed };
+}
+
+async function finishJob(job: Job, client: JobClient): Promise<void> {
+  await client.query(`UPDATE integration_outbox SET state='done',completed_at=now(),last_error=NULL
+    WHERE id=$1 AND state='running' AND attempt_count=$2`, [job.id,job.attempt_count+1]);
 }
