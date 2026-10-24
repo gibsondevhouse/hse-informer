@@ -38,7 +38,9 @@ services:
       KC_DB_URL: jdbc:postgresql://auth-db:5432/keycloak
       KC_DB_USERNAME: keycloak
       KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?Set KEYCLOAK_DB_PASSWORD in infra/.env}
-      KC_HOSTNAME: http://auth.localhost:8080
+      KC_HOSTNAME: https://auth.localhost:8443
+      KC_HTTPS_CERTIFICATE_FILE: /opt/keycloak/conf/hse-dev-tls/server.crt
+      KC_HTTPS_CERTIFICATE_KEY_FILE: /opt/keycloak/conf/hse-dev-tls/server.key.pem
       KC_HTTP_ENABLED: "true"
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?Set KEYCLOAK_ADMIN_PASSWORD in infra/.env}
@@ -50,11 +52,14 @@ services:
       DEV_WORKER_PASSWORD: ${DEV_WORKER_PASSWORD:?Set DEV_WORKER_PASSWORD in infra/.env}
     ports:
       - "127.0.0.1:8080:8080"
+      - "127.0.0.1:8443:8443"
     networks:
       default:
         aliases:
           - auth.localhost
     volumes:
+      - ./.dev-tls/server.crt:/opt/keycloak/conf/hse-dev-tls/server.crt:ro
+      - ./.dev-tls/server.key.pem:/opt/keycloak/conf/hse-dev-tls/server.key.pem:ro
       - ./keycloak/hse-dev-realm.json:/opt/keycloak/data/import/hse-dev-realm.json:ro
       - ./keycloak/moodle-company-a-realm.json:/opt/keycloak/data/import/moodle-company-a-realm.json:ro
       - ./keycloak/moodle-company-b-realm.json:/opt/keycloak/data/import/moodle-company-b-realm.json:ro
@@ -105,6 +110,7 @@ services:
       - "127.0.0.1:8081:80"
     volumes:
       - moodle-a-data:/var/moodledata
+      - ./.dev-tls/ca.crt:/usr/local/share/ca-certificates/hse-dev.crt:ro
       - ../integrations/moodle-local/hse_evidence:/var/www/moodle/public/local/hse_evidence:ro
     depends_on:
       moodle-a-db:
@@ -125,6 +131,7 @@ services:
       - "127.0.0.1:8082:80"
     volumes:
       - moodle-b-data:/var/moodledata
+      - ./.dev-tls/ca.crt:/usr/local/share/ca-certificates/hse-dev.crt:ro
       - ../integrations/moodle-local/hse_evidence:/var/www/moodle/public/local/hse_evidence:ro
     depends_on:
       moodle-b-db:

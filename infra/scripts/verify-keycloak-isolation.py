@@ -9,6 +9,7 @@ import argparse
 import base64
 import json
 import os
+import ssl
 from pathlib import Path
 from urllib.error import HTTPError
 from urllib.parse import urlencode
@@ -16,6 +17,13 @@ from urllib.request import Request, urlopen
 
 
 REALM_DIR = Path(__file__).resolve().parents[1] / "keycloak"
+DEV_CA = REALM_DIR.parent / '.dev-tls' / 'ca.crt'
+
+
+def trusted_open(request, timeout=20):
+    return urlopen(request, timeout=timeout, context=ssl.create_default_context(cafile=str(DEV_CA)))
+
+
 REALM_FILES = {
     "hse-dev": REALM_DIR / "hse-dev-realm.json",
     "moodle-company-a": REALM_DIR / "moodle-company-a-realm.json",
@@ -50,7 +58,7 @@ def verify_realm_files() -> None:
     if len(user_ids) != len(set(user_ids)):
         raise RuntimeError("Keycloak user IDs must be unique across imported realms")
     expected_clients = {
-        "hse-dev": {"hse-web", "hse-account-admin"},
+        "hse-dev": {"hse-web", "hse-account-admin", "moodle-hse-a"},
         "moodle-company-a": {"moodle-company-a", "moodle-a-isolation-probe"},
         "moodle-company-b": {"moodle-company-b", "moodle-b-isolation-probe"},
     }
@@ -86,6 +94,10 @@ def verify_realm_files() -> None:
                 raise RuntimeError(f"Moodle callback does not match {name}'s site")
     print("OK three realm files have exclusive Moodle clients and worker inventories")
     hse = realms["hse-dev"]
+    moodle_hse = next(c for c in hse["clients"] if c["clientId"] == "moodle-hse-a")
+    if moodle_hse["redirectUris"] != ["http://localhost:8081/admin/oauth2callback.php"] or moodle_hse["serviceAccountsEnabled"] \
+            or set(moodle_hse["defaultClientScopes"]) != {"profile", "email"}:
+        raise RuntimeError("Synthetic HSE Moodle SSO client must use only the exact company A callback")
     client = next(c for c in hse["clients"] if c["clientId"] == "hse-web")
     if not any(m["protocolMapper"] == "oidc-amr-mapper" and m["config"].get("id.token.claim") == "true" for m in client["protocolMappers"]):
         raise RuntimeError("HSE client must emit completed-authenticator AMR in identity tokens")
@@ -116,7 +128,7 @@ def token_request(base_url: str, realm: str, client: str, username: str, passwor
     }).encode()
     request = Request(url, data=body, headers={"Content-Type": "application/x-www-form-urlencoded"})
     try:
-        with urlopen(request, timeout=20) as response:
+        with trusted_open(request, timeout=20) as response:
             return response.status, json.load(response)
     except HTTPError as error:
         return error.code, json.load(error)
@@ -169,7 +181,7 @@ def verify_live_client_placement(base_url: str, admin_password: str) -> None:
         for client_id in ("hse-web", "moodle-company-a", "moodle-company-b"):
             url = f"{base_url.rstrip('/')}/admin/realms/{realm}/clients?{urlencode({'clientId': client_id})}"
             request = Request(url, headers={"Authorization": f"Bearer {admin_token}"})
-            with urlopen(request, timeout=20) as result:
+            with trusted_open(request, timeout=20) as result:
                 clients = json.load(result)
             found = [client for client in clients if client.get("clientId") == client_id]
             expected = client_id == ("hse-web" if realm == "hse-dev" else realm)
@@ -189,7 +201,7 @@ def main() -> None:
     admin_password = os.environ.get("KEYCLOAK_ADMIN_PASSWORD")
     if not password or not admin_password:
         raise SystemExit("DEV_WORKER_PASSWORD and KEYCLOAK_ADMIN_PASSWORD are required for the synthetic sign-in probe")
-    base_url = os.environ.get("KEYCLOAK_URL", "http://auth.localhost:8080")
+    base_url = os.environ.get("KEYCLOAK_URL", "https://auth.localhost:8443")
     verify_token_boundary(base_url, password)
     verify_live_client_placement(base_url, admin_password)
 

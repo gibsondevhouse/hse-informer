@@ -76,7 +76,9 @@
   "clients": [
     {
       "clientId": "hse-web",
-      "attributes": { "post.logout.redirect.uris": "http://localhost:5173/signed-out*" },
+      "attributes": {
+        "post.logout.redirect.uris": "http://localhost:5173/signed-out*"
+      },
       "name": "HSE Informer SvelteKit",
       "enabled": true,
       "protocol": "openid-connect",
@@ -103,6 +105,28 @@
             "access.token.claim": "true"
           }
         }
+      ]
+    },
+    {
+      "clientId": "moodle-hse-a",
+      "name": "Synthetic Moodle HSE SSO proof",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${MOODLE_A_OIDC_CLIENT_SECRET}",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": [
+        "http://localhost:8081/admin/oauth2callback.php"
+      ],
+      "webOrigins": [
+        "http://localhost:8081"
+      ],
+      "defaultClientScopes": [
+        "profile",
+        "email"
       ]
     },
     {

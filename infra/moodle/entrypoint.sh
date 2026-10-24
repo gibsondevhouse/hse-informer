@@ -1,6 +1,11 @@
 #!/bin/sh
 set -eu
 
+# Trust only the generated development CA mounted by the local fixture.
+if [ -f /usr/local/share/ca-certificates/hse-dev.crt ]; then
+    update-ca-certificates
+fi
+
 required="MOODLE_DB_HOST MOODLE_DB_NAME MOODLE_DB_USER MOODLE_DB_PASSWORD MOODLE_WWWROOT MOODLE_ADMIN_PASSWORD MOODLE_SITE_FULLNAME MOODLE_SITE_SHORTNAME"
 for name in $required; do
     value="$(printenv "$name" || true)"

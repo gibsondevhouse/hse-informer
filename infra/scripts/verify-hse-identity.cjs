@@ -8,7 +8,7 @@ const {createServer}=require('node:http');
 const requireWeb=createRequire(resolve(__dirname,'../../web/package.json'));
 const {chromium}=requireWeb('@playwright/test');
 const assert=require('node:assert/strict');
-const base=(process.env.KEYCLOAK_URL||'http://auth.localhost:8080').replace(/\/$/,'');
+const base=(process.env.KEYCLOAK_URL||'https://auth.localhost:8443').replace(/\/$/,'');
 const issuer=`${base}/realms/hse-dev`,redirect='http://localhost:5173/auth/callback';
 const callbackTarget=new URL(redirect);
 
