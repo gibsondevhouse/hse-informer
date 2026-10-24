@@ -1,5 +1,7 @@
 # 06 · Notifications
 
+> **Deferred — 2026-10-24:** This automation plan is later-version work and is not a beta exit gate. Beta account invitation/reset delivery is covered by 03; learners can view assignments in the app.
+
 **Goal:** people find out what they need to do without logging in to check, and administrators can see whether each notice arrived.
 
 ## Why

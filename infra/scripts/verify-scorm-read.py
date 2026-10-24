@@ -96,6 +96,18 @@ def main() -> None:
 
     if "timecompleted" in status:
         raise RuntimeError("Course completion REST shape changed; review canonical timestamp semantics")
+    canonical = call(base, token, "local_hse_evidence_get_completion",
+                     {"courseid": course_id, "userid": user_id})
+    if not isinstance(canonical, dict) or canonical.get("completed") is not True \
+            or canonical.get("courseid") != course_id or canonical.get("userid") != user_id:
+        raise RuntimeError(f"Canonical completion has wrong identity or status: {canonical}")
+    positive_id(canonical.get("completionid"), "canonical course completion record")
+    positive_id(canonical.get("timecompleted"), "canonical course completion time")
+    repeated = call(base, token, "local_hse_evidence_get_completion",
+                    {"courseid": course_id, "userid": user_id})
+    if canonical != repeated:
+        raise RuntimeError("Read-only canonical evidence changed on repeat read")
+    last["canonicalCompletionRead"] = canonical
     evidence = {
         "fixture": "SYNTHETIC ONLY - manual-auth browser learner; no training credit",
         "packageSha256": fixture["packageSha256"],
@@ -107,8 +119,8 @@ def main() -> None:
         "observed": last,
         "limitations": [
             "Browser learner uses disposable Moodle manual authentication, not Keycloak OAuth linking",
-            "The package is synthetic and is not a DeepHow export",
-            "The completion REST response does not supply a canonical course completion timestamp",
+            "The package is synthetic practice content, not approved workplace training",
+            "Canonical course time requires the installed read-only HSE evidence plugin",
             "Neither activity nor course completion grants HSE authorization",
         ],
     }

@@ -1,0 +1,10 @@
+{
+  "slug": "pilot-company",
+  "name": "Pilot Company",
+  "sites": [
+    { "code": "site-one", "name": "Site One", "stateCode": "GA", "timeZone": "America/New_York" },
+    { "code": "site-two", "name": "Site Two", "stateCode": "GA", "timeZone": "America/New_York" }
+  ],
+  "admin": { "displayName": "Pilot Administrator", "email": "replace-with-real-admin@example.com", "employeeNumber": "ADMIN-001" },
+  "reason": "Create the approved beta tenant and initial administrator"
+}

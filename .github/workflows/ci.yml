@@ -13,6 +13,7 @@ jobs:
       - name: Validate local Compose configuration and Keycloak realm
         run: |
           cp infra/.env.example infra/.env
+          sh infra/scripts/prepare-dev-tls.sh
           docker compose --env-file infra/.env -f infra/compose.yaml config --quiet
           python3 infra/scripts/verify-keycloak-isolation.py --config-only
       - name: Verify synthetic SCORM 1.2 package
@@ -41,12 +42,16 @@ jobs:
   moodle-synthetic-isolation:
     runs-on: ubuntu-latest
     timeout-minutes: 35
+    env:
+      KEYCLOAK_URL: https://auth.localhost:8443
     steps:
       - uses: actions/checkout@v4
       - name: Start separate Moodle sites and Keycloak
         run: |
           cp infra/.env.example infra/.env
+          sh infra/scripts/prepare-dev-tls.sh
           echo '127.0.0.1 auth.localhost' | sudo tee -a /etc/hosts > /dev/null
+          echo "NODE_EXTRA_CA_CERTS=$GITHUB_WORKSPACE/infra/.dev-tls/ca.crt" >> "$GITHUB_ENV"
           docker compose --env-file infra/.env -f infra/compose.yaml up -d --build keycloak moodle-a moodle-b
       - name: Check Moodle and issuer readiness
         run: python3 infra/scripts/check-stack.py
@@ -85,10 +90,28 @@ jobs:
           cache: npm
           cache-dependency-path: web/package-lock.json
       - name: Install pinned browser tooling
+        id: browser_tools
         run: |
           npm ci --prefix web
           ./web/node_modules/.bin/playwright install --with-deps chromium
+          sudo apt-get install -y libnss3-tools
+          mkdir -p "$HOME/.pki/nssdb"
+          if [ ! -f "$HOME/.pki/nssdb/cert9.db" ]; then
+            certutil -N -d "sql:$HOME/.pki/nssdb" --empty-password
+          fi
+          certutil -A -d "sql:$HOME/.pki/nssdb" -n hse-dev -t 'C,,' -i infra/.dev-tls/ca.crt
+      - name: Verify HSE browser identity, privileged MFA, and account service boundaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          set -a
+          source infra/.env
+          set +a
+          node --test infra/scripts/test-hse-identity-callback.cjs
+          node infra/scripts/verify-hse-identity.cjs
       - name: Launch synthetic SCORM in Moodle browser and read tracking
+        id: scorm_browser
+        if: ${{ !cancelled() && steps.browser_tools.outcome == 'success' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -106,19 +129,26 @@ jobs:
           echo "::add-mask::$(jq -r .token <<<"$A")"
           SCORM="$(docker compose --env-file infra/.env -f infra/compose.yaml exec -T -u www-data \
             -e SCORM_LEARNER_PASSWORD="$SCORM_LEARNER_PASSWORD" moodle-a php /opt/hse/bootstrap-scorm.php)"
-          MOODLE_SCORM_FIXTURE="$SCORM" SCORM_LEARNER_PASSWORD="$SCORM_LEARNER_PASSWORD" \
+          MOODLE_A_PILOT="$A" MOODLE_SCORM_FIXTURE="$SCORM" SCORM_LEARNER_PASSWORD="$SCORM_LEARNER_PASSWORD" \
             node infra/scripts/verify-scorm-browser.cjs
+          OAUTH="$(docker compose --env-file infra/.env -f infra/compose.yaml exec -T -u www-data \
+            -e MOODLE_A_OIDC_CLIENT_SECRET="$MOODLE_A_OIDC_CLIENT_SECRET" moodle-a php /opt/hse/bootstrap-oauth.php)"
+          echo "::add-mask::$(jq -er .bridgeToken <<<"$OAUTH")"
+          MOODLE_A_PILOT="$A" MOODLE_SCORM_FIXTURE="$SCORM" MOODLE_OAUTH_FIXTURE="$OAUTH" \
+            node infra/scripts/verify-moodle-sso.cjs
           docker compose --env-file infra/.env -f infra/compose.yaml exec -T -u www-data \
             moodle-a php /var/www/moodle/admin/cli/cron.php
           MOODLE_A_PILOT="$A" MOODLE_SCORM_FIXTURE="$SCORM" \
             MOODLE_SCORM_EVIDENCE=infra/scorm-browser-evidence.json \
             python3 infra/scripts/verify-scorm-read.py
       - name: Upload synthetic SCORM browser evidence
-        if: success()
+        if: ${{ !cancelled() && steps.scorm_browser.outcome == 'success' }}
         uses: actions/upload-artifact@v4
         with:
           name: synthetic-scorm-browser-evidence
-          path: infra/scorm-browser-evidence.json
+          path: |
+            infra/scorm-browser-evidence.json
+            infra/moodle-sso-evidence.json
           retention-days: 7
       - name: Upload SCORM failure diagnostics
         if: failure()
@@ -128,11 +158,90 @@ jobs:
           path: |
             infra/scorm-browser-failure.png
             infra/scorm-browser-evidence.json
+            infra/moodle-sso-evidence.json
+            infra/moodle-sso-failure.png
           if-no-files-found: ignore
           retention-days: 7
-      - name: Show stack logs on failure
+      - name: Verify native Moodle practice lessons, resume, quiz retries and completion
+        id: native_practice
+        if: ${{ !cancelled() && steps.browser_tools.outcome == 'success' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          set -a
+          source infra/.env
+          set +a
+          node --test infra/scripts/test-practice-course.cjs infra/scripts/test-practice-accessibility.cjs
+          docker compose --env-file infra/.env -f infra/compose.yaml exec -T moodle-a \
+            php -l /opt/hse/bootstrap-practice.php
+          A="$(docker compose --env-file infra/.env -f infra/compose.yaml exec -T -u www-data moodle-a php /opt/hse/bootstrap-pilot.php)"
+          echo "::add-mask::$(jq -er .token <<<"$A")"
+          echo "::add-mask::$SCORM_LEARNER_PASSWORD"
+          export HSE_PRACTICE_FIXTURE=1
+          export PRACTICE_LEARNER_PASSWORD="$SCORM_LEARNER_PASSWORD"
+          export MOODLE_A_PILOT="$A"
+          MOODLE_PRACTICE_FIXTURE="$(docker compose --env-file infra/.env -f infra/compose.yaml exec -T -u www-data \
+            -e HSE_PRACTICE_FIXTURE=1 -e PRACTICE_LEARNER_PASSWORD="$PRACTICE_LEARNER_PASSWORD" \
+            moodle-a php /opt/hse/bootstrap-practice.php)"
+          export MOODLE_PRACTICE_FIXTURE
+          node infra/scripts/verify-practice-course.cjs browser
+          docker compose --env-file infra/.env -f infra/compose.yaml exec -T -u www-data \
+            moodle-a php /var/www/moodle/admin/cli/cron.php
+          node infra/scripts/verify-practice-course.cjs completion
+          ./web/node_modules/.bin/tsx infra/scripts/verify-practice-adapter.ts
+      - name: Upload native Moodle practice evidence
+        if: ${{ !cancelled() && (steps.native_practice.outcome == 'success' || steps.native_practice.outcome == 'failure') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-moodle-practice-evidence
+          path: |
+            infra/practice-browser-evidence.json
+            infra/practice-completion-evidence.json
+            infra/practice-adapter-evidence.json
+            infra/practice-browser-failure.png
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Verify the joined beta account and Moodle learning journey
+        id: beta_journey
+        if: ${{ !cancelled() && steps.scorm_browser.outcome == 'success' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          set -a
+          source infra/.env
+          set +a
+          docker compose --env-file infra/.env -f infra/compose.yaml up -d --wait hse-db
+          DATABASE_URL="$(node -e 'if(!process.env.HSE_DB_PASSWORD)throw new Error("Disposable database password missing");const url=new URL("postgres://hse@localhost:54329/hse");url.password=process.env.HSE_DB_PASSWORD;process.stdout.write(url.toString())')"
+          echo "::add-mask::$DATABASE_URL"
+          export DATABASE_URL
+          npm --prefix web run db:migrate
+          A="$(docker compose --env-file infra/.env -f infra/compose.yaml exec -T -u www-data moodle-a php /opt/hse/bootstrap-pilot.php)"
+          echo "::add-mask::$(jq -er .token <<<"$A")"
+          SCORM="$(docker compose --env-file infra/.env -f infra/compose.yaml exec -T -u www-data \
+            -e SCORM_LEARNER_PASSWORD="$SCORM_LEARNER_PASSWORD" moodle-a php /opt/hse/bootstrap-scorm.php)"
+          OAUTH="$(docker compose --env-file infra/.env -f infra/compose.yaml exec -T -u www-data \
+            -e MOODLE_A_OIDC_CLIENT_SECRET="$MOODLE_A_OIDC_CLIENT_SECRET" moodle-a php /opt/hse/bootstrap-oauth.php)"
+          echo "::add-mask::$(jq -er .bridgeToken <<<"$OAUTH")"
+          export MOODLE_A_PILOT="$A" MOODLE_SCORM_FIXTURE="$SCORM" MOODLE_OAUTH_FIXTURE="$OAUTH"
+          export HSE_BETA_JOURNEY_FIXTURE=1
+          node --test infra/scripts/test-beta-journey.cjs
+          ./web/node_modules/.bin/tsx infra/scripts/verify-beta-journey.ts
+      - name: Upload joined beta journey evidence
+        if: ${{ !cancelled() && (steps.beta_journey.outcome == 'success' || steps.beta_journey.outcome == 'failure') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: joined-beta-journey-evidence
+          path: |
+            infra/beta-journey-evidence.json
+            infra/beta-journey-admin-failure.png
+            infra/beta-journey-worker-failure.png
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Show stack service status on failure
         if: failure()
-        run: docker compose --env-file infra/.env -f infra/compose.yaml logs --tail=100
+        # Access logs can contain one-time OIDC callback codes and query values.
+        # The browser probes retain separately redacted failure evidence.
+        run: docker compose --env-file infra/.env -f infra/compose.yaml ps --all
       - name: Stop synthetic stack
         if: always()
         run: docker compose --env-file infra/.env -f infra/compose.yaml down -v
@@ -160,7 +269,7 @@ jobs:
       DATABASE_URL: postgres://hse_ci:ci-only-password@localhost:5432/hse_ci
       TEST_DATABASE_URL: postgres://hse_ci:ci-only-password@localhost:5432/hse_ci
       APP_ORIGIN: http://localhost:5173
-      OIDC_ISSUER: http://auth.localhost:8080/realms/hse-dev
+      OIDC_ISSUER: https://auth.localhost:8443/realms/hse-dev
       OIDC_CLIENT_ID: hse-web
       OIDC_CLIENT_SECRET: ci-only-oidc-secret
       SESSION_SECRET: ci-only-session-secret-with-32-bytes-minimum
@@ -184,6 +293,7 @@ jobs:
       - run: npm run test:e2e
         env:
           DEV_AUTH: synthetic
+      - run: npm run test:e2e:beta
       - name: Upload browser failure evidence
         if: failure()
         uses: actions/upload-artifact@v4

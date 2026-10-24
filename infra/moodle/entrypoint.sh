@@ -1,6 +1,11 @@
 #!/bin/sh
 set -eu
 
+# Trust only the generated development CA mounted by the local fixture.
+if [ -f /usr/local/share/ca-certificates/hse-dev.crt ]; then
+    update-ca-certificates
+fi
+
 required="MOODLE_DB_HOST MOODLE_DB_NAME MOODLE_DB_USER MOODLE_DB_PASSWORD MOODLE_WWWROOT MOODLE_ADMIN_PASSWORD MOODLE_SITE_FULLNAME MOODLE_SITE_SHORTNAME"
 for name in $required; do
     value="$(printenv "$name" || true)"
@@ -37,6 +42,10 @@ exit((int) $statement->fetchColumn() === 1 ? 0 : 1);
         "--fullname=$MOODLE_SITE_FULLNAME" \
         "--shortname=$MOODLE_SITE_SHORTNAME"
 fi
+
+# Install/upgrade local extensions through Moodle's supported upgrade API.
+# Core files stay untouched; the evidence plugin is mounted read-only.
+runuser -u www-data -- php /var/www/moodle/admin/cli/upgrade.php --non-interactive
 
 # Moodle requires cron for course and activity completion processing.
 (

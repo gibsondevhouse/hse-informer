@@ -58,7 +58,7 @@ async function main() {
     await client.query(`INSERT INTO principals (tenant_id, oidc_issuer, oidc_subject, person_id, role)
       VALUES ($1,'synthetic-dev','synthetic-dev-admin',$2,'tenant_admin')
       ON CONFLICT (tenant_id, oidc_issuer, oidc_subject) DO NOTHING`, [tenantId, adminId]);
-    const devIssuer = 'http://auth.localhost:8080/realms/hse-dev';
+    const devIssuer = 'https://auth.localhost:8443/realms/hse-dev';
     const adminSubject = '33333333-3333-4333-8333-333333333333';
     await client.query(`INSERT INTO principals (tenant_id, oidc_issuer, oidc_subject, person_id, role)
       VALUES ($1,$2,$3,$4,'tenant_admin')
@@ -80,7 +80,7 @@ async function main() {
         SELECT $1,$2,$3 WHERE NOT EXISTS (SELECT 1 FROM person_site_memberships
           WHERE tenant_id = $1 AND person_id = $2 AND site_id = $3 AND ended_at IS NULL)`, [tenantId, personId, siteId]);
       if (index === 0) {
-        const issuer = 'http://auth.localhost:8080/realms/hse-dev';
+        const issuer = 'https://auth.localhost:8443/realms/hse-dev';
         const subject = '11111111-1111-4111-8111-111111111111';
         await client.query(`INSERT INTO principals (tenant_id, oidc_issuer, oidc_subject, person_id, role)
           VALUES ($1,$2,$3,$4,'learner') ON CONFLICT (tenant_id, oidc_issuer, oidc_subject) DO NOTHING`,
@@ -99,7 +99,7 @@ async function main() {
       SELECT $1,$2,$3 WHERE NOT EXISTS (SELECT 1 FROM person_site_memberships
         WHERE tenant_id = $1 AND person_id = $2 AND site_id = $3 AND ended_at IS NULL)`,
       [otherId, otherPersonId, otherSite.rows[0].id]);
-    const otherIssuer = 'http://auth.localhost:8080/realms/hse-dev';
+    const otherIssuer = 'https://auth.localhost:8443/realms/hse-dev';
     const otherSubject = '22222222-2222-4222-8222-222222222222';
     await client.query(`INSERT INTO principals (tenant_id, oidc_issuer, oidc_subject, person_id, role)
       VALUES ($1,$2,$3,$4,'learner') ON CONFLICT (tenant_id, oidc_issuer, oidc_subject) DO NOTHING`,

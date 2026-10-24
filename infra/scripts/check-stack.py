@@ -2,13 +2,16 @@
 """Smoke check the local identity issuer and two independent Moodle sites."""
 
 import json
+import os
+from pathlib import Path
+import ssl
 import time
 from urllib.parse import urlparse
 from urllib.request import urlopen
 
 
 def get_json(url: str) -> dict:
-    with urlopen(url, timeout=15) as response:
+    with urlopen(url, timeout=15, context=ssl.create_default_context(cafile=str(Path(__file__).resolve().parents[1] / ".dev-tls" / "ca.crt"))) as response:
         return json.load(response)
 
 
@@ -38,8 +41,9 @@ def wait_for(label: str, check) -> None:
 
 
 def main() -> None:
+    base = os.environ.get('KEYCLOAK_URL', 'https://auth.localhost:8443').rstrip('/')
     for realm in ("hse-dev", "moodle-company-a", "moodle-company-b"):
-        issuer = f"http://auth.localhost:8080/realms/{realm}"
+        issuer = f"{base}/realms/{realm}"
 
         def check_issuer() -> None:
             discovery = get_json(f"{issuer}/.well-known/openid-configuration")

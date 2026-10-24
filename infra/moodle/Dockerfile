@@ -28,9 +28,13 @@ COPY config.php /var/www/moodle/config.php
 COPY entrypoint.sh /usr/local/bin/hse-moodle-entrypoint
 COPY bootstrap-pilot.php /opt/hse/bootstrap-pilot.php
 COPY bootstrap-scorm.php /opt/hse/bootstrap-scorm.php
+COPY bootstrap-oauth.php /opt/hse/bootstrap-oauth.php
+COPY bootstrap-practice.php /opt/hse/bootstrap-practice.php
 RUN chmod 0644 /var/www/moodle/config.php \
     && chmod 0644 /opt/hse/bootstrap-pilot.php \
     && chmod 0644 /opt/hse/bootstrap-scorm.php \
+    && chmod 0644 /opt/hse/bootstrap-oauth.php \
+    && chmod 0644 /opt/hse/bootstrap-practice.php \
     && chmod 0755 /usr/local/bin/hse-moodle-entrypoint
 
 WORKDIR /var/www/moodle

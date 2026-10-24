@@ -1,16 +1,15 @@
 # Domain, authorization, and evidence contract
 
-**Status:** implementation draft; regulatory approval pending. See the [contract register](README.md). Tifton, Ocilla, and Vernon are real site labels in the intended rollout, but all fixtures and demonstrations must identify their people and records as synthetic.
+**Status:** implementation draft; regulatory approval pending. See the [contract register](README.md). Tifton, Ocilla, and Vernon are real site labels in the intended rollout, but all fixtures must identify their people and records as synthetic. The controlled beta may use consenting real participants in staging under its privacy/retention policy.
 
 ## System ownership
 
 | Data | Authoritative owner | HSE Informer handling |
 |---|---|---|
-| Course content and content revisions | DeepHow | Register immutable source ID, revision, package checksum, effective dates, and the corresponding Moodle course/activity IDs. A replacement is a new mapping, never an update to an old evidence reference. |
-| New LMS enrollments, course/activity completion, grades, attempts | The company-specific Moodle instance | Write enrollments through the server; read and snapshot knowledge evidence with Moodle IDs and source timestamps. Detect manual changes by reconciliation. |
+| Course content and revisions | Moodle | HSE Informer registers immutable version mappings, checksum, language, review state, and effective dates. New versions never rewrite existing evidence. |
+| Learning progress, assessments, and source completions | Moodle | HSE Informer enrolls assigned learners and snapshots verified completion evidence with mapped source IDs/times and available score/attempt data. Manual records have separate provenance. |
 | Person, company/site membership, applicability and assignment decisions | HSE Informer PostgreSQL | Version rules and preserve the input snapshot, reason, due date, and triggering event for each decision. |
 | Site training, practical checks, external credentials, authorization | HSE Informer PostgreSQL | Keep signed, append-only evidence and explicit restrictions. A Moodle completion cannot write or imply authorization. |
-| Historical training before approved cutover | HSI | Preserve HSI as authority. Archive a checksummed export and map records only after a verified import; keep HSI record IDs and original dates. |
 | Login credentials and sessions | Self-hosted Keycloak | Persist issuer and subject mappings; never treat email, display name, or mutable employee number as person identity. |
 | Confidential medical responses and audiograms | Outside HSE Informer and Moodle | Keep only minimum clearance/fit-test status, effective/expiry dates, issuer, and reference, with restricted access. |
 
@@ -19,8 +18,7 @@
 - Generate a UUID `person_id` once in HSE Informer. Every person belongs to exactly one `tenant_id` for v1. A transfer between client companies requires an explicit reviewed identity action; no automatic match on name or email.
 - Generate UUID `tenant_id`, `site_id`, `requirement_id`, `requirement_version_id`, `assignment_id`, and `evidence_id`. All rows carrying personal or site evidence carry `tenant_id`; site evidence carries `site_id`.
 - Map Keycloak as `(issuer, subject) -> (tenant_id, person_id)`. Keep the issuer so subjects from different realms cannot collide. HSE Informer and Moodle use separate Keycloak clients.
-- Map external IDs as `(tenant_id, system, instance_id, external_id) -> internal ID`. The system is `moodle`, `deephow`, `hsi`, or a future connector. Moodle IDs are meaningful only inside the mapped company instance. Keep historical aliases with effective dates instead of overwriting them.
-- Map each DeepHow content ID and revision to a Moodle course/activity ID, instance ID, immutable checksum, and approval state. Never infer version from a title.
+- Map external IDs as `(tenant_id, system, instance_id, external_id) -> internal ID`. The beta system is `moodle`. Moodle IDs are meaningful only inside the mapped company instance. Keep historical aliases with effective dates instead of overwriting them.
 - Treat `employee_number` and email as optional attributes, not keys. Record their source and validity dates when present.
 
 ## Tenant and site permissions
@@ -43,7 +41,7 @@ The five positive milestones from [product direction](../vision/phases.txt) are 
 
 | Milestone | Evidence source and transition guard |
 |---|---|
-| **Knowledge Complete** | Moodle's completion read proves the mapped course/activity, person, exact content version, and source time. The HSE server stores a snapshot; an admin cannot mark it manually. |
+| **Knowledge Complete** | A verified Moodle completion read proves the mapped person, exact course version, and source time. Store an immutable snapshot. An explicitly labeled manual completion can satisfy a matching assignment only through an authorized administrator decision with provenance; it never fabricates a passing assessment. |
 | **Site Training Complete** | Approved site addendum/version is delivered and acknowledged for the person's site; store attestations and source time. |
 | **Practical Evaluation Passed** | A current qualified evaluator signs a versioned checklist with observed result, scope, and any restrictions. |
 | **External Credential Verified** | An authorized verifier records provider, credential type/reference, validity, and evidence checksum. Used only where a requirement needs it. |
@@ -60,10 +58,17 @@ The evidence payload must be able to capture the following when the requirement 
 | Context | Fields to retain |
 |---|---|
 | Person and assignment | Employer, site, department, job/role at training time; assignment reason, rule/trigger, due date, applicable authority or employer program. |
-| Course | DeepHow content ID/version/checksum; Moodle instance, course/activity ID, course version, delivery method, language/translation, start/completion date, duration, score, attempt and retained answer-history reference where available. Missing vendor fields are explicit `unavailable`, never invented. |
+| Course | Course version/checksum, Moodle instance/course/activity IDs, delivery source (`moodle` or `manual`), language, start/completion time, and available score/attempt references. Manual evidence records source/reference, actor/time, and reason; missing scores are not invented. |
 | Site instruction | Site addendum/version, procedure/plan version, equipment/process/chemical/space or respirator scope, trainer, delivery and comprehension evidence, employee attestation. |
 | Practical and credential | Checklist/version, evaluator identity and qualification/version, result, restrictions, employee/evaluator attestations; or external provider, credential type, validity, and document checksum. |
 | Authorization | Decision, scope, prerequisite evidence IDs, approving person, effective/expiry date, restrictions and revocation/supersession reason. |
-| Migration | HSI record ID, export file checksum, import batch/operator, original completion and expiry values and timezone, mapped Moodle record ID, reconciliation result. |
 
 Do not store medical questionnaires or audiograms in this evidence store. Clearance status and date may be referenced only when required for an authorization decision. Published course/addendum versions and evidence are append-only; corrections are linked superseding records, and audit packets reproduce the original version and source values.
+
+## Beta profile and completion administration (2026-10-24)
+
+Authorized administrators create/edit profiles and manage account state and site/role grants within their scope. A profile retains its stable person ID; name, contact, and site changes do not rewrite evidence captured at completion. Deactivation preserves training history and prevents access.
+
+Completion corrections and voids append a new record linked to the original with actor, time, reason, and provenance. Expose both effective state and original history; do not delete evidence. A void or correction re-evaluates linked assignment status without erasing attempts or silently creating assignments. Learners can read their own history but cannot administer completion records. All changes are server-authorized and audited.
+
+Completion administration must support manual provenance alongside verified Moodle evidence, without weakening Moodle source requirements or existing authorization guards.

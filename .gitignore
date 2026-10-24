@@ -9,3 +9,6 @@ Thumbs.db
 
 # The app's own .gitignore excludes dependencies and build/preview output.
 /admin-app/.git/
+
+# Generated synthetic development TLS keys and trust chain
+/infra/.dev-tls/

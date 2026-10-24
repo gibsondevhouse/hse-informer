@@ -1,0 +1,54 @@
+{
+  "title": "Getting started with HSE Informer · beta practice",
+  "contentSource": "in_house",
+  "contentVersion": "1.0.0",
+  "language": "en",
+  "practiceOnly": true,
+  "delivery": "moodle_native_pages_and_quiz",
+  "assessment": {
+    "engine": "moodle_quiz",
+    "questionCount": 10,
+    "maximumGrade": 100,
+    "gradeToPass": 80,
+    "attemptsAllowed": 3,
+    "gradingMethod": "highest",
+    "timeLimitSeconds": 0,
+    "completionRequiresPassingGrade": true
+  },
+  "review": {
+    "status": "pending",
+    "reviewer": null,
+    "reviewedAt": null
+  },
+  "installedMoodleCourseId": null,
+  "reviewedMoodleExportSha256": null,
+  "sourceHashFormat": "UTF-8 path + NUL + file SHA-256 + LF for each listed file, in list order",
+  "sourceSha256": "74b240f746055ea2ae47ca2e9a150a36b082e376d02ce2403d4b2dc0e5f7b64c",
+  "files": [
+    {
+      "path": "README.md",
+      "sha256": "5260d55a5016b00e65e42c7b0f34ef5408b6bb0600c1c6c3f46a41a8d7cb6830",
+      "bytes": 4231
+    },
+    {
+      "path": "lessons/01-find-your-training.html",
+      "sha256": "c5fc66b20864eb5e463f292aca5059d34e47d8a5f8cd9ef1203da68f49381d8a",
+      "bytes": 886
+    },
+    {
+      "path": "lessons/02-learn-and-resume.html",
+      "sha256": "f734a0e554a01e2dcff65103283bb3d00a09a6afcde10b6fc272a25666cc2a7e",
+      "bytes": 1053
+    },
+    {
+      "path": "lessons/03-profiles-and-records.html",
+      "sha256": "e3eca40b31d371e1c483c47a76ffc8bbea41bd770a4eb8aacffea50edc8b5093",
+      "bytes": 1182
+    },
+    {
+      "path": "questions.gift",
+      "sha256": "4ebd7a4dc847d1848fff62b82ebc5fe1c68f90bad1755d83d852358096a23a96",
+      "bytes": 4873
+    }
+  ]
+}

@@ -99,6 +99,11 @@ for (const viewport of viewports) {
   });
 
   test(`Svelte admin shell is stable at ${viewport.name} width`, async ({ page }) => {
+    // Snapshot layout independently of how long queued fixture jobs have aged.
+    await page.route('**/api/integration-health', route => route.fulfill({ json: {
+      asOf: '2026-10-24T12:00:00Z', jobs: { failed: 0, aged: 0, pending: 0, stalled: 0 },
+      unresolvedDrifts: {}, reassignmentFailures: 0
+    } }));
     await page.setViewportSize(viewport);
     await page.goto('/');
     await expect(page.getByRole('heading', { name: 'Overview' })).toBeVisible();
@@ -257,11 +262,17 @@ test('React preview dialog returns keyboard focus to its program', async ({ page
 });
 
 test('focus returns to the program card after switching between dialogs', async ({ page }) => {
+  let requirementId = '';
   await page.route('**/api/requirements', async (route) => {
     const response = await route.fetch();
     const body = await response.json();
     body.items[0].reviewStatus = 'approved'; // Browser-only UI fixture; server approval remains guarded.
+    requirementId = body.items[0].id;
     await route.fulfill({ response, json: body });
+  });
+  await page.route('**/api/assignments/options', async (route) => {
+    await route.fulfill({ json: { items: [{ id: '10000000-0000-4000-8000-000000000001',
+      requirementId, title: 'Synthetic reviewed course', version: '1.0', moodleCourseId: 42 }] } });
   });
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Overview' })).toBeVisible();

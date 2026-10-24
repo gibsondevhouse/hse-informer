@@ -1,6 +1,6 @@
 # HSE Informer web
 
-Svelte 5 and SvelteKit 3 application with a Node adapter and a PostgreSQL record store. This is an implementation foundation for [Refactor 001](../docs/refactor-001.md). The five starter requirements and all bundled people/assignments are **synthetic and unapproved**. A synthetic completion or preview lesson is never production evidence.
+Svelte 5 and SvelteKit 3 application with a Node adapter and a PostgreSQL record store. The [beta plan](../docs/plans/beta/README.md) defines the current scope; the broader [Refactor 001](../docs/refactor-001.md) remains background. The five starter requirements and all bundled people/assignments are **synthetic and unapproved**. A synthetic completion or preview lesson is never production evidence.
 
 ## Local setup
 
@@ -15,7 +15,7 @@ DATABASE_URL=postgres://localhost:5432/hse_informer_refactor_dev npm run db:seed
 DATABASE_URL=postgres://localhost:5432/hse_informer_refactor_dev DEV_AUTH=synthetic npm run dev
 ```
 
-`DEV_AUTH=synthetic` signs in as the seeded synthetic Company A administrator for a local UI preview. It is blocked when `NODE_ENV=production`. Remove it to test actual Keycloak sign-in. The development realm in `infra/` uses issuer `http://auth.localhost:8080/realms/hse-dev`, HSE client `hse-web`, and callback `http://localhost:5173/auth/callback`. Set `APP_ORIGIN`, `OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, and a 32-character or longer `SESSION_SECRET` server-side. The seeded realm subjects map a Company A administrator and Company A/B workers by **issuer plus subject**; an ambiguous mapping is rejected. The Moodle instances have separate OIDC clients.
+`DEV_AUTH=synthetic` signs in as the seeded synthetic Company A administrator for a local UI preview. It is blocked when `NODE_ENV=production`. Remove it to test actual Keycloak sign-in. The development realm in `infra/` uses issuer `https://auth.localhost:8443/realms/hse-dev`, HSE client `hse-web`, and callback `http://localhost:5173/auth/callback`. Set `APP_ORIGIN`, `OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, and a 32-character or longer `SESSION_SECRET` server-side. The seeded realm subjects map a Company A administrator and Company A/B workers by **issuer plus subject**; an ambiguous mapping is rejected. The Moodle instances have separate OIDC clients.
 
 The browser UI suite also launches the React preview from `../admin-app`. Install its dependencies before `npm run test:e2e`:
 
@@ -41,6 +41,7 @@ The versioned SQL migrator runs each file in `migrations/` once in a transaction
 | `npm run build` | Build the Node server with `adapter-node` |
 | `npm run db:migrate` | Apply numbered migrations using `DATABASE_URL` |
 | `npm run db:seed:synthetic` | Add clearly labeled demonstration tenants and unapproved drafts |
+| `npm run tenant:bootstrap -- /absolute/path/tenant.json` | Create the tenant, sites and first administrator, and send an expiring Keycloak invitation; see [identity operations](../docs/runbooks/beta-identity.md) |
 | `npm run jobs:run` | Drain at most 100 due Moodle outbox jobs |
 | `npm run jobs:run -- --reconcile` | Queue reconciliation of active non-synthetic assignments, then drain jobs |
 | `npm run jobs:reassignment -- --tenant-id UUID` | Process due reviewed change events and recurrence decisions for one tenant; optional `--as-of ISO`, `--limit 1..500`, and `--lead-days 0..90` (default 30) |
@@ -53,9 +54,11 @@ An HSE reviewer can record an append-only person context and change event, then 
 
 `MOODLE_CONNECTIONS_JSON` is a server-only JSON object keyed by tenant UUID. Each connection requires a stable UUID `instanceId`, `baseUrl`, a dedicated web-service `token`, and numeric `learnerRoleId`. The same instance ID or base URL cannot serve two tenants. `instanceId` is stored in `person_external_ids.instance_key` and `site_moodle_cohorts.instance_key`, so a later URL change does not orphan mappings. An operator must map each site to its actual Moodle cohort ID in `site_moodle_cohorts` for that same instance ID before enrollment; the job fails and retries when the mapping is absent. Its cohort membership call precedes manual course enrollment. These mappings and service permissions still require verification against the pinned installation.
 
-User provisioning additionally needs an explicit, **verified** Moodle `authMethod` and a worker email; accounts without email require a reviewed provisioning path. The adapter uses documented REST web services to look up users by HSE ID, optionally create users, enroll them, read course completion, and check enrollment. It fails closed on duplicate HSE IDs or ambiguous active IDs for an instance. Historical HSI aliases can coexist for a person; superseded mappings stay in the database. Tokens and credentials never go to the browser.
+User provisioning needs an explicit Moodle `authMethod`. For `oauth2`, configure `oauthIssuerId` and a separate `oauthBridgeToken` for the restricted identity-link service; the expected issuer is the server’s `OIDC_ISSUER`. The worker resolves the exact active tenant/person principal, provisions the stable identity email (including technical identifiers for printed accounts), establishes its subject binding through the supported Moodle API, and then enrolls. Missing accounts and rejected links remain retryable. See [Moodle identity setup](../docs/runbooks/beta-identity.md#automatic-moodle-login-binding). The adapter uses documented REST web services to look up users by HSE ID, optionally create users, enroll them, read course completion, and check enrollment. It fails closed on duplicate HSE IDs or ambiguous active IDs for an instance. Superseded external identity mappings stay in the database. Tokens and credentials never go to the browser.
 
-Moodle 5.3's `core_completion_get_course_completion_status` reports whether course criteria are complete and timestamps for individual criteria, but **does not provide a canonical course completion timestamp**. Hosted synthetic Moodle 5.3.0 CI observed this shape after a browser-run SCORM completion. The adapter reads the pinned SCORM attempt, SCO status and score, and activity state timestamp into `scormObservation`; these are diagnostic observations, not promoted course evidence. Its response keeps `completedAt` and the evidence `score` null. `course_versions.completion_criteria_verified` is a reserved gate for a reviewed course and SCORM success policy; setting it alone does not overcome the missing timestamp. The reconciliation job records `completion_timestamp_unverified`, including the separate observation, and does not create knowledge evidence from this response. Gate B must validate the real DeepHow course's exact criteria, timestamp source, reset behavior, and pinned version before any observation can become evidence.
+Moodle 5.3's `core_completion_get_course_completion_status` reports whether course criteria are complete and timestamps for individual criteria, but **does not provide a canonical course completion timestamp**. Configure the pinned `local_hse_evidence` extension and `completionEvidence: 'local_hse_evidence'` so the adapter can obtain the canonical course completion ID, time and grade. Without it, the job records `completion_timestamp_unverified` and retains observations without creating completion evidence. SCORM and native Quiz attempt/activity observations remain separate from the canonical course result. A published course requires verified completion criteria; the actual pilot still needs its criteria, reset behavior and content/version mapping checked on the deployed host.
+
+Incomplete reads retain a latest observation in `moodle_learning_progress`, using course-specific last access, tracked activity states and available started attempts. `core_completion_get_activities_completion_status` requires the documented course-scoped `report/progress:view` permission. Enrollment or a portal click does not establish a start. The API distinguishes confirmed no-start, confirmed activity and unknown progress, and exposes the source observation time; a failed read keeps the prior observation. The seven-day due-soon indicator uses each site's calendar dates. These mutable observations never create or modify completion evidence.
 
 ## Server routes
 
@@ -63,8 +66,11 @@ Moodle 5.3's `core_completion_get_course_completion_status` reports whether cour
 |---|---|
 | `/auth/login`, `/auth/callback`, `/auth/logout` | OIDC authorization code flow and signed session |
 | `GET /api/me`, `/api/sites`, `/api/people`, `/api/requirements` | Tenant and role scoped context |
-| `GET /api/assignments`, `POST /api/assignments`, `PATCH /api/assignments/:id` | Assignment list, approved single-site creation, audited due date edit |
-| `POST /api/assignments/bulk` | Atomic approved manual assignments for selected person/site pairs, each due at the end of its site-local date; duplicate open pairs are skipped |
+| `/people`, `POST /api/people`, `GET/PATCH /api/people/:id` | Stable profiles, contact/language self service, account state and completion history |
+| `POST /api/people/:id/account`, `GET/POST /api/people/roster` | Keycloak invitations/reset/printed access, audited tenant-admin grants, and roster preview/import |
+| `GET /api/assignments`, `POST /api/assignments`, `PATCH /api/assignments/:id` | Scoped assignments/progress, single-site creation with explicit `courseVersionId`, due date edit with mandatory `reason` |
+| `GET /api/assignments/options` | Published versions in active approved programs for the recipient review; tenant/site administrators only |
+| `POST /api/assignments/bulk` | Atomic assignments for selected person/site pairs and exact reviewed `courseVersionId`, each due at the end of its site-local date; duplicate open pairs are skipped |
 | `GET /api/summary` | Counts, courses, and sites; knowledge completion and authorization are independent |
 | `GET /api/integration-health` | Tenant-scoped failed or aged outbox jobs, unresolved drift, and reassignment failure counts for administrators |
 | `POST /api/training-contexts`, `POST /api/reassignment-events` | HSE-reviewed person context and site change-event records |
@@ -80,7 +86,5 @@ The draft Respiratory Protection lesson at `/preview/respiratory-protection` is 
 ## Pending live gates
 
 - A qualified HSE reviewer and owner must approve regulatory content, applicability, recurrence, addenda, and course mappings.
-- A real DeepHow export and exact format are needed for Gate A. The synthetic SCORM package under `infra/` tests plumbing only.
-- Moodle 5.3.0 is pinned in `infra/`. Hosted CI has exercised synthetic REST provisioning, enrollment, cohorts, SCORM attempt/score/activity reads, Keycloak realm boundaries, and two-instance token isolation. The real pilot still needs least-privilege service permissions, Keycloak browser account linking, learner UI isolation, the DeepHow export, and re-enrollment/reset/content-version behavior. Docker is unavailable on this machine. Current course-completion reads intentionally stop at review drift because the response lacks a canonical timestamp.
+- Moodle 5.3.0 is pinned in `infra/`. Hosted CI exercises synthetic REST provisioning, enrollment, cohorts, SCORM/native Quiz attempts and canonical completions, Keycloak account linking/revocation, cross-device resume and two-instance token isolation. The real pilot still needs least-privilege service permissions, browser sign-in, learner isolation, and reset/content-version behavior verified on the company IT environment. Docker is unavailable on this machine.
 - Reviewed context entry is API-only; a production event source, scheduled invocation and alerting, approved site-local recurrence policy, manual-enrollment discovery, full Phase 2 browser parity, and Phase 3 practical flow demonstration remain unfinished. The tested runner is a foundation, not an approved live reassignment service.
-- A real HSI sample, a reviewed one-time Moodle importer, row-by-row reconciliations, two clean rehearsals, and HSE signoff are needed for Gate C. HSI remains authoritative for historical records; no cutover or production deployment is authorized by this foundation.

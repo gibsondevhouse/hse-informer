@@ -26,14 +26,28 @@ test('admin can inspect draft programs and filter site assignments', async ({ pa
   await expect(page.locator('table tbody')).not.toContainText('Jordan Example');
 });
 
-test('multi-site assignment review sends explicit person/site pairs while draft server approval stays guarded', async ({ page, request }) => {
+test('program changes select their own exact course before multi-site recipient review', async ({ page, request }) => {
   let submitted: { recipients: { personId: string; siteId: string }[]; requirementId: string;
-    dueDate: string; reason: string } | null = null;
+    courseVersionId: string; dueDate: string; reason: string } | null = null;
+  let requirementId = '';
+  let secondRequirementId = '';
+  const courseVersionId = '10000000-0000-4000-8000-000000000001';
+  const secondCourseVersionId = '10000000-0000-4000-8000-000000000003';
   await page.route('**/api/requirements', async (route) => {
     const response = await route.fetch();
     const body = await response.json();
     body.items[0].reviewStatus = 'approved'; // UI contract fixture only; the server still sees an unapproved draft.
+    requirementId = body.items[0].id;
+    body.items[1].reviewStatus = 'approved';
+    secondRequirementId = body.items[1].id;
     await route.fulfill({ response, json: body });
+  });
+  await page.route('**/api/assignments/options', async (route) => {
+    await route.fulfill({ json: { items: [
+      { id: '10000000-0000-4000-8000-000000000002', requirementId, title: 'Synthetic reviewed course', version: '2.0', moodleCourseId: 43 },
+      { id: courseVersionId, requirementId, title: 'Synthetic reviewed course', version: '1.0', moodleCourseId: 42 },
+      { id: secondCourseVersionId, requirementId: secondRequirementId, title: 'Second program course', version: '3.0', moodleCourseId: 44 }
+    ] } });
   });
   await page.route('**/api/assignments/bulk', async (route) => {
     submitted = route.request().postDataJSON();
@@ -42,6 +56,12 @@ test('multi-site assignment review sends explicit person/site pairs while draft 
   await page.goto('/');
   await page.getByRole('button', { name: 'New assignment' }).click();
   const dialog = page.getByRole('dialog', { name: 'New assignment' });
+  await dialog.getByRole('combobox', { name: 'Program', exact: true }).selectOption(secondRequirementId);
+  await expect(dialog.getByRole('combobox', { name: 'Course version', exact: true })).toHaveValue(secondCourseVersionId);
+  await expect(dialog.getByRole('combobox', { name: 'Course version', exact: true }).locator('option')).toHaveCount(1);
+  await dialog.getByRole('combobox', { name: 'Program', exact: true }).selectOption(requirementId);
+  await expect(dialog.getByRole('combobox', { name: 'Course version', exact: true })).toHaveValue('10000000-0000-4000-8000-000000000002');
+  await dialog.getByRole('combobox', { name: 'Course version', exact: true }).selectOption(courseVersionId);
   await dialog.getByRole('group', { name: 'Sites' }).getByRole('checkbox', { name: 'Vernon' }).uncheck();
   await dialog.getByRole('combobox', { name: 'Job title' }).selectOption('Operator');
   await dialog.getByRole('button', { name: 'Select all at selected sites' }).click();
@@ -52,11 +72,14 @@ test('multi-site assignment review sends explicit person/site pairs while draft 
   await expect(dialog).toContainText('2 site assignments');
   await expect(dialog).toContainText('Avery Example');
   await expect(dialog).toContainText('Casey Example');
+  await expect(dialog).toContainText('Synthetic reviewed course · 1.0');
+  await expect(dialog.getByText('Moodle course', { exact: true }).locator('..')).toContainText('42');
   await dialog.getByRole('button', { name: 'Create assignments' }).click();
 
   const sites = (await (await request.get('/api/sites')).json()).items as { id: string; name: string }[];
   const people = (await (await request.get('/api/people')).json()).items as { id: string; displayName: string }[];
   expect(submitted?.dueDate).toBe('2027-06-15');
+  expect(submitted?.courseVersionId).toBe(courseVersionId);
   expect(submitted?.recipients).toEqual([
     { personId: people.find((item) => item.displayName === 'Avery Example')?.id,
       siteId: sites.find((item) => item.name === 'Tifton')?.id },
@@ -73,7 +96,7 @@ test('summary drilldowns, progress filters, and sorting act on the visible assig
   const completionCard = page.getByRole('button', { name: /Knowledge completion.*view breakdown/ });
   await completionCard.click();
   await expect(page.getByRole('heading', { name: 'Assignment records' })).toBeVisible();
-  await expect(page.locator('.breakdown .ring')).toHaveCount(5);
+  await expect(page.locator('.breakdown .ring')).toHaveCount(6);
   await page.getByRole('button', { name: 'View records' }).click();
 
   const learnerHeader = page.locator('thead th').first();
@@ -94,7 +117,7 @@ test('summary drilldowns, progress filters, and sorting act on the visible assig
   await expect(page.locator('.course-card')).toHaveCount(4);
 
   await page.getByRole('navigation', { name: 'Workspace' }).getByRole('button', { name: 'Overview' }).click();
-  const dueCard = page.getByRole('button', { name: /Due in the next 30 days/ });
+  const dueCard = page.getByRole('button', { name: /Due within 7 days/ });
   const dueCount = Number(await dueCard.locator('strong').textContent());
   expect(dueCount).toBeGreaterThan(0);
   await dueCard.click();
@@ -113,6 +136,8 @@ test('deadline edits persist in PostgreSQL across browser contexts', async ({ br
   const changed = original === '2028-06-15' ? '2028-06-16' : '2028-06-15';
   try {
     await editor.getByLabel('New due date').fill(changed);
+    await expect(editor.getByRole('button', { name: 'Save deadline' })).toBeDisabled();
+    await editor.getByLabel('Reason for deadline change').fill('Synthetic deadline persistence verification');
     await editor.getByRole('button', { name: 'Save deadline' }).click();
     await expect(page.getByRole('status')).toContainText('Deadline updated');
 
@@ -130,6 +155,7 @@ test('deadline edits persist in PostgreSQL across browser contexts', async ({ br
   } finally {
     await row.getByRole('button', { name: 'Edit due' }).click();
     await page.getByRole('dialog', { name: 'Edit assignment deadline' }).getByLabel('New due date').fill(original);
+    await page.getByRole('dialog', { name: 'Edit assignment deadline' }).getByLabel('Reason for deadline change').fill('Restore synthetic test deadline');
     await page.getByRole('dialog', { name: 'Edit assignment deadline' }).getByRole('button', { name: 'Save deadline' }).click();
   }
 });

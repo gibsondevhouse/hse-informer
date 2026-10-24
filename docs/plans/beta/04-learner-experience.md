@@ -1,43 +1,21 @@
-# 04 · Learner experience
+# 04 · User learning
 
-**Goal:** a worker can sign in, see what they owe, take a course and its assessment, and understand their status.
+**Implementation:** the portal, source progress adapter and history have unit, PostgreSQL and browser coverage. Synthetic Moodle CI exercises native lesson/answer resume, failed and passed attempts, canonical completions and account revocation. The joined account-to-course probe exercises these services together. Company IT deployment and human acceptance remain open.
 
-## Why
+**Goal:** a learner signs in, takes assigned courses in Moodle, and sees accurate completion history in HSE Informer.
 
-`web/` has only the draft Respiratory preview at `/preview/respiratory-protection`. The player and scoring engine exist in `admin-app/`. Its previews keep progress in the browser, but its protected recorded learner path (`app/api/learner/assignments/[id]/route.ts`) already replays actions on the server and saves progress to D1 with revision checks. It is unprovisioned and limited to the PBJ practice package, and it is the reference to port. There are no certificates.
+- [x] Show My Training with assigned, in-progress, due-soon, overdue, and completed courses, reasons, and site-local due dates.
+- [x] Launch the server-resolved mapped Moodle course with the learner's individual Keycloak identity; never expose service credentials.
+- [x] Use Moodle's server-owned progress and cross-device resume. Keep answers, attempts, scores, and attempt/pass/remediation rules in Moodle.
+- [x] Read verified completion evidence back into PostgreSQL with original time, exact course version, and available score/attempt data; retry safely and expose sync failures.
+- [x] Show completion and transcript details without implying workplace authorization.
+- [ ] Make the portal and Moodle course flow usable on phones and with keyboard/screen reader access.
+- [ ] Verify sign-out and account deactivation prevent further access in both systems.
 
-## Work
+Enrollment alone does not establish learning activity. Reconciliation retains a separate latest Moodle observation with source/read times, course/version, user and instance identity. The portal distinguishes confirmed activity, confirmed no-start and unavailable progress; it does not invent a completion. Failed reads retain the last observation and expose the job failure. Due soon means today through seven calendar days ahead in the assignment site's time zone. Completion evidence remains immutable and takes precedence over these progress observations.
 
-### Learner portal
+Automated accessibility, keyboard and synthetic revocation checks are in CI. The unchecked items require the chosen environment and a manual screen-reader pass. The disposable identity fixture may request credentials again when entering Moodle; it does not establish seamless single-prompt sign-in on the eventual host.
 
-- [ ] Add a My Training page: assigned, in progress, due soon, overdue, and completed, with due dates in the site's local time (`web/src/lib/site-date.ts`).
-- [ ] Explain each assignment's reason in plain language ("Assigned because you work in the paint line at Tifton").
-- [ ] Show the assignment label (Not started, In progress, Knowledge Complete, Overdue) separately from the independent evidence milestones in the [domain contract](../../contracts/domain.md#milestones-and-displayed-status), and list what is still missing ("Knowledge complete. Waiting on practical evaluation."). Never show a single "Certified" status.
-- [ ] Add a transcript of completed training with course version, language, date, and score.
+**Done when:** a learner starts on one device, resumes on another, fails/retries within the configured rules, passes, and sees the verified completion in their HSE history. Other learners' records remain inaccessible.
 
-### Course player and assessments
-
-- [ ] Use the player ported in [01](01-platform-decision.md) for assigned courses, with resume from the last position.
-- [ ] Save every response, attempt, and score on the server, replaying actions server-side and rejecting stale writes by revision, as the recorded learner path does. A refresh or a second device continues the same attempt.
-- [ ] Enforce the pass mark, attempt limit, and remediation rule set in [02](02-content-and-hse-review.md). A failed final attempt notifies the site admin.
-- [ ] Keep exam answers and correct responses server-side until an attempt is submitted.
-- [ ] Record the employee attestation at the end of a course with identity re-confirmation and the exact wording shown.
-- [ ] Provide a way to ask a knowledgeable person a question during a course, at minimum a "Ask a question" form routed to the site admin. OSHA expects timely access to a qualified trainer for online training.
-
-### Certificates
-
-- [ ] Generate a completion certificate as PDF with worker, course, version, language, date, and score.
-- [ ] Word it as a knowledge completion record. It must not say "certified," "qualified," or "authorized," following [phases.txt §6](../../vision/phases.txt).
-- [ ] Add a verification code or QR link that shows the current record to a signed-in authorized viewer.
-
-### Shop-floor access
-
-- [ ] Check every learner screen at phone width and on a shared tablet.
-- [ ] Add a shared-device mode: sign-in by one-time code or QR, automatic sign-out after inactivity, and no cached personal data after sign-out.
-- [ ] Check playback on a slow connection, and provide transcripts so a course works without video.
-
-## Done when
-
-- A worker completes the approved pilot course on a phone, fails and retries the assessment within the rules, passes, and downloads a correctly worded certificate.
-- The same worker sees "Knowledge Complete, not authorized" and the remaining steps.
-- Browser tests cover resume across devices, attempt limits, and shared-device sign-out.
+PDF certificates, expanded localization, QR/shared-device modes, and trainer-question routing are later work. Beta test records do not grant workplace authorization.

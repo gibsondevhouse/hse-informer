@@ -1,0 +1,75 @@
+name: Beta private full recovery drill
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/beta-recovery.yml
+      - infra/beta/**
+      - infra/moodle/**
+      - infra/scripts/verify-single-host.py
+      - infra/scripts/verify-recovery.py
+      - infra/scripts/test_verify_recovery.py
+      - infra/scripts/fixtures/recovery-ci.sql
+      - integrations/moodle-local/hse_evidence/**
+      - web/**
+      - ui/**
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/beta-recovery.yml
+      - infra/beta/**
+      - infra/moodle/**
+      - infra/scripts/verify-single-host.py
+      - infra/scripts/verify-recovery.py
+      - infra/scripts/test_verify_recovery.py
+      - infra/scripts/fixtures/recovery-ci.sql
+      - integrations/moodle-local/hse_evidence/**
+      - web/**
+      - ui/**
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Independent from the existing green production smoke and main CI workflows.
+concurrency:
+  group: beta-full-recovery-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  encrypted-backup-isolated-restore-and-recovered-startup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      DOCKER_BUILDKIT: '1'
+      BUILDKIT_PROGRESS: plain
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify recovery safety and CI guardrails
+        run: |
+          python3 -m unittest discover -s infra/beta -p test_recovery.py
+          python3 -m unittest discover -s infra/scripts -p test_verify_single_host.py
+          python3 -m unittest discover -s infra/scripts -p test_verify_recovery.py
+      - name: Prepare private synthetic source settings
+        run: |
+          python3 infra/scripts/verify-recovery.py prepare
+          echo "BETA_ENV_FILE=$RUNNER_TEMP/hse-recovery-ci/source/beta.env" >> "$GITHUB_ENV"
+      - name: Build the exact reviewed production and recovery images
+        run: sh infra/beta/single-host/build.sh
+      - name: Freeze, encrypt, restore and start recovered services
+        run: python3 infra/scripts/verify-recovery.py drill
+      - name: Collect redacted diagnostics on failure
+        if: failure()
+        run: python3 infra/scripts/verify-recovery.py logs
+      - name: Remove both private projects, volumes, archive and key
+        if: always()
+        run: python3 infra/scripts/verify-recovery.py cleanup
+      - name: Upload measured recovery evidence and redacted failure logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: beta-private-full-recovery
+          path: ${{ runner.temp }}/hse-recovery-evidence/
+          if-no-files-found: ignore
+          retention-days: 7

@@ -9,6 +9,7 @@ import argparse
 import base64
 import json
 import os
+import ssl
 from pathlib import Path
 from urllib.error import HTTPError
 from urllib.parse import urlencode
@@ -16,15 +17,39 @@ from urllib.request import Request, urlopen
 
 
 REALM_DIR = Path(__file__).resolve().parents[1] / "keycloak"
+DEV_CA = REALM_DIR.parent / '.dev-tls' / 'ca.crt'
+
+
+def trusted_open(request, timeout=20):
+    return urlopen(request, timeout=timeout, context=ssl.create_default_context(cafile=str(DEV_CA)))
+
+
 REALM_FILES = {
     "hse-dev": REALM_DIR / "hse-dev-realm.json",
     "moodle-company-a": REALM_DIR / "moodle-company-a-realm.json",
     "moodle-company-b": REALM_DIR / "moodle-company-b-realm.json",
 }
+BETA_REALM_FILE = REALM_DIR.parent / "beta" / "single-host" / "keycloak-beta-realm.json"
 WORKERS = (
     ("moodle-company-a", "moodle-a-isolation-probe", "synthetic.worker.a", "44444444-4444-4444-8444-444444444444"),
     ("moodle-company-b", "moodle-b-isolation-probe", "synthetic.worker.b", "55555555-5555-4555-8555-555555555555"),
 )
+
+
+def verify_hse_user_profile(realm: dict, label: str) -> None:
+    profile = json.loads(realm["components"]["org.keycloak.userprofile.UserProfileProvider"][0]["config"]["kc.user.profile.config"][0])
+    # Keycloak 26.7.3 DefaultAttributes.isAllowUnmanagedAttribute() disables
+    # unmanaged attributes when this policy is null/omitted. "DISABLED" is not
+    # a UPConfig.UnmanagedAttributePolicy enum value and prevents realm import.
+    if profile.get("unmanagedAttributePolicy") is not None:
+        raise RuntimeError(f"{label} must omit the unmanaged attribute policy to keep unmanaged attributes disabled")
+    attributes = {attribute["name"]: attribute for attribute in profile["attributes"]}
+    for name in ("hse_person_id", "hse_tenant_id", "hse_identity_email_technical"):
+        permissions = attributes[name].get("permissions", {})
+        if permissions.get("view") != ["admin"] or permissions.get("edit") != ["admin"]:
+            raise RuntimeError(f"{label} identity attribute {name} must remain administrator-only")
+    if attributes["email"].get("required"):
+        raise RuntimeError(f"{label} must allow printed account invitations without email")
 
 
 def verify_realm_files() -> None:
@@ -33,7 +58,7 @@ def verify_realm_files() -> None:
     if len(user_ids) != len(set(user_ids)):
         raise RuntimeError("Keycloak user IDs must be unique across imported realms")
     expected_clients = {
-        "hse-dev": {"hse-web"},
+        "hse-dev": {"hse-web", "hse-account-admin", "moodle-hse-a"},
         "moodle-company-a": {"moodle-company-a", "moodle-a-isolation-probe"},
         "moodle-company-b": {"moodle-company-b", "moodle-b-isolation-probe"},
     }
@@ -55,7 +80,10 @@ def verify_realm_files() -> None:
         elif usernames != expected_workers[name]:
             raise RuntimeError(f"Unexpected users in {name}: {usernames}")
         for client in clients.values():
-            if client["clientId"].endswith("-isolation-probe"):
+            if client["clientId"] == "hse-account-admin":
+                if client["directAccessGrantsEnabled"] or client["standardFlowEnabled"] or not client["serviceAccountsEnabled"]:
+                    raise RuntimeError("Account service must only allow client credentials")
+            elif client["clientId"].endswith("-isolation-probe"):
                 if not client["directAccessGrantsEnabled"] or client["standardFlowEnabled"]:
                     raise RuntimeError(f"Invalid test-only probe client in {name}")
             elif client["directAccessGrantsEnabled"] or not client["standardFlowEnabled"]:
@@ -65,6 +93,29 @@ def verify_realm_files() -> None:
             if clients[name]["redirectUris"] != [f"http://localhost:{port}/admin/oauth2callback.php"]:
                 raise RuntimeError(f"Moodle callback does not match {name}'s site")
     print("OK three realm files have exclusive Moodle clients and worker inventories")
+    hse = realms["hse-dev"]
+    moodle_hse = next(c for c in hse["clients"] if c["clientId"] == "moodle-hse-a")
+    if moodle_hse["redirectUris"] != ["http://localhost:8081/admin/oauth2callback.php"] or moodle_hse["serviceAccountsEnabled"] \
+            or set(moodle_hse["defaultClientScopes"]) != {"profile", "email"}:
+        raise RuntimeError("Synthetic HSE Moodle SSO client must use only the exact company A callback")
+    client = next(c for c in hse["clients"] if c["clientId"] == "hse-web")
+    if not any(m["protocolMapper"] == "oidc-amr-mapper" and m["config"].get("id.token.claim") == "true" for m in client["protocolMappers"]):
+        raise RuntimeError("HSE client must emit completed-authenticator AMR in identity tokens")
+    flows = {flow["alias"]: flow for flow in hse["authenticationFlows"]}
+    password = flows[hse["browserFlow"]]["authenticationExecutions"][0]
+    otp = flows["hse-conditional-otp"]["authenticationExecutions"][-1]
+    configs = {config["alias"]: config["config"] for config in hse["authenticatorConfig"]}
+    if password["authenticator"] != "auth-username-password-form" or password["requirement"] != "REQUIRED" or configs[password["authenticatorConfig"]]["default.reference.value"] != "pwd":
+        raise RuntimeError("HSE password AMR must reference a required password authenticator")
+    if otp["authenticator"] != "auth-otp-form" or otp["requirement"] != "REQUIRED" or configs[otp["authenticatorConfig"]]["default.reference.value"] != "otp":
+        raise RuntimeError("HSE OTP AMR must reference a required OTP authenticator")
+    service = next(user for user in hse["users"] if user.get("serviceAccountClientId") == "hse-account-admin")
+    if set(service["clientRoles"].get("realm-management", [])) != {"manage-users", "view-users", "query-users"}:
+        raise RuntimeError("HSE account service has unexpected realm privileges")
+    verify_hse_user_profile(hse, "HSE development realm")
+    verify_hse_user_profile(json.loads(BETA_REALM_FILE.read_text()), "HSE single-host beta realm")
+    print("OK HSE account service, optional worker email, and conditional MFA/AMR configuration")
+    print("OK development and beta realms disable unmanaged attributes and restrict identity attributes to administrators")
 
 
 def token_request(base_url: str, realm: str, client: str, username: str, password: str) -> tuple[int, dict]:
@@ -77,7 +128,7 @@ def token_request(base_url: str, realm: str, client: str, username: str, passwor
     }).encode()
     request = Request(url, data=body, headers={"Content-Type": "application/x-www-form-urlencoded"})
     try:
-        with urlopen(request, timeout=20) as response:
+        with trusted_open(request, timeout=20) as response:
             return response.status, json.load(response)
     except HTTPError as error:
         return error.code, json.load(error)
@@ -130,7 +181,7 @@ def verify_live_client_placement(base_url: str, admin_password: str) -> None:
         for client_id in ("hse-web", "moodle-company-a", "moodle-company-b"):
             url = f"{base_url.rstrip('/')}/admin/realms/{realm}/clients?{urlencode({'clientId': client_id})}"
             request = Request(url, headers={"Authorization": f"Bearer {admin_token}"})
-            with urlopen(request, timeout=20) as result:
+            with trusted_open(request, timeout=20) as result:
                 clients = json.load(result)
             found = [client for client in clients if client.get("clientId") == client_id]
             expected = client_id == ("hse-web" if realm == "hse-dev" else realm)
@@ -150,7 +201,7 @@ def main() -> None:
     admin_password = os.environ.get("KEYCLOAK_ADMIN_PASSWORD")
     if not password or not admin_password:
         raise SystemExit("DEV_WORKER_PASSWORD and KEYCLOAK_ADMIN_PASSWORD are required for the synthetic sign-in probe")
-    base_url = os.environ.get("KEYCLOAK_URL", "http://auth.localhost:8080")
+    base_url = os.environ.get("KEYCLOAK_URL", "https://auth.localhost:8443")
     verify_token_boundary(base_url, password)
     verify_live_client_placement(base_url, admin_password)
 
