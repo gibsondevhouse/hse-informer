@@ -43,7 +43,7 @@ class get_completion extends external_api {
         // The fetch API reads course_completions.timecompleted. Criterion and
         // activity timestamps are deliberately not substituted for this value.
         $completion = \completion_completion::fetch(['course' => $course->id, 'userid' => $user->id]);
-        $completed = $completion && $completion->is_complete();
+        $completed = !empty($completion->timecompleted);
         $score = null;
         if ($completed) {
             $item = \grade_item::fetch(['courseid' => $course->id, 'itemtype' => 'course']);
