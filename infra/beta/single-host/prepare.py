@@ -45,6 +45,13 @@ def hostname(value):
     return len(value) <= 253 and bool(re.fullmatch(r"(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}", value))
 
 
+def email_address(value):
+    local, separator, domain = value.rpartition("@")
+    return (len(value) <= 254 and len(local) <= 64 and separator == "@"
+            and bool(re.fullmatch(r"[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+)*", local))
+            and hostname(domain.lower()) and not domain.lower().endswith(".invalid"))
+
+
 def validate(values, mode):
     if values.get("DEV_AUTH"):
         raise ValueError("DEV_AUTH cannot be used here")
@@ -55,9 +62,10 @@ def validate(values, mode):
     hosts = [values.get(key, "") for key in ("APP_HOST", "AUTH_HOST", "COURSES_HOST")]
     if len(set(hosts)) != 3 or not all(hostname(value) for value in hosts):
         raise ValueError("Set three distinct app/auth/courses DNS hostnames")
-    email = values.get("ADMIN_EMAIL", "")
-    if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email) or email.endswith(".invalid"):
+    if not email_address(values.get("ADMIN_EMAIL", "")):
         raise ValueError("Set the actual administrator email")
+    if not email_address(values.get("SMTP_FROM", "")):
+        raise ValueError("SMTP_FROM must be a valid sender email address")
     for key in HEX_SECRETS:
         if not re.fullmatch(r"[a-fA-F0-9]{48,128}", values.get(key, "")):
             raise ValueError(f"Generate a fresh strong hexadecimal {key}")
@@ -101,7 +109,7 @@ def generate(args):
                   KEYCLOAK_ADMIN_PASSWORD="A9!" + secrets.token_hex(24), MOODLE_ADMIN_PASSWORD="A9!" + secrets.token_hex(24),
                   MOODLE_SITE_FULLNAME="HSE Informer beta", MOODLE_SITE_SHORTNAME="HSE-BETA",
                   MOODLE_INSTANCE_ID=str(uuid4()), HSE_TENANT_ID="", MOODLE_SERVICE_TOKEN="",
-                  SMTP_HOST="", SMTP_PORT="587", SMTP_FROM="", SMTP_USER="", SMTP_PASSWORD="",
+                  SMTP_HOST="", SMTP_PORT="587", SMTP_FROM=args.admin_email, SMTP_USER="", SMTP_PASSWORD="",
                   SMTP_AUTH="true", SMTP_STARTTLS="true", SMTP_SSL="false",
                   ALERT_OWNER=args.admin_email, ALERT_WEBHOOK_URL="", BETA_JOB_INTERVAL_SECONDS="300", AGE_RECIPIENT="")
     validate(values, "core")

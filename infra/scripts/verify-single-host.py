@@ -72,6 +72,8 @@ def prepare(work):
     commit = run(["git", "rev-parse", "HEAD"]).stdout.strip()
     module.generate(argparse.Namespace(domain="single-host.test", admin_email="owner@single-host.test",
         image_tag=commit, image_repository=REPOSITORY, output=work / "beta.env"))
+    # The valid reserved sender lets Keycloak import its SMTP configuration.
+    # SMTP_HOST remains unset; delivery is neither attempted nor claimed here.
     # No HSE person/tenant or Moodle learner/service account is created. These
     # unused random connection credentials let the real worker run an empty DB
     # cycle; a .test alert endpoint and isolated network prevent external sends.

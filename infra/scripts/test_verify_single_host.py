@@ -40,6 +40,8 @@ class SingleHostCiGuardrails(unittest.TestCase):
                 settings = verifier.load_settings(work)
                 self.assertEqual(stat.S_IMODE((work / "beta.env").stat().st_mode), 0o600)
                 self.assertEqual(settings["SMTP_HOST"], "")
+                self.assertEqual(settings["SMTP_FROM"], "owner@single-host.test")
+                self.assertEqual(settings["SMTP_FROM"], settings["ADMIN_EMAIL"])
                 self.assertNotIn("DEV_AUTH", settings)
                 self.assertNotIn(work, evidence.parents)
                 self.assertNotEqual(work, evidence)
@@ -52,6 +54,26 @@ class SingleHostCiGuardrails(unittest.TestCase):
                 (work / "beta.env").write_text(data)
                 with self.assertRaisesRegex(ValueError, "ephemeral CI fixture"):
                     verifier.load_settings(work)
+
+    def test_configuration_rejects_missing_or_malformed_smtp_sender(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            with patch.dict(os.environ, {"CI": "true", "GITHUB_ACTIONS": "true", "RUNNER_TEMP": temporary}, clear=False):
+                work, _ = verifier.ci_paths()
+                with contextlib.redirect_stdout(io.StringIO()):
+                    verifier.prepare(work)
+                module = verifier.settings_module()
+                values = module.read_env(work / "beta.env")
+                for sender in (None, "", "owner", "owner@", "owner@@single-host.test", "Owner <owner@single-host.test>", "owner@single-host.invalid"):
+                    with self.subTest(sender=sender):
+                        changed = dict(values)
+                        if sender is None:
+                            changed.pop("SMTP_FROM")
+                        else:
+                            changed["SMTP_FROM"] = sender
+                        with self.assertRaisesRegex(ValueError, "SMTP_FROM"):
+                            module.validate(changed, "core")
+                values["SMTP_FROM"] = "beta+sender@SINGLE-HOST.test"
+                module.validate(values, "core")
 
 
 if __name__ == "__main__":

@@ -17,7 +17,7 @@ After the owner chooses the server and domain, an operator can use this path. It
      --image-tag REVIEWED_FULL_COMMIT_SHA --output "$BETA_ENV_FILE"
    ```
 
-   This writes fresh secrets with mode 600 and starts nothing. Add the organization's SMTP delivery settings to that same file; the initial administrator bootstrap sends an invitation and requires working email. Configure the alert recipient/webhook and public `AGE_RECIPIENT` recovery key before enabling jobs and backups. Keep the private age identity separately. No sample workers, company data, learner passwords, or development authentication are installed.
+   This writes fresh secrets with mode 600 and starts nothing. `SMTP_FROM` defaults to the supplied administrator email and must remain a valid sender address for Keycloak realm startup. Add the organization's SMTP delivery settings to that same file, using a verified sender if the mail provider requires one. The initial administrator bootstrap sends an invitation and requires working email. Configure the alert recipient/webhook and public `AGE_RECIPIENT` recovery key before enabling jobs and backups. Keep the private age identity separately. No sample workers, company data, learner passwords, or development authentication are installed.
 2. Build the reviewed application/tools images, checksum-verified Moodle base, evidence-plugin Moodle image, and recovery image:
 
    ```sh
@@ -34,7 +34,9 @@ After the owner chooses the server and domain, an operator can use this path. It
 
    Omitting `--profile tls` keeps only loopback service ports for an operator-supplied HTTPS ingress. It does not make HTTP a supported sign-in mode. Caddy obtains certificates for the configured names; DNS and public connectivity must work first.
 
-The initial databases and Moodle site use only supplied/generated credentials. Keycloak imports a production-mode beta realm with the interactive app/Moodle clients, completed-authentication AMR flow, and restricted account service; it imports no synthetic people. Imports happen only for an empty realm. Changing the settings file later does not rotate existing database/user/client credentials.
+The initial databases and Moodle site use only supplied/generated credentials. Keycloak imports a production-mode beta realm with the interactive app/Moodle clients, completed-authentication AMR flow, and restricted account service; it imports no synthetic people. Imports happen only for an empty realm. Changing the settings file later does not rotate existing database/user/client credentials or update an imported realm's SMTP configuration; update existing provider configuration through its administration tools.
+
+Configuration validation checks the sender's syntax, not mail delivery. The private CI smoke uses `owner@single-host.test`, leaves `SMTP_HOST` unset, and isolates runtime networks; it sends no email. Real SMTP authentication, provider-approved sender, and invitation receipt remain deployment checks.
 
 ## Finish the beta setup
 
