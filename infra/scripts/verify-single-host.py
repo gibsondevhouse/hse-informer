@@ -82,10 +82,12 @@ def prepare(work):
     values = module.read_env(work / "beta.env")
     values["HSE_TENANT_ID"] = str(uuid4())
     values["MOODLE_SERVICE_TOKEN"] = os.urandom(24).hex()
+    values["MOODLE_OAUTH_ISSUER_ID"] = "1"
+    values["MOODLE_OAUTH_BRIDGE_TOKEN"] = os.urandom(24).hex()
     values["ALERT_WEBHOOK_URL"] = "https://alerts.single-host.test/no-delivery"
     # Replace the existing blank assignments without shell evaluation.
     lines = (work / "beta.env").read_text().splitlines()
-    for key in ("HSE_TENANT_ID", "MOODLE_SERVICE_TOKEN", "ALERT_WEBHOOK_URL"):
+    for key in ("HSE_TENANT_ID", "MOODLE_SERVICE_TOKEN", "MOODLE_OAUTH_ISSUER_ID", "MOODLE_OAUTH_BRIDGE_TOKEN", "ALERT_WEBHOOK_URL"):
         lines = [f"{key}='{values[key]}'" if line.startswith(f"{key}=") else line for line in lines]
     (work / "beta.env").write_text("\n".join(lines) + "\n")
     os.chmod(work / "beta.env", 0o600)
@@ -206,8 +208,8 @@ def smoke(work, evidence):
         "SELECT value FROM mdl_config_plugins WHERE plugin='local_hse_evidence' AND name='version'").stdout.strip()
     require(plugin == expected_plugin, "Moodle wrapper did not install the exact evidence extension version")
     functions = query(work, "moodle", "moodle", "MOODLE_DB_PASSWORD",
-        "SELECT count(*) FROM mdl_external_functions WHERE name IN ('local_hse_evidence_get_completion','local_hse_evidence_end_user_sessions')").stdout.strip()
-    require(functions == "2", "Moodle evidence/session service functions were not installed")
+        "SELECT count(*) FROM mdl_external_functions WHERE name IN ('local_hse_evidence_get_completion','local_hse_evidence_end_user_sessions','local_hse_evidence_link_oauth_login')").stdout.strip()
+    require(functions == "3", "Moodle evidence/session/identity service functions were not installed")
 
     worker_complete = False
     for _ in range(30):

@@ -42,6 +42,8 @@ class SingleHostCiGuardrails(unittest.TestCase):
                 self.assertEqual(settings["SMTP_HOST"], "")
                 self.assertEqual(settings["SMTP_FROM"], "owner@single-host.test")
                 self.assertEqual(settings["SMTP_FROM"], settings["ADMIN_EMAIL"])
+                self.assertEqual(settings["MOODLE_OAUTH_ISSUER_ID"], "1")
+                self.assertGreaterEqual(len(settings["MOODLE_OAUTH_BRIDGE_TOKEN"]), 20)
                 self.assertNotIn("DEV_AUTH", settings)
                 self.assertNotIn(work, evidence.parents)
                 self.assertNotEqual(work, evidence)
@@ -74,6 +76,23 @@ class SingleHostCiGuardrails(unittest.TestCase):
                             module.validate(changed, "core")
                 values["SMTP_FROM"] = "beta+sender@SINGLE-HOST.test"
                 module.validate(values, "core")
+
+    def test_operations_requires_actual_oauth_issuer_and_dedicated_bridge_token(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            with patch.dict(os.environ, {"CI": "true", "GITHUB_ACTIONS": "true", "RUNNER_TEMP": temporary}, clear=False):
+                work, _ = verifier.ci_paths()
+                with contextlib.redirect_stdout(io.StringIO()):
+                    verifier.prepare(work)
+                module = verifier.settings_module()
+                values = module.read_env(work / "beta.env")
+                for key, invalid in (("MOODLE_OAUTH_ISSUER_ID", ""), ("MOODLE_OAUTH_ISSUER_ID", "0"),
+                                     ("MOODLE_OAUTH_ISSUER_ID", "9007199254740992"), ("MOODLE_OAUTH_BRIDGE_TOKEN", ""),
+                                     ("MOODLE_OAUTH_BRIDGE_TOKEN", values["MOODLE_SERVICE_TOKEN"])):
+                    with self.subTest(key=key, value=invalid):
+                        changed = dict(values, **{key: invalid})
+                        module.validate(changed, "core")
+                        with self.assertRaisesRegex(ValueError, "Moodle OAuth"):
+                            module.validate(changed, "operations")
 
 
 if __name__ == "__main__":

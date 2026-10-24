@@ -88,6 +88,12 @@ def validate(values, mode):
             raise ValueError("Set HSE_TENANT_ID from the initial tenant bootstrap")
         if len(values.get("MOODLE_SERVICE_TOKEN", "")) < 20:
             raise ValueError("Set the actual restricted Moodle service token")
+        if not re.fullmatch(r"[1-9][0-9]*", values.get("MOODLE_OAUTH_ISSUER_ID", "")) or int(values["MOODLE_OAUTH_ISSUER_ID"]) > 9007199254740991:
+            raise ValueError("Set the actual positive Moodle OAuth issuer ID")
+        if len(values.get("MOODLE_OAUTH_BRIDGE_TOKEN", "")) < 20:
+            raise ValueError("Set the dedicated restricted Moodle OAuth identity bridge token")
+        if values["MOODLE_OAUTH_BRIDGE_TOKEN"] == values["MOODLE_SERVICE_TOKEN"]:
+            raise ValueError("Moodle OAuth identity bridge token must be separate from the course service token")
         endpoint = urlparse(values.get("ALERT_WEBHOOK_URL", ""))
         if endpoint.scheme != "https" or not endpoint.hostname or not values.get("ALERT_OWNER", "").strip():
             raise ValueError("Configure the HTTPS alert hook and named recipient")
@@ -109,6 +115,7 @@ def generate(args):
                   KEYCLOAK_ADMIN_PASSWORD="A9!" + secrets.token_hex(24), MOODLE_ADMIN_PASSWORD="A9!" + secrets.token_hex(24),
                   MOODLE_SITE_FULLNAME="HSE Informer beta", MOODLE_SITE_SHORTNAME="HSE-BETA",
                   MOODLE_INSTANCE_ID=str(uuid4()), HSE_TENANT_ID="", MOODLE_SERVICE_TOKEN="",
+                  MOODLE_OAUTH_ISSUER_ID="", MOODLE_OAUTH_BRIDGE_TOKEN="",
                   SMTP_HOST="", SMTP_PORT="587", SMTP_FROM=args.admin_email, SMTP_USER="", SMTP_PASSWORD="",
                   SMTP_AUTH="true", SMTP_STARTTLS="true", SMTP_SSL="false",
                   ALERT_OWNER=args.admin_email, ALERT_WEBHOOK_URL="", BETA_JOB_INTERVAL_SECONDS="300", AGE_RECIPIENT="")

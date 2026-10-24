@@ -49,6 +49,7 @@ services:
     environment:
       DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL}
       MOODLE_CONNECTIONS_JSON: ${MOODLE_CONNECTIONS_JSON:?Set verified Moodle connections}
+      OIDC_ISSUER: ${OIDC_ISSUER:?Set OIDC_ISSUER}
       ALERT_WEBHOOK_URL: ${ALERT_WEBHOOK_URL:?Set an HTTPS alert webhook}
       ALERT_OWNER: ${ALERT_OWNER:?Set a named alert recipient}
       BETA_JOB_INTERVAL_SECONDS: ${BETA_JOB_INTERVAL_SECONDS:-300}
