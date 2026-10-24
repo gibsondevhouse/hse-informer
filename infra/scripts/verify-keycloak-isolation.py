@@ -21,10 +21,27 @@ REALM_FILES = {
     "moodle-company-a": REALM_DIR / "moodle-company-a-realm.json",
     "moodle-company-b": REALM_DIR / "moodle-company-b-realm.json",
 }
+BETA_REALM_FILE = REALM_DIR.parent / "beta" / "single-host" / "keycloak-beta-realm.json"
 WORKERS = (
     ("moodle-company-a", "moodle-a-isolation-probe", "synthetic.worker.a", "44444444-4444-4444-8444-444444444444"),
     ("moodle-company-b", "moodle-b-isolation-probe", "synthetic.worker.b", "55555555-5555-4555-8555-555555555555"),
 )
+
+
+def verify_hse_user_profile(realm: dict, label: str) -> None:
+    profile = json.loads(realm["components"]["org.keycloak.userprofile.UserProfileProvider"][0]["config"]["kc.user.profile.config"][0])
+    # Keycloak 26.7.3 DefaultAttributes.isAllowUnmanagedAttribute() disables
+    # unmanaged attributes when this policy is null/omitted. "DISABLED" is not
+    # a UPConfig.UnmanagedAttributePolicy enum value and prevents realm import.
+    if profile.get("unmanagedAttributePolicy") is not None:
+        raise RuntimeError(f"{label} must omit the unmanaged attribute policy to keep unmanaged attributes disabled")
+    attributes = {attribute["name"]: attribute for attribute in profile["attributes"]}
+    for name in ("hse_person_id", "hse_tenant_id", "hse_identity_email_technical"):
+        permissions = attributes[name].get("permissions", {})
+        if permissions.get("view") != ["admin"] or permissions.get("edit") != ["admin"]:
+            raise RuntimeError(f"{label} identity attribute {name} must remain administrator-only")
+    if attributes["email"].get("required"):
+        raise RuntimeError(f"{label} must allow printed account invitations without email")
 
 
 def verify_realm_files() -> None:
@@ -83,11 +100,10 @@ def verify_realm_files() -> None:
     service = next(user for user in hse["users"] if user.get("serviceAccountClientId") == "hse-account-admin")
     if set(service["clientRoles"].get("realm-management", [])) != {"manage-users", "view-users", "query-users"}:
         raise RuntimeError("HSE account service has unexpected realm privileges")
-    profile = json.loads(hse["components"]["org.keycloak.userprofile.UserProfileProvider"][0]["config"]["kc.user.profile.config"][0])
-    email = next(attribute for attribute in profile["attributes"] if attribute["name"] == "email")
-    if email.get("required"):
-        raise RuntimeError("HSE must allow printed account invitations without email")
+    verify_hse_user_profile(hse, "HSE development realm")
+    verify_hse_user_profile(json.loads(BETA_REALM_FILE.read_text()), "HSE single-host beta realm")
     print("OK HSE account service, optional worker email, and conditional MFA/AMR configuration")
+    print("OK development and beta realms disable unmanaged attributes and restrict identity attributes to administrators")
 
 
 def token_request(base_url: str, realm: str, client: str, username: str, password: str) -> tuple[int, dict]:
