@@ -16,7 +16,7 @@ final class link_oauth_login_test extends \advanced_testcase {
         set_config('field_lock_idnumber', 'locked', 'auth_oauth2');
         set_config('field_lock_email', 'locked', 'auth_oauth2');
         $issuer = new \core\oauth2\issuer(0, (object) [
-            'name' => 'HSE test identity', 'baseurl' => self::ISSUERURL,
+            'name' => 'HSE test identity', 'baseurl' => self::ISSUERURL, 'image' => '',
             'clientid' => 'hse-test', 'clientsecret' => 'synthetic-test-secret',
             'enabled' => true, 'showonloginpage' => \core\oauth2\issuer::LOGINONLY,
             'requireconfirmation' => true,
@@ -227,7 +227,7 @@ final class link_oauth_login_test extends \advanced_testcase {
         $link = $this->existing_link($issuer, $target, ['username' => 'different-subject']);
         $this->assert_rejected($issuer, $target);
         $link->delete();
-        $foreign = new \core\oauth2\issuer(0, (object) ['name' => 'Other identity provider']);
+        $foreign = new \core\oauth2\issuer(0, (object) ['name' => 'Other identity provider', 'image' => '']);
         $foreign->create();
         $this->existing_link($foreign, $target);
         $this->assert_rejected($issuer, $target);
