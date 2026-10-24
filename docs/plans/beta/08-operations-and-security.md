@@ -6,7 +6,7 @@
 
 ## Why
 
-`web/` has never been deployed, and the `admin-app/` pilot services are unprovisioned. Training records are legal records, so losing them during a test run would undermine the test. The `admin-app/` README also notes nine production `npm audit` advisories, six of them high.
+The production images and private stack now start successfully in CI; a participant staging host has not been selected. Completion history must survive recovery. `admin-app/` remains a visual reference outside the deployed beta image, and its legacy dependency advisories do not describe the `web/` production dependency set.
 
 ## Work
 
@@ -16,12 +16,14 @@
 - [ ] Create a staging environment for the test run. Production can wait until after beta.
 - [ ] Deploy from CI on merge to `main`, run migrations as a deploy step, and keep a one-command rollback.
 - [ ] Store secrets in the host's secret manager. No secrets in the repository or in client bundles.
-- [ ] Run the jobs from `web/scripts/` (`run-jobs.ts`, `run-reassignment.ts`) and the reminder job on a schedule.
+- [ ] Schedule Moodle enrollment, completion reconciliation, and account-state jobs with failure alerts. Advanced reassignment and reminder automation remain deferred by the focused beta scope.
 
 ### Backups and recovery
 
 - [ ] Turn on daily PostgreSQL backups with point-in-time recovery, and back up Keycloak, Moodle databases/course files, installed extensions, and uploaded files.
 - [ ] Run a restore drill into a separate database and check record counts and one evidence packet. Record the result here.
+
+**Synthetic recovery evidence — 2026-10-24:** [CI run 40132126260](https://github.com/gibsondevhouse/hse-informer/actions/runs/40132126260) passed an encrypted restore into a separate private environment. It verified HSE, Keycloak, and Moodle table counts; 37 HSE tables and the evidence/amendment/audit digest; Moodle code/data and upload paths, content, modes, and owners; restored credentials and Moodle file access; and healthy recovered services. Both private environments and their ephemeral archive/key were removed. This closes the automated rehearsal, while offsite storage, independent key retrieval, the chosen host, and a measured live recovery window remain open.
 
 ### Monitoring
 
@@ -35,13 +37,13 @@
 - [ ] Add rate limiting on sign-in, invitation, and export endpoints.
 - [ ] Set security headers (CSP, HSTS, frame options) and secure cookie flags.
 - [ ] Run the cross-tenant and cross-site tests against staging, not only in CI.
-- [ ] Run a focused self-review against the OWASP Top 10 and record findings. An external penetration test can wait until after beta.
+- [x] Run a focused self-review against the OWASP Top 10 and record findings: [review and disposition](../../runbooks/beta-security-review.md). Final-commit automated checks and live release gates remain explicit in that record. An external penetration test can wait until after beta.
 - [ ] Write a short privacy note for test participants: what is collected, who sees it, how long it is kept, and how to ask for deletion.
 
 ### Accessibility
 
 - [ ] Run automated accessibility checks (axe) in the Playwright suite for every beta screen.
-- [ ] Do a manual keyboard and screen reader pass (NVDA or VoiceOver) on the learner portal, player, assessment, and evaluator checklist. Fix every blocker.
+- [ ] Do a manual keyboard and screen-reader pass (NVDA or VoiceOver) on the beta learner portal, profiles, administrative records, and Moodle lessons/assessment. Fix every blocker. Evaluator workflows are deferred.
 
 ## Done when
 

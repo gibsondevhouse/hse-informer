@@ -97,6 +97,7 @@ async function signIn(page, fixture, password) {
 
 async function start(page, fixture, resume = false) {
   await page.goto(`${BASE}/mod/quiz/view.php?id=${fixture.quizcmid}`, { waitUntil: 'domcontentloaded' });
+  await ready(page);
   const button = resume ? page.getByRole('button', { name: 'Continue your attempt', exact: true })
     : page.locator('.quizstartbuttondiv button[type="submit"]');
   await button.click();
@@ -104,7 +105,14 @@ async function start(page, fixture, resume = false) {
 }
 
 function escaped(value) { return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+async function ready(page) {
+  // Moodle uses this same queue to keep its own browser acceptance steps from
+  // racing asynchronous module initialization (including submit confirmation).
+  await page.waitForFunction(() => document.readyState === 'complete'
+    && Array.isArray(window.M?.util?.pending_js) && window.M.util.pending_js.length === 0);
+}
 async function answerPage(page, questions, passing, checkSaved = false) {
+  await ready(page);
   const items = page.locator('.que.multichoice');
   assert.equal(await items.count(), 2, 'Practice quiz must show two questions per page');
   for (const item of await items.all()) {
@@ -128,6 +136,7 @@ async function finish(page, questions, passing) {
     await answerPage(page, questions, passing); await next(page);
   }
   assert.equal(new URL(page.url()).pathname, '/mod/quiz/summary.php');
+  await ready(page);
   await page.getByRole('button', { name: 'Submit all and finish', exact: true }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Submit all and finish', exact: true }).click();
   await page.waitForURL(url => url.origin === BASE
@@ -212,7 +221,11 @@ async function browserProof(fixture, token, password, questions) {
 }
 
 async function completionProof(fixture, token) {
-  const state = await graded(fixture, token, 3); assert.equal(state.bestGrade, 100); assert.equal(state.completed, true);
+  let state = await graded(fixture, token, 3);
+  await expect.poll(async () => {
+    state = await snapshot(fixture, token); return state.completed;
+  }, { timeout: 90000, intervals: [500, 1000, 2000] }).toBe(true);
+  assert.equal(state.bestGrade, 100);
   for (const cmid of fixture.pagecmids) assert.equal(state.activities.find(a => a.cmid === cmid)?.state, 1);
   assert.equal(state.activities.find(a => a.cmid === fixture.quizcmid)?.state, 2);
   const params = { courseid: String(fixture.courseid), userid: String(fixture.userid) };
