@@ -1,6 +1,6 @@
 # Beta plan
 
-**State:** Implementation underway. Core portal and record workflows are implemented and tested locally; live service verification, staging, and the participant test run remain open.
+**State:** Implementation underway. Core portal and record workflows pass automated checks, including synthetic Moodle and identity-provider checks in CI. Online deployment, course approval, and the participant test run remain open.
 **Scope confirmed:** 2026-10-24 by the product owner.
 
 ## Release goal
@@ -47,11 +47,11 @@ An in-house practice course in Moodle can validate beta mechanics. Any HSE cours
 
 | Area | Current evidence | Still required |
 |---|---|---|
-| Profiles and accounts | `/people`, roster dry run/import, roles/sites, deactivation, expiring one-time activation, stable contact/sign-in separation; unit and PostgreSQL tests | Real invitation mail delivery, identity/Moodle browser verification, and privileged MFA against the deployed provider |
-| Course administration | `/courses`, reviewed mappings, publish/retire, immutable versions, concurrent mapping protection | Author and review the pilot course in Moodle; verify its real assessment, resume, and version/reset behavior |
+| Profiles and accounts | `/people`, roster dry run/import, roles/sites, deactivation, expiring one-time activation, stable contact/sign-in separation; unit/PostgreSQL tests and synthetic Keycloak password/MFA browser checks | Real invitation mail delivery and account/learning verification against the deployed services |
+| Course administration | `/courses`, reviewed mappings, publish/retire, immutable versions, concurrent mapping protection; [practice course source](../../../content/beta-practice/1.0.0/README.md) prepared | Review and install the pilot course in Moodle; verify its real assessment, resume, and version/reset behavior |
 | Learner portal | `/learn`, scoped assignments, mapped launch URLs, transcript, cross-user denials | End-to-end course learning across devices in the deployed Moodle instance |
-| Completion records | `/records`, manual provenance, linked correction/void history, CSV, immutable snapshots; database and browser tests | Confirm the installed Moodle evidence extension reads canonical source completion times under least privilege |
-| Recovery and operations | Container/deployment tooling, scheduled Moodle jobs, failure alerts, PostgreSQL-only restore evidence under `infra/beta/` | Image/stack startup, real alert recipient, Moodle/Keycloak/files recovery, rollback, and staging accessibility/security checks |
+| Completion records | `/records`, manual provenance, linked correction/void history, CSV, immutable snapshots; database/browser tests and synthetic Moodle SCORM completion with stable canonical source time | Verify completion synchronization for the approved course on the deployed Moodle site |
+| Recovery and operations | Production images and private stack startup verified in CI; scheduled Moodle jobs, failure alerts, PostgreSQL-only restore evidence under `infra/beta/`; full-service recovery drill added to CI | Successful full-service recovery drill, real alert recipient, offsite backup/key retrieval, rollback, and staging accessibility/security checks |
 | Participant beta | [Focused scenarios](09-test-run.md) defined | Real participants, privacy/retention agreement, all scenarios and owner acceptance |
 
 The development identity realm and Moodle fixture include runnable verification probes in CI. These are synthetic checks; no real deployment or participant test run is claimed. Full beta completion requires the open gates above.
