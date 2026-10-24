@@ -85,6 +85,7 @@ jobs:
           cache: npm
           cache-dependency-path: web/package-lock.json
       - name: Install pinned browser tooling
+        id: browser_tools
         run: |
           npm ci --prefix web
           ./web/node_modules/.bin/playwright install --with-deps chromium
@@ -97,6 +98,8 @@ jobs:
           set +a
           node infra/scripts/verify-hse-identity.cjs
       - name: Launch synthetic SCORM in Moodle browser and read tracking
+        id: scorm_browser
+        if: ${{ !cancelled() && steps.browser_tools.outcome == 'success' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -122,7 +125,7 @@ jobs:
             MOODLE_SCORM_EVIDENCE=infra/scorm-browser-evidence.json \
             python3 infra/scripts/verify-scorm-read.py
       - name: Upload synthetic SCORM browser evidence
-        if: success()
+        if: ${{ steps.scorm_browser.outcome == 'success' }}
         uses: actions/upload-artifact@v4
         with:
           name: synthetic-scorm-browser-evidence
