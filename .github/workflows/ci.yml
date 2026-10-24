@@ -126,7 +126,7 @@ jobs:
             MOODLE_SCORM_EVIDENCE=infra/scorm-browser-evidence.json \
             python3 infra/scripts/verify-scorm-read.py
       - name: Upload synthetic SCORM browser evidence
-        if: ${{ steps.scorm_browser.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.scorm_browser.outcome == 'success' }}
         uses: actions/upload-artifact@v4
         with:
           name: synthetic-scorm-browser-evidence
