@@ -11,7 +11,9 @@
 ### Training matrix
 
 - [ ] Add a matrix of people (rows) by requirement (columns) for a selected site, filterable by department, role, and supervisor.
-- [ ] Each cell shows the five-state status, with Overdue and expiring highlighted, and opens that person's evidence for that requirement.
+- [ ] Each cell shows the independent evidence milestones from the [domain contract](../../contracts/domain.md#milestones-and-displayed-status) (Knowledge Complete, Site Training Complete, Practical Evaluation Passed, External Credential Verified, Authorized / Qualified) as separate marks, not one combined status. Only the milestones the requirement version needs are shown.
+- [ ] Show the assignment label (Not started, In progress, Knowledge Complete, Overdue, Needs review) and any expiry warning as separate indicators in the cell, so a missing practical evaluation stays visible next to a completed course.
+- [ ] Each cell opens that person's evidence for that requirement.
 - [ ] Export the matrix to CSV.
 
 ### Standard reports
