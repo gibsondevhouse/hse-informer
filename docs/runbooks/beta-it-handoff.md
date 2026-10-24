@@ -15,7 +15,7 @@ Please identify a technical contact and provide a company-approved place to run 
 | Accountable technical contact | Name, deployment operator, backup owner, alert recipient and escalation contact |
 | Hosting | Company platform, region, approved access route and expected cost; size against the agreed pilot group and concurrent use |
 | Web addresses | Names for the portal, sign-in and courses, who manages DNS and HTTPS certificates, and whether participants need the company network/VPN |
-| Databases | Managed PostgreSQL 16 or newer; separate HSE, Keycloak and Moodle databases/roles, private connectivity, TLS and point-in-time recovery |
+| Databases | Managed PostgreSQL 17 for the pinned Moodle 5.3 stack (validate all pinned service requirements before choosing a newer major); separate HSE, Keycloak and Moodle databases/roles, private connectivity, TLS and point-in-time recovery |
 | Persistent files | Moodle course/data files, the exact installed Moodle code/extensions, and application uploads; capacity and growth monitoring |
 | Invitations | Approved SMTP service, sender address, delivery restrictions and a test recipient |
 | Secrets and deployment | Approved secret manager, restricted CI/host access and image registry or approved image delivery path |
