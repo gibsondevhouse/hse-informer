@@ -1,0 +1,68 @@
+name: Beta single-host production smoke
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/beta-single-host.yml
+      - infra/beta/**
+      - infra/moodle/**
+      - infra/scripts/verify-single-host.py
+      - infra/scripts/test_verify_single_host.py
+      - integrations/moodle-local/hse_evidence/**
+      - web/**
+      - ui/**
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/beta-single-host.yml
+      - infra/beta/**
+      - infra/moodle/**
+      - infra/scripts/verify-single-host.py
+      - infra/scripts/test_verify_single_host.py
+      - integrations/moodle-local/hse_evidence/**
+      - web/**
+      - ui/**
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# This workflow never cancels the main CI workflow or an earlier smoke run.
+concurrency:
+  group: beta-single-host-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  production-images-and-private-startup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      DOCKER_BUILDKIT: '1'
+      BUILDKIT_PROGRESS: plain
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify CI guardrails and diagnostics redaction
+        run: python3 -m unittest discover -s infra/scripts -p test_verify_single_host.py
+      - name: Generate private ephemeral CI settings
+        run: |
+          python3 infra/scripts/verify-single-host.py prepare
+          echo "BETA_ENV_FILE=$RUNNER_TEMP/hse-single-host-ci/beta.env" >> "$GITHUB_ENV"
+      - name: Build the exact reviewed production images
+        run: sh infra/beta/single-host/build.sh
+      - name: Validate and smoke-start the isolated single-host stack
+        run: python3 infra/scripts/verify-single-host.py smoke
+      - name: Collect redacted diagnostics on failure
+        if: failure()
+        run: python3 infra/scripts/verify-single-host.py logs
+      - name: Remove ephemeral containers, volumes, networks and private settings
+        if: always()
+        run: python3 infra/scripts/verify-single-host.py cleanup
+      - name: Upload smoke evidence and redacted failure logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: beta-single-host-production-smoke
+          path: ${{ runner.temp }}/hse-single-host-evidence/
+          if-no-files-found: ignore
+          retention-days: 7
