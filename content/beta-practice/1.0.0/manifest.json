@@ -23,12 +23,12 @@
   "installedMoodleCourseId": null,
   "reviewedMoodleExportSha256": null,
   "sourceHashFormat": "UTF-8 path + NUL + file SHA-256 + LF for each listed file, in list order",
-  "sourceSha256": "442f97e4e123f65ccf8c5b2d607def91df0f9605b6c4c11de6498e8eb7ce0975",
+  "sourceSha256": "74b240f746055ea2ae47ca2e9a150a36b082e376d02ce2403d4b2dc0e5f7b64c",
   "files": [
     {
       "path": "README.md",
-      "sha256": "6f05e34431e0f755d081ed1dc960c200abf661a558528baca711bc4ac7101d18",
-      "bytes": 3851
+      "sha256": "5260d55a5016b00e65e42c7b0f34ef5408b6bb0600c1c6c3f46a41a8d7cb6830",
+      "bytes": 4231
     },
     {
       "path": "lessons/01-find-your-training.html",

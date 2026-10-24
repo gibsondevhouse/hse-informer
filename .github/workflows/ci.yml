@@ -188,6 +188,7 @@ jobs:
           docker compose --env-file infra/.env -f infra/compose.yaml exec -T -u www-data \
             moodle-a php /var/www/moodle/admin/cli/cron.php
           node infra/scripts/verify-practice-course.cjs completion
+          ./web/node_modules/.bin/tsx infra/scripts/verify-practice-adapter.ts
       - name: Upload native Moodle practice evidence
         if: ${{ !cancelled() && (steps.native_practice.outcome == 'success' || steps.native_practice.outcome == 'failure') }}
         uses: actions/upload-artifact@v4
@@ -196,6 +197,7 @@ jobs:
           path: |
             infra/practice-browser-evidence.json
             infra/practice-completion-evidence.json
+            infra/practice-adapter-evidence.json
             infra/practice-browser-failure.png
           if-no-files-found: ignore
           retention-days: 7
