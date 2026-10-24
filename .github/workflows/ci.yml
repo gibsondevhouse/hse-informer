@@ -96,6 +96,7 @@ jobs:
           set -a
           source infra/.env
           set +a
+          node --test infra/scripts/test-hse-identity-callback.cjs
           node infra/scripts/verify-hse-identity.cjs
       - name: Launch synthetic SCORM in Moodle browser and read tracking
         id: scorm_browser
