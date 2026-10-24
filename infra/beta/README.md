@@ -6,6 +6,8 @@ For one Linux server containing the application, sign-in, Moodle, and databases,
 
 The deployable topology is a Linux Docker host for the Node application and worker, with separately operated PostgreSQL, Keycloak, Moodle, and file storage. `compose.yaml` deliberately requires the configured service endpoints. It does not create insecure default identity or Moodle services. Use TLS for every public endpoint and managed PostgreSQL connection, an ingress proxy on the application host, and a private network or restrictive firewall for service access. Add shared ingress limits for sign-in, invitations, and CSV exports when more than one application process is deployed; application limits alone are per process.
 
+The pinned Node adapter reconstructs each request origin from the public `Host` and `PROTOCOL_HEADER=x-forwarded-proto`. The ingress must preserve the public portal Host and overwrite `X-Forwarded-Proto` from its trusted connection information. Keep the application port private/loopback; participant-supplied forwarded headers must not reach it unchanged. `APP_ORIGIN` defines application/OIDC callback URLs; the adapter no longer reads a runtime `ORIGIN` variable. Verify sign-in/callback and an actual activation/sign-out form POST through the final HTTPS ingress so its reconstructed origin matches the browser.
+
 ## Prepare a host
 
 1. Record the host/provider, region, administrator, backup owner, on-call recipient and escalation contact, estimated monthly cost, retention, and restore objective in the staging release record. Confirm participant privacy terms before creating real accounts.

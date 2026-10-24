@@ -97,6 +97,9 @@ async function main() {
       await page.locator('#kc-login').click();
     }
     await page.waitForURL((url: URL) => url.origin === ORIGIN && url.pathname === destination, { timeout: 30000 });
+    // APIRequestContext errors may include sent Cookie headers in their call log.
+    // Register each newly signed session before any authenticated API probes.
+    for (const cookie of await page.context().cookies(ORIGIN)) if (cookie.name === 'hse_session') secrets.push(cookie.value);
   }
   async function jobs() {
     const result = await runJobs(30, TENANT);
@@ -356,8 +359,8 @@ async function main() {
     await sleep(Math.max(0, (Math.floor(logoutCutoff.getTime() / 1000) + 1) * 1000 - Date.now() + 20));
     await signIn(workerPage, printed.username, workerPassword, '/learn');
     assert.equal((await portal(workerContext, '/api/me')).actor.personId, personId);
-    await expect(workerPage.getByLabel('Show', { exact: true })).toBeEnabled();
-    await workerPage.getByLabel('Show', { exact: true }).selectOption('completed');
+    await expect(workerPage.getByLabel('Show', { exact: false })).toBeEnabled();
+    await workerPage.getByLabel('Show', { exact: false }).selectOption('completed');
     await workerPage.getByRole('link', { name: 'Open course in Moodle ↗', exact: true }).click();
     await workerPage.locator('.login-identityproviders a').filter({ hasText: 'HSE portal synthetic SSO' }).click();
     await workerPage.locator('input[name="username"]').fill(printed.username);

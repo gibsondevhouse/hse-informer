@@ -3,13 +3,14 @@ name: hse-beta-one
 x-app-environment: &app-environment
   DATABASE_URL: postgres://hse_app:${HSE_DB_PASSWORD:?Set generated HSE_DB_PASSWORD}@postgres:5432/hse
   APP_ORIGIN: https://${APP_HOST:?Set APP_HOST}
-  ORIGIN: https://${APP_HOST:?Set APP_HOST}
   OIDC_ISSUER: https://${AUTH_HOST:?Set AUTH_HOST}/realms/hse-beta
   OIDC_CLIENT_ID: hse-web
   OIDC_CLIENT_SECRET: ${HSE_OIDC_CLIENT_SECRET:?Set generated HSE_OIDC_CLIENT_SECRET}
   KEYCLOAK_ADMIN_CLIENT_ID: hse-account-admin
   KEYCLOAK_ADMIN_CLIENT_SECRET: ${HSE_ADMIN_CLIENT_SECRET:?Set generated HSE_ADMIN_CLIENT_SECRET}
   SESSION_SECRET: ${SESSION_SECRET:?Set generated SESSION_SECRET}
+  # Only the private Caddy hop may supply these; it overwrites both headers.
+  PROTOCOL_HEADER: x-forwarded-proto
   ADDRESS_HEADER: x-forwarded-for
   XFF_DEPTH: "1"
   HSE_TENANT_ID: ${HSE_TENANT_ID:-}
