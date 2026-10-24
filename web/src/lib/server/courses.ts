@@ -3,7 +3,7 @@ import { error } from '@sveltejs/kit';
 import { z } from 'zod';
 import { query, transaction } from './db';
 import { requireRole, type Actor } from './auth';
-import { inspectMoodleCourse, moodleConnection, moodleCourseUrl } from './moodle';
+import { inspectMoodleCourse, inspectMoodleQuiz, moodleConnection, moodleCourseUrl } from './moodle';
 
 const createSchema = z.strictObject({
   requirementId: z.uuid().optional(), code: z.string().trim().min(2).max(80),
@@ -15,11 +15,14 @@ const createSchema = z.strictObject({
   moodleCourseId: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
   moodleActivityId: z.number().int().positive().max(Number.MAX_SAFE_INTEGER).nullable().optional(),
   moodleScormId: z.number().int().positive().max(Number.MAX_SAFE_INTEGER).nullable().optional(),
+  moodleQuizId: z.number().int().positive().max(Number.MAX_SAFE_INTEGER).nullable().optional(),
   practiceOnly: z.boolean().default(false),
   authority: z.string().trim().min(3).max(1000).default('Employer-authored content; HSE review pending'),
   audience: z.string().trim().min(3).max(1000).default('Assigned workers')
-}).refine((v) => Boolean(v.moodleActivityId) === Boolean(v.moodleScormId),
-  { message: 'Provide both SCORM activity and SCORM instance IDs, or leave both blank' });
+}).refine((v) => !(v.moodleScormId && v.moodleQuizId),
+  { message: 'Choose one assessment: SCORM or a native Moodle quiz' })
+  .refine((v) => Boolean(v.moodleActivityId) === Boolean(v.moodleScormId || v.moodleQuizId),
+    { message: 'Provide the assessment activity module ID and its instance ID together, or leave all assessment IDs blank' });
 const actionSchema = z.discriminatedUnion('action', [
   z.strictObject({ action: z.literal('verify'), note: z.string().trim().min(15).max(3000) }),
   z.strictObject({ action: z.literal('approve') }),
@@ -31,7 +34,7 @@ interface CourseRow {
   id: string; requirement_id: string; requirement_version_id: string; code: string;
   title: string; content_id: string; content_version: string; language_code: string;
   practice_only: boolean; package_sha256: string; export_format: string;
-  moodle_course_id: string | null; moodle_activity_id: string | null; moodle_scorm_id: string | null;
+  moodle_course_id: string | null; moodle_activity_id: string | null; moodle_scorm_id: string | null; moodle_quiz_id: string | null;
   review_status: string; requirement_review_status: string; reviewed_by: string | null;
   reviewed_at: Date | null; completion_criteria_verified: boolean; completion_verification_note: string | null;
 }
@@ -39,7 +42,7 @@ export interface CourseItem {
   id: string; requirementId: string; requirementVersionId: string; code: string; title: string;
   sourceContentId: string; version: string; language: string; practiceOnly: boolean;
   packageSha256: string; exportFormat: string; moodleCourseId: number | null;
-  moodleActivityId: number | null; moodleScormId: number | null; launchUrl: string | null;
+  moodleActivityId: number | null; moodleScormId: number | null; moodleQuizId: number | null; launchUrl: string | null;
   reviewStatus: string; requirementReviewStatus: string; reviewedBy: string | null; reviewedAt: string | null;
   completionVerified: boolean; verificationNote: string | null;
 }
@@ -47,7 +50,7 @@ const select = `SELECT cv.id, rv.requirement_id, cv.requirement_version_id, r.co
   COALESCE(cv.title, r.title) AS title, COALESCE(cv.content_id, cv.deephow_content_id, cv.id::text) AS content_id,
   COALESCE(cv.content_version, cv.deephow_version, rv.version) AS content_version,
   cv.language_code, cv.practice_only, cv.package_sha256, cv.export_format,
-  cv.moodle_course_id, cv.moodle_activity_id, cv.moodle_scorm_id,
+  cv.moodle_course_id, cv.moodle_activity_id, cv.moodle_scorm_id, cv.moodle_quiz_id,
   cv.review_status, rv.review_status AS requirement_review_status,
   cv.reviewed_by, cv.reviewed_at, cv.completion_criteria_verified, cv.completion_verification_note
   FROM course_versions cv
@@ -63,6 +66,7 @@ export async function listCourses(actor: Actor): Promise<CourseItem[]> {
       exportFormat: row.export_format, moodleCourseId: row.moodle_course_id ? Number(row.moodle_course_id) : null,
       moodleActivityId: row.moodle_activity_id ? Number(row.moodle_activity_id) : null,
       moodleScormId: row.moodle_scorm_id ? Number(row.moodle_scorm_id) : null,
+      moodleQuizId: row.moodle_quiz_id ? Number(row.moodle_quiz_id) : null,
       launchUrl: row.moodle_course_id ? moodleCourseUrl(actor.tenantId, Number(row.moodle_course_id)) : null,
       reviewStatus: row.review_status, requirementReviewStatus: row.requirement_review_status,
       reviewedBy: row.reviewed_by, reviewedAt: row.reviewed_at?.toISOString() ?? null,
@@ -120,11 +124,11 @@ export async function createCourse(actor: Actor, input: unknown): Promise<string
     if (reused.rowCount) throw error(409, 'Create a separate Moodle course for this version so older assignments retain their exact content.');
     const result = await client.query<{ id: string }>(`INSERT INTO course_versions
       (tenant_id, requirement_version_id, content_source, content_id, content_version, title, language_code,
-       practice_only, package_sha256, export_format, moodle_course_id, moodle_activity_id, moodle_scorm_id)
-      VALUES ($1,$2,'in_house',$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING id`,
+       practice_only, package_sha256, export_format, moodle_course_id, moodle_activity_id, moodle_scorm_id, moodle_quiz_id)
+      VALUES ($1,$2,'in_house',$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING id`,
     [actor.tenantId, requirementVersionId, value.sourceContentId, value.version, value.title, value.language,
       value.practiceOnly, value.packageSha256, value.exportFormat, value.moodleCourseId,
-      value.moodleActivityId ?? null, value.moodleScormId ?? null]);
+      value.moodleActivityId ?? null, value.moodleScormId ?? null, value.moodleQuizId ?? null]);
     const id = result.rows[0].id;
     await client.query(`INSERT INTO audit_log (tenant_id, actor_principal_id, action, entity_type, entity_id, after_value)
       VALUES ($1,$2,'course.create','course_version',$3,$4::jsonb)`, [actor.tenantId, actor.id, id, JSON.stringify(value)]);
@@ -154,7 +158,14 @@ export async function changeCourse(actor: Actor, courseId: string, input: unknow
     }
     const observed = await inspectMoodleCourse(actor.tenantId, Number(course.moodle_course_id));
     if (!observed.visible) throw error(409, 'Publish the course in Moodle before verifying its HSE mapping');
+    if (!observed.completionEnabled) throw error(409, 'Enable Moodle course completion before verifying its HSE mapping');
+    if (course.moodle_quiz_id) {
+      if (!course.moodle_activity_id || course.moodle_scorm_id) throw error(409, 'The Moodle quiz assessment mapping is incomplete or ambiguous');
+      await inspectMoodleQuiz(actor.tenantId, Number(course.moodle_course_id),
+        Number(course.moodle_quiz_id), Number(course.moodle_activity_id));
+    }
     verificationNote = `${value.note}\nMoodle course ${observed.id} (${observed.title}) inspected with completion enabled on ${new Date().toISOString()} by ${actor.displayName}.`;
+    if (course.moodle_quiz_id) verificationNote += `\nNative Moodle quiz ${course.moodle_quiz_id} and activity module ${course.moodle_activity_id} confirmed in this course.`;
   }
   await transaction(async (client) => {
     const locked = await client.query<CourseRow>(`${select} WHERE cv.tenant_id = $1 AND cv.id = $2 FOR UPDATE OF cv, rv`, [actor.tenantId, courseId]);

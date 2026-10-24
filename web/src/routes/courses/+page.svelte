@@ -21,6 +21,8 @@
   let moodleCourseId = $state('');
   let moodleActivityId = $state('');
   let moodleScormId = $state('');
+  let moodleQuizId = $state('');
+  let assessmentKind = $state<'none' | 'scorm' | 'quiz'>('none');
   let practiceOnly = $state(false);
   let exportFormat = $state('scorm_1_2');
   let language = $state('en-US');
@@ -45,8 +47,9 @@
     const done = await save('/api/courses', 'POST', {
       ...(requirementId ? { requirementId } : {}), code, title, version, sourceContentId,
       packageSha256, moodleCourseId: Number(moodleCourseId),
-      moodleActivityId: moodleActivityId ? Number(moodleActivityId) : null,
-      moodleScormId: moodleScormId ? Number(moodleScormId) : null,
+      moodleActivityId: assessmentKind !== 'none' && moodleActivityId ? Number(moodleActivityId) : null,
+      moodleScormId: assessmentKind === 'scorm' && moodleScormId ? Number(moodleScormId) : null,
+      moodleQuizId: assessmentKind === 'quiz' && moodleQuizId ? Number(moodleQuizId) : null,
       practiceOnly, exportFormat, language, authority, audience
     });
     if (done) { creating = false; notice = 'Draft course mapping saved. Verify completion behavior before publishing.'; }
@@ -77,7 +80,14 @@
           <label>Package SHA-256<input required pattern={'[a-f0-9]{64}'} minlength="64" maxlength="64" bind:value={packageSha256} aria-describedby="checksum-help" /></label>
           <small id="checksum-help">Checksum of the reviewed package or content archive. A changed package requires a new version.</small>
           <div class="fields"><label>Moodle course ID<input required type="number" min="1" step="1" bind:value={moodleCourseId} /></label><label>Delivery format<select bind:value={exportFormat}><option value="scorm_1_2">SCORM 1.2</option><option value="lti">LTI</option><option value="url">Moodle lessons and quiz</option><option value="video">Video</option><option value="unknown">Other reviewed Moodle content</option></select></label></div>
-          <div class="fields"><label>SCORM activity module ID (optional)<input type="number" min="1" step="1" bind:value={moodleActivityId} /></label><label>SCORM instance ID (optional)<input type="number" min="1" step="1" bind:value={moodleScormId} /></label></div>
+          <label>Assessment mapping<select bind:value={assessmentKind}><option value="none">Course completion only</option><option value="scorm">SCORM activity</option><option value="quiz">Native Moodle quiz</option></select></label>
+          {#if assessmentKind !== 'none'}
+            <div class="fields"><label>Moodle activity module ID<input required type="number" min="1" step="1" bind:value={moodleActivityId} /></label>
+              {#if assessmentKind === 'scorm'}<label>SCORM instance ID<input required type="number" min="1" step="1" bind:value={moodleScormId} /></label>
+              {:else}<label>Moodle quiz instance ID<input required type="number" min="1" step="1" bind:value={moodleQuizId} /></label>{/if}
+            </div>
+            <small>Use the exact activity module and {assessmentKind === 'quiz' ? 'quiz' : 'SCORM'} instance IDs from the mapped Moodle course.</small>
+          {/if}
           <label class="check"><input type="checkbox" bind:checked={practiceOnly} />Practice content only · no safety training or workplace authorization claim</label>
           {#if !requirementId && !practiceOnly}<label>Authority and scope<textarea required bind:value={authority}></textarea></label><label>Audience<input required bind:value={audience} /></label>{/if}
           <button class="primary" disabled={saving || !interactive} type="submit">{saving ? 'Saving…' : 'Save draft mapping'}</button>
@@ -91,7 +101,11 @@
           <div class="course-top"><div><p class="eyebrow">{course.code} · VERSION {course.version}</p><h2>{course.title}</h2></div><span class:published={course.reviewStatus === 'approved'} class="badge">{course.reviewStatus === 'approved' ? 'Published' : course.reviewStatus === 'unapproved' ? 'Draft' : 'Retired'}</span></div>
           {#if course.practiceOnly}<p class="practice">Practice course · no safety training or workplace authorization claim</p>{/if}
           <dl><div><dt>Delivery</dt><dd>Moodle course {course.moodleCourseId ?? 'not mapped'} · {course.language}</dd></div><div><dt>Requirement review</dt><dd>{course.requirementReviewStatus === 'approved' ? 'Approved' : 'HSE review required'}</dd></div><div><dt>Completion verification</dt><dd>{course.completionVerified ? 'Verified' : 'Required before publication'}</dd></div>{#if course.reviewedBy}<div><dt>Published by</dt><dd>{course.reviewedBy}{course.reviewedAt ? ` · ${date(course.reviewedAt)}` : ''}</dd></div>{/if}</dl>
-          <details><summary>Package and verification details</summary><p>Source: {course.sourceContentId} · {course.exportFormat}</p><p class="digest">SHA-256: {course.packageSha256}</p>{#if course.verificationNote}<p class="verification">{course.verificationNote}</p>{/if}</details>
+          <details><summary>Package and verification details</summary><p>Source: {course.sourceContentId} · {course.exportFormat}</p>
+            {#if course.moodleQuizId}<p>Assessment: native Moodle quiz {course.moodleQuizId} · activity module {course.moodleActivityId}</p>
+            {:else if course.moodleScormId}<p>Assessment: SCORM {course.moodleScormId} · activity module {course.moodleActivityId}</p>
+            {:else}<p>Assessment mapping: course completion only</p>{/if}
+            <p class="digest">SHA-256: {course.packageSha256}</p>{#if course.verificationNote}<p class="verification">{course.verificationNote}</p>{/if}</details>
           <div class="actions">
             {#if course.launchUrl}<a href={course.launchUrl} target="_blank" rel="noreferrer">Open in Moodle ↗</a>{/if}
             {#if manages && course.reviewStatus === 'unapproved'}
@@ -103,7 +117,7 @@
           </div>
           {#if verifying === course.id}
             <form id={`verify-${course.id}`} class="verify-form" onsubmit={(event) => { event.preventDefault(); change(course.id, 'verify'); }}>
-              <p>Test a learner's fail, retry, pass, attempt limit, resume, and completion synchronization in Moodle. The server also checks that the mapped course is visible and completion tracking is enabled.</p>
+              <p>Test a learner's fail, retry, pass, attempt limit, resume, and completion synchronization in Moodle. The server also checks that the mapped course is visible and completion tracking is enabled.{course.moodleQuizId ? ' It confirms the quiz and activity belong to that course.' : ''}</p>
               <label>Verification evidence and configured criteria<textarea required minlength="15" maxlength="3000" bind:value={verificationNote} placeholder="Record tested criteria, pass mark, attempt limit, remediation, and test evidence location."></textarea></label>
               <button class="primary" type="submit" disabled={saving || !interactive}>Save verification</button>
             </form>

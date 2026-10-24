@@ -4,9 +4,10 @@ import { createCourse, changeCourse, listCourses } from '../src/lib/server/cours
 import { database } from '../src/lib/server/db';
 import type { Actor } from '../src/lib/server/auth';
 
-const mocks = vi.hoisted(() => ({ inspect: vi.fn() }));
+const mocks = vi.hoisted(() => ({ inspect: vi.fn(), inspectQuiz: vi.fn() }));
 vi.mock('../src/lib/server/moodle', () => ({
   inspectMoodleCourse: mocks.inspect,
+  inspectMoodleQuiz: mocks.inspectQuiz,
   moodleConnection: () => ({ completionEvidence: 'local_hse_evidence' }),
   moodleCourseUrl: (_tenant: string, id: number) => `https://moodle.example.test/course/view.php?id=${id}`
 }));
@@ -27,6 +28,7 @@ describe.skipIf(!enabled)('Moodle course version lifecycle', () => {
     for (const actor of [admin, reviewer]) await database().query(`INSERT INTO principals
       (id, tenant_id, oidc_issuer, oidc_subject, role) VALUES ($1,$2,'test',$4,$3)`, [actor.id, tenant, actor.role, actor.id]);
     mocks.inspect.mockImplementation(async (_tenant: string, id: number) => ({ id, title: 'Practice course', visible: true, completionEnabled: true }));
+    mocks.inspectQuiz.mockResolvedValue(undefined);
   });
 
   it('creates an unapproved Moodle mapping with neutral source fields and no vendor ID', async () => {
@@ -35,7 +37,8 @@ describe.skipIf(!enabled)('Moodle course version lifecycle', () => {
     expect(rows.rows[0]).toEqual({ deephow_content_id: null, content_id: input.sourceContentId, review_status: 'unapproved' });
     const courses = await listCourses(admin);
     expect(courses).toHaveLength(1);
-    expect(courses[0]).toMatchObject({ id: practiceId, practiceOnly: true, requirementReviewStatus: 'approved', completionVerified: false });
+    expect(courses[0]).toMatchObject({ id: practiceId, practiceOnly: true, requirementReviewStatus: 'approved', completionVerified: false,
+      moodleActivityId: null, moodleScormId: null, moodleQuizId: null });
     await expect(changeCourse(admin, practiceId, { action: 'approve' })).rejects.toMatchObject({ status: 409 });
   });
 
@@ -98,5 +101,68 @@ describe.skipIf(!enabled)('Moodle course version lifecycle', () => {
     expect(mapped.rowCount).toBe(1);
     const requirements = await database().query(`SELECT id FROM requirements WHERE tenant_id = $1 AND code LIKE 'COURSE-concurrent-%'`, [tenant]);
     expect(requirements.rowCount).toBe(1);
+  });
+
+  it('creates and verifies a native quiz mapping, then freezes the published quiz identity', async () => {
+    const id = await createCourse(admin, { ...input, code: 'NATIVE-QUIZ-TEST', sourceContentId: 'NATIVE-QUIZ-TEST',
+      exportFormat: 'url', moodleCourseId: 46, moodleActivityId: 260, moodleQuizId: 19 });
+    expect((await listCourses(admin)).find((course) => course.id === id)).toMatchObject({
+      exportFormat: 'url', moodleCourseId: 46, moodleActivityId: 260, moodleQuizId: 19, moodleScormId: null,
+      completionVerified: false, reviewStatus: 'unapproved'
+    });
+    await changeCourse(admin, id, { action: 'verify', note: 'Native quiz failed, retried and passed at 80 percent; three-attempt limit verified.' });
+    expect(mocks.inspectQuiz).toHaveBeenCalledWith(tenant, 46, 19, 260);
+    const verified = (await listCourses(admin)).find((course) => course.id === id);
+    expect(verified?.verificationNote).toContain('Native Moodle quiz 19 and activity module 260 confirmed');
+    await changeCourse(admin, id, { action: 'approve' });
+    for (const statement of [
+      'UPDATE course_versions SET moodle_quiz_id=20 WHERE id=$1',
+      'UPDATE course_versions SET moodle_activity_id=261 WHERE id=$1',
+      'UPDATE course_versions SET moodle_quiz_id=NULL,moodle_scorm_id=20 WHERE id=$1'
+    ]) await expect(database().query(statement, [id])).rejects.toThrow(/reviewed versions cannot be changed/);
+    expect((await listCourses(admin)).find((course) => course.id === id)).toMatchObject({
+      reviewStatus: 'approved', moodleActivityId: 260, moodleQuizId: 19, moodleScormId: null
+    });
+  });
+
+  it('rejects mixed assessments and every incomplete activity-instance pair', async () => {
+    for (const mapping of [
+      { moodleActivityId: 260 }, { moodleQuizId: 19 }, { moodleScormId: 17 },
+      { moodleActivityId: 260, moodleQuizId: 19, moodleScormId: 17 },
+      { moodleActivityId: null, moodleQuizId: 19, moodleScormId: 17 }
+    ]) await expect(createCourse(admin, { ...input, ...mapping })).rejects.toMatchObject({ status: 400 });
+  });
+
+  it('fails native quiz verification before saving when the course or exact assessment cannot be confirmed', async () => {
+    const id = await createCourse(admin, { ...input, code: 'NATIVE-QUIZ-REJECT', sourceContentId: 'NATIVE-QUIZ-REJECT',
+      exportFormat: 'url', moodleCourseId: 47, moodleActivityId: 270, moodleQuizId: 29 });
+    const verify = { action: 'verify', note: 'Native quiz inspection must confirm the exact course, activity and instance.' };
+    mocks.inspectQuiz.mockClear();
+    for (const observed of [
+      { id: 47, title: 'Practice course', visible: false, completionEnabled: true },
+      { id: 47, title: 'Practice course', visible: true, completionEnabled: false }
+    ]) {
+      mocks.inspect.mockResolvedValueOnce(observed);
+      await expect(changeCourse(admin, id, verify)).rejects.toMatchObject({ status: 409 });
+      expect(mocks.inspectQuiz).not.toHaveBeenCalled();
+    }
+    for (const message of ['Quiz belongs to another course', 'Activity is not a quiz', 'Quiz instance does not match the activity']) {
+      mocks.inspectQuiz.mockRejectedValueOnce(new Error(message));
+      await expect(changeCourse(admin, id, verify)).rejects.toThrow(message);
+      expect((await listCourses(admin)).find((course) => course.id === id)).toMatchObject({
+        completionVerified: false, verificationNote: null, reviewStatus: 'unapproved'
+      });
+    }
+  });
+
+  it('preserves the existing SCORM pair without invoking native quiz inspection', async () => {
+    const id = await createCourse(admin, { ...input, code: 'SCORM-PAIR-TEST', sourceContentId: 'SCORM-PAIR-TEST',
+      moodleCourseId: 48, moodleActivityId: 280, moodleScormId: 30 });
+    mocks.inspectQuiz.mockClear();
+    await changeCourse(admin, id, { action: 'verify', note: 'Existing SCORM assessment and course completion behavior tested with a learner.' });
+    expect(mocks.inspectQuiz).not.toHaveBeenCalled();
+    expect((await listCourses(admin)).find((course) => course.id === id)).toMatchObject({
+      exportFormat: 'scorm_1_2', moodleActivityId: 280, moodleScormId: 30, moodleQuizId: null, completionVerified: true
+    });
   });
 });
