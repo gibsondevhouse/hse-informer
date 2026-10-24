@@ -22,7 +22,7 @@ export function authorizationCurrent(signals: Pick<AssignmentSignals,
 
 export function assignmentState(signals: AssignmentSignals, now: Date): AssignmentState {
   if (signals.closedAt) return 'closed';
-  if (signals.dueAt < now && !authorizationCurrent(signals, now)) return 'overdue';
+  if (signals.dueAt < now && (!signals.knowledgeCompletedAt || signals.needsReview) && !authorizationCurrent(signals, now)) return 'overdue';
   if (signals.hasBlockingDrift) return 'needs_review';
   if (signals.knowledgeCompletedAt && signals.needsReview && !authorizationCurrent(signals, now)) return 'needs_review';
   if (signals.knowledgeCompletedAt) return 'knowledge_complete';

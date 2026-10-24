@@ -38,6 +38,10 @@ exit((int) $statement->fetchColumn() === 1 ? 0 : 1);
         "--shortname=$MOODLE_SITE_SHORTNAME"
 fi
 
+# Install/upgrade local extensions through Moodle's supported upgrade API.
+# Core files stay untouched; the evidence plugin is mounted read-only.
+runuser -u www-data -- php /var/www/moodle/admin/cli/upgrade.php --non-interactive
+
 # Moodle requires cron for course and activity completion processing.
 (
     while :; do

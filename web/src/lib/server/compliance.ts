@@ -137,10 +137,11 @@ export async function decideAuthorization(actor: Actor, input: unknown, now = ne
   return transaction(async (client) => {
     const assignments = await client.query<{ site_id: string; person_id: string; requirement_id: string;
       course_version_id: string | null; site_addendum_version_id: string | null;
-      authorization_prerequisites: string[]; review_status: string }>(
+      authorization_prerequisites: string[]; review_status: string; practice_only: boolean | null }>(
       `SELECT a.site_id, a.person_id, a.requirement_id, a.course_version_id,
-        a.site_addendum_version_id, rv.authorization_prerequisites, rv.review_status
+        a.site_addendum_version_id, rv.authorization_prerequisites, rv.review_status, cv.practice_only
        FROM assignments a JOIN requirement_versions rv ON rv.tenant_id = a.tenant_id AND rv.id = a.requirement_version_id
+       LEFT JOIN course_versions cv ON cv.tenant_id=a.tenant_id AND cv.id=a.course_version_id
        WHERE a.tenant_id = $1 AND a.id = $2 AND a.cancelled_at IS NULL FOR UPDATE OF a`,
       [actor.tenantId, value.assignmentId]);
     if (!assignments.rowCount) throw error(404, 'Assignment not found');
@@ -148,12 +149,13 @@ export async function decideAuthorization(actor: Actor, input: unknown, now = ne
     requireSite(actor, assignment.site_id);
     const snapshot: Record<string, string> = {};
     if (value.decision !== 'revoked') {
+      if (assignment.practice_only) throw error(409, 'Practice completions cannot support workplace authorization');
       if (assignment.review_status !== 'approved' || !assignment.authorization_prerequisites?.length) {
         throw error(409, 'Approved prerequisites are required before authorization');
       }
       const reads: Array<[string, string, unknown[]]> = [
-        ['knowledge', `SELECT id, true AS valid FROM knowledge_evidence WHERE tenant_id = $1 AND assignment_id = $2
-          AND course_version_id = $3 AND moodle_timecompleted <= $4
+        ['knowledge', `SELECT id, true AS valid FROM effective_knowledge_evidence WHERE tenant_id = $1 AND assignment_id = $2
+          AND course_version_id = $3 AND completed_at <= $4
           AND NOT EXISTS (SELECT 1 FROM integration_drifts d WHERE d.tenant_id = $1
             AND d.assignment_id = $2 AND d.resolved_at IS NULL AND d.kind LIKE 'completion_%')
           ORDER BY observed_at DESC, id DESC LIMIT 1`,

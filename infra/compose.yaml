@@ -43,6 +43,8 @@ services:
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?Set KEYCLOAK_ADMIN_PASSWORD in infra/.env}
       HSE_OIDC_CLIENT_SECRET: ${HSE_OIDC_CLIENT_SECRET:?Set HSE_OIDC_CLIENT_SECRET in infra/.env}
+      HSE_ADMIN_CLIENT_SECRET: ${HSE_ADMIN_CLIENT_SECRET:?Set HSE_ADMIN_CLIENT_SECRET in infra/.env}
+      DEV_ADMIN_OTP_SECRET: ${DEV_ADMIN_OTP_SECRET:?Set DEV_ADMIN_OTP_SECRET in infra/.env}
       MOODLE_A_OIDC_CLIENT_SECRET: ${MOODLE_A_OIDC_CLIENT_SECRET:?Set MOODLE_A_OIDC_CLIENT_SECRET in infra/.env}
       MOODLE_B_OIDC_CLIENT_SECRET: ${MOODLE_B_OIDC_CLIENT_SECRET:?Set MOODLE_B_OIDC_CLIENT_SECRET in infra/.env}
       DEV_WORKER_PASSWORD: ${DEV_WORKER_PASSWORD:?Set DEV_WORKER_PASSWORD in infra/.env}
@@ -103,6 +105,7 @@ services:
       - "127.0.0.1:8081:80"
     volumes:
       - moodle-a-data:/var/moodledata
+      - ../integrations/moodle-local/hse_evidence:/var/www/moodle/public/local/hse_evidence:ro
     depends_on:
       moodle-a-db:
         condition: service_healthy
@@ -122,6 +125,7 @@ services:
       - "127.0.0.1:8082:80"
     volumes:
       - moodle-b-data:/var/moodledata
+      - ../integrations/moodle-local/hse_evidence:/var/www/moodle/public/local/hse_evidence:ro
     depends_on:
       moodle-b-db:
         condition: service_healthy

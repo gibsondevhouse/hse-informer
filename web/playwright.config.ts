@@ -5,6 +5,7 @@ const reactPreviewURL = process.env.REACT_PREVIEW_URL || 'http://127.0.0.1:5189'
 
 export default defineConfig({
   testDir: './e2e',
+  testIgnore: 'beta-learning.spec.ts',
   fullyParallel: false,
   workers: 1,
   retries: process.env.CI ? 1 : 0,

@@ -33,7 +33,7 @@ def verify_realm_files() -> None:
     if len(user_ids) != len(set(user_ids)):
         raise RuntimeError("Keycloak user IDs must be unique across imported realms")
     expected_clients = {
-        "hse-dev": {"hse-web"},
+        "hse-dev": {"hse-web", "hse-account-admin"},
         "moodle-company-a": {"moodle-company-a", "moodle-a-isolation-probe"},
         "moodle-company-b": {"moodle-company-b", "moodle-b-isolation-probe"},
     }
@@ -55,7 +55,10 @@ def verify_realm_files() -> None:
         elif usernames != expected_workers[name]:
             raise RuntimeError(f"Unexpected users in {name}: {usernames}")
         for client in clients.values():
-            if client["clientId"].endswith("-isolation-probe"):
+            if client["clientId"] == "hse-account-admin":
+                if client["directAccessGrantsEnabled"] or client["standardFlowEnabled"] or not client["serviceAccountsEnabled"]:
+                    raise RuntimeError("Account service must only allow client credentials")
+            elif client["clientId"].endswith("-isolation-probe"):
                 if not client["directAccessGrantsEnabled"] or client["standardFlowEnabled"]:
                     raise RuntimeError(f"Invalid test-only probe client in {name}")
             elif client["directAccessGrantsEnabled"] or not client["standardFlowEnabled"]:
@@ -65,6 +68,26 @@ def verify_realm_files() -> None:
             if clients[name]["redirectUris"] != [f"http://localhost:{port}/admin/oauth2callback.php"]:
                 raise RuntimeError(f"Moodle callback does not match {name}'s site")
     print("OK three realm files have exclusive Moodle clients and worker inventories")
+    hse = realms["hse-dev"]
+    client = next(c for c in hse["clients"] if c["clientId"] == "hse-web")
+    if not any(m["protocolMapper"] == "oidc-amr-mapper" and m["config"].get("id.token.claim") == "true" for m in client["protocolMappers"]):
+        raise RuntimeError("HSE client must emit completed-authenticator AMR in identity tokens")
+    flows = {flow["alias"]: flow for flow in hse["authenticationFlows"]}
+    password = flows[hse["browserFlow"]]["authenticationExecutions"][0]
+    otp = flows["hse-conditional-otp"]["authenticationExecutions"][-1]
+    configs = {config["alias"]: config["config"] for config in hse["authenticatorConfig"]}
+    if password["authenticator"] != "auth-username-password-form" or password["requirement"] != "REQUIRED" or configs[password["authenticatorConfig"]]["default.reference.value"] != "pwd":
+        raise RuntimeError("HSE password AMR must reference a required password authenticator")
+    if otp["authenticator"] != "auth-otp-form" or otp["requirement"] != "REQUIRED" or configs[otp["authenticatorConfig"]]["default.reference.value"] != "otp":
+        raise RuntimeError("HSE OTP AMR must reference a required OTP authenticator")
+    service = next(user for user in hse["users"] if user.get("serviceAccountClientId") == "hse-account-admin")
+    if set(service["clientRoles"].get("realm-management", [])) != {"manage-users", "view-users", "query-users"}:
+        raise RuntimeError("HSE account service has unexpected realm privileges")
+    profile = json.loads(hse["components"]["org.keycloak.userprofile.UserProfileProvider"][0]["config"]["kc.user.profile.config"][0])
+    email = next(attribute for attribute in profile["attributes"] if attribute["name"] == "email")
+    if email.get("required"):
+        raise RuntimeError("HSE must allow printed account invitations without email")
+    print("OK HSE account service, optional worker email, and conditional MFA/AMR configuration")
 
 
 def token_request(base_url: str, realm: str, client: str, username: str, password: str) -> tuple[int, dict]:

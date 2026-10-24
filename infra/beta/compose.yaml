@@ -1,0 +1,61 @@
+name: hse-beta
+services:
+  migrate:
+    image: ${BETA_IMAGE_REPOSITORY:?Set BETA_IMAGE_REPOSITORY}:${BETA_IMAGE_TAG:?Set immutable BETA_IMAGE_TAG}-tools
+    build:
+      context: ../..
+      dockerfile: web/Dockerfile
+      target: tools
+    command: ["node_modules/.bin/tsx", "scripts/migrate.ts"]
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL}
+    read_only: true
+    tmpfs: ["/tmp"]
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    restart: "no"
+  web:
+    image: ${BETA_IMAGE_REPOSITORY:?Set BETA_IMAGE_REPOSITORY}:${BETA_IMAGE_TAG:?Set immutable BETA_IMAGE_TAG}
+    build:
+      context: ../..
+      dockerfile: web/Dockerfile
+      target: runtime
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL}
+      APP_ORIGIN: ${APP_ORIGIN:?Set HTTPS APP_ORIGIN}
+      ORIGIN: ${APP_ORIGIN:?Set HTTPS APP_ORIGIN}
+      OIDC_ISSUER: ${OIDC_ISSUER:?Set OIDC_ISSUER}
+      OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:?Set OIDC_CLIENT_ID}
+      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:?Set OIDC_CLIENT_SECRET}
+      KEYCLOAK_ADMIN_CLIENT_ID: ${KEYCLOAK_ADMIN_CLIENT_ID:?Set the restricted account administration client}
+      KEYCLOAK_ADMIN_CLIENT_SECRET: ${KEYCLOAK_ADMIN_CLIENT_SECRET:?Set KEYCLOAK_ADMIN_CLIENT_SECRET}
+      SESSION_SECRET: ${SESSION_SECRET:?Set SESSION_SECRET}
+      MOODLE_CONNECTIONS_JSON: ${MOODLE_CONNECTIONS_JSON:?Set verified Moodle connections}
+    ports: ["127.0.0.1:${BETA_HTTP_PORT:-3000}:3000"]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    read_only: true
+    tmpfs: ["/tmp"]
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    restart: unless-stopped
+  jobs:
+    image: ${BETA_IMAGE_REPOSITORY:?Set BETA_IMAGE_REPOSITORY}:${BETA_IMAGE_TAG:?Set immutable BETA_IMAGE_TAG}-tools
+    build:
+      context: ../..
+      dockerfile: web/Dockerfile
+      target: tools
+    command: ["node", "/app/infra/beta/run-jobs.mjs"]
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL}
+      MOODLE_CONNECTIONS_JSON: ${MOODLE_CONNECTIONS_JSON:?Set verified Moodle connections}
+      ALERT_WEBHOOK_URL: ${ALERT_WEBHOOK_URL:?Set an HTTPS alert webhook}
+      ALERT_OWNER: ${ALERT_OWNER:?Set a named alert recipient}
+      BETA_JOB_INTERVAL_SECONDS: ${BETA_JOB_INTERVAL_SECONDS:-300}
+    depends_on:
+      web: { condition: service_healthy }
+    read_only: true
+    tmpfs: ["/tmp"]
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    restart: unless-stopped

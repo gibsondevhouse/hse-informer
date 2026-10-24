@@ -3,7 +3,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import type { Actor } from '../src/lib/server/auth';
 import { actorForSubject } from '../src/lib/server/auth';
 import { database } from '../src/lib/server/db';
-import { changeDueDate, createAssignments, listAssignments } from '../src/lib/server/assignments';
+import { cancelAssignment, changeDueDate, createAssignments, listAssignments } from '../src/lib/server/assignments';
 import { attestEvidence, attestationTarget, decideAuthorization, recordPracticalEvaluation, recordSiteTraining } from '../src/lib/server/compliance';
 
 const enabled = Boolean(process.env.TEST_DATABASE_URL);
@@ -362,4 +362,19 @@ describe.skipIf(!enabled)('PostgreSQL tenant isolation and evidence', () => {
       [ids.tenantA, evaluatorId, ids.requirementA, ids.siteA, yesterday, tomorrow, ids.principalA]);
     expect(await recordPracticalEvaluation(evaluator, input, now)).toBeTruthy();
   });
+  it('cancels an assignment with a reason while retaining its decision and evidence', async () => {
+    await expect(cancelAssignment(actorB,ids.assignmentA,{reason:'Wrong tenant'})).rejects.toMatchObject({status:404});
+    await expect(cancelAssignment({...actorA,role:'learner',personId:ids.personA},ids.assignmentA,{reason:'Wrong role'})).rejects.toMatchObject({status:403});
+    await expect(cancelAssignment(actorA,ids.assignmentA,{reason:''})).rejects.toMatchObject({status:400});
+    const before=await database().query('SELECT count(*)::int AS n FROM knowledge_evidence WHERE assignment_id=$1',[ids.assignmentA]);
+    await cancelAssignment(actorA,ids.assignmentA,{reason:'Assignment replaced after review'});
+    expect((await listAssignments(actorA)).some(a=>a.id===ids.assignmentA)).toBe(false);
+    const row=await database().query('SELECT cancelled_at FROM assignments WHERE id=$1',[ids.assignmentA]);
+    expect(row.rows[0].cancelled_at).toBeTruthy();
+    const after=await database().query('SELECT count(*)::int AS n FROM knowledge_evidence WHERE assignment_id=$1',[ids.assignmentA]);
+    expect(after.rows[0].n).toBe(before.rows[0].n);
+    const log=await database().query(`SELECT after_value FROM audit_log WHERE entity_id=$1 AND action='assignment.cancelled'`,[ids.assignmentA]);
+    expect(log.rows[0].after_value.reason).toBe('Assignment replaced after review');
+  });
+
 });

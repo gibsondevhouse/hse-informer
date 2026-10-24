@@ -88,6 +88,14 @@ jobs:
         run: |
           npm ci --prefix web
           ./web/node_modules/.bin/playwright install --with-deps chromium
+      - name: Verify HSE browser identity, privileged MFA, and account service boundaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          set -a
+          source infra/.env
+          set +a
+          node infra/scripts/verify-hse-identity.cjs
       - name: Launch synthetic SCORM in Moodle browser and read tracking
         shell: bash
         run: |
@@ -106,7 +114,7 @@ jobs:
           echo "::add-mask::$(jq -r .token <<<"$A")"
           SCORM="$(docker compose --env-file infra/.env -f infra/compose.yaml exec -T -u www-data \
             -e SCORM_LEARNER_PASSWORD="$SCORM_LEARNER_PASSWORD" moodle-a php /opt/hse/bootstrap-scorm.php)"
-          MOODLE_SCORM_FIXTURE="$SCORM" SCORM_LEARNER_PASSWORD="$SCORM_LEARNER_PASSWORD" \
+          MOODLE_A_PILOT="$A" MOODLE_SCORM_FIXTURE="$SCORM" SCORM_LEARNER_PASSWORD="$SCORM_LEARNER_PASSWORD" \
             node infra/scripts/verify-scorm-browser.cjs
           docker compose --env-file infra/.env -f infra/compose.yaml exec -T -u www-data \
             moodle-a php /var/www/moodle/admin/cli/cron.php
@@ -184,6 +192,7 @@ jobs:
       - run: npm run test:e2e
         env:
           DEV_AUTH: synthetic
+      - run: npm run test:e2e:beta
       - name: Upload browser failure evidence
         if: failure()
         uses: actions/upload-artifact@v4

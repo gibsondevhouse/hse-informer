@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { addUserToCohort, enrollUser, findMoodleUserByHseId, isUserEnrolled, moodleConnection, moodleCourseUrl,
-  provisionMoodleUser, readCompletion } from '../src/lib/server/moodle';
+import { addUserToCohort, endMoodleUserSessions, enrollUser, findMoodleUserByHseId, inspectMoodleCourse, isUserEnrolled, moodleConnection, moodleCourseUrl,
+  provisionMoodleUser, readCompletion, suppressMoodleEmail, suspendMoodleUser } from '../src/lib/server/moodle';
 
 const tenant = 'ffef29ba-5d6b-4a7a-8bdd-07e9508303b5';
 const instanceId = 'f5a21bbd-1582-45fa-8b7f-71d01d66a4f8';
@@ -12,6 +12,111 @@ afterEach(() => {
 });
 
 describe('Moodle server adapter', () => {
+  it('ends sessions only through the configured plugin and validates its mapped user response', async () => {
+    process.env.MOODLE_CONNECTIONS_JSON = JSON.stringify({ [tenant]: { instanceId, baseUrl: 'https://moodle.example.test',
+      token: 'test-token', completionEvidence: 'local_hse_evidence' } });
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ userid: 17, ended: true }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+    await endMoodleUserSessions(tenant, 17);
+    const body = (fetchMock.mock.calls[0][1] as RequestInit).body as URLSearchParams;
+    expect(body.get('wsfunction')).toBe('local_hse_evidence_end_user_sessions');
+    expect(body.get('userid')).toBe('17');
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ userid: 99, ended: true }), { status: 200 })));
+    await expect(endMoodleUserSessions(tenant, 17)).rejects.toMatchObject({ code: 'invalid_response' });
+    process.env.MOODLE_CONNECTIONS_JSON = JSON.stringify({ [tenant]: { instanceId, baseUrl: 'https://moodle.example.test', token: 'test-token' } });
+    await expect(endMoodleUserSessions(tenant, 17)).rejects.toMatchObject({ code: 'not_configured' });
+  });
+
+  it('disables Moodle notifications for technical identities and rejects a no-op update', async () => {
+    process.env.MOODLE_CONNECTIONS_JSON = JSON.stringify({ [tenant]: { instanceId, baseUrl: 'https://moodle.example.test', token: 'test-token' } });
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response('null', { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ preferences: { userid: 17, disableall: 1 }, warnings: [] }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+    await suppressMoodleEmail(tenant, 17);
+    const body = (fetchMock.mock.calls[0][1] as RequestInit).body as URLSearchParams;
+    expect(body.get('wsfunction')).toBe('core_user_update_user_preferences');
+    expect(body.get('emailstop')).toBe('1');
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce(new Response('null', { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ preferences: { userid: 17, disableall: 0 }, warnings: [] }), { status: 200 })));
+    await expect(suppressMoodleEmail(tenant, 17)).rejects.toMatchObject({ code: 'invalid_response' });
+  });
+
+  it('provisions a technical login identifier without generating a password email and suppresses notifications before returning', async () => {
+    process.env.MOODLE_CONNECTIONS_JSON = JSON.stringify({ [tenant]: { instanceId, baseUrl: 'https://moodle.example.test', token: 'test-token' } });
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response('[]', { status: 200 }))
+      .mockResolvedValueOnce(new Response('[{"id":17}]', { status: 200 }))
+      .mockResolvedValueOnce(new Response('null', { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ preferences: { userid: 17, disableall: 1 }, warnings: [] }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+    expect(await provisionMoodleUser(tenant, { hseId: 'stable-worker-id', username: 'technical-worker', firstName: 'Worker',
+      lastName: 'Test', email: 'worker@tenant.login.invalid', suppressEmail: true }, 'oauth2')).toBe(17);
+    const create = (fetchMock.mock.calls[1][1] as RequestInit).body as URLSearchParams;
+    expect(create.get('users[0][email]')).toBe('worker@tenant.login.invalid');
+    expect(create.get('users[0][createpassword]')).toBe('0');
+    expect((fetchMock.mock.calls[2][1] as RequestInit).body?.toString()).toContain('emailstop=1');
+  });
+
+  it('suspends Moodle users through core, checks warnings, and reads back the state', async () => {
+    process.env.MOODLE_CONNECTIONS_JSON = JSON.stringify({ [tenant]: { instanceId, baseUrl: 'https://moodle.example.test', token: 'test-token' } });
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ warnings: [] }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify([{ id: 17, suspended: true }]), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+    await suspendMoodleUser(tenant, 17, true);
+    const body = (fetchMock.mock.calls[0][1] as RequestInit).body as URLSearchParams;
+    expect(body.get('wsfunction')).toBe('core_user_update_users');
+    expect(body.get('users[0][suspended]')).toBe('1');
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ warnings: [{ warningcode: 'nopermissions' }] }), { status: 200 })));
+    await expect(suspendMoodleUser(tenant, 17, true)).rejects.toMatchObject({ code: 'moodle_warning' });
+  });
+
+  it('inspects a mapped course through the core read-only course lookup', async () => {
+    process.env.MOODLE_CONNECTIONS_JSON = JSON.stringify({ [tenant]: { instanceId, baseUrl: 'https://moodle.example.test', token: 'test-token' } });
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ courses: [
+      { id: 42, fullname: 'Practice course', shortname: 'PBJ-101', enablecompletion: 1, visible: 1 }
+    ], warnings: [] }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+    expect(await inspectMoodleCourse(tenant, 42)).toEqual({ id: 42, title: 'Practice course', shortName: 'PBJ-101', completionEnabled: true, visible: true });
+    const body = (fetchMock.mock.calls[0][1] as RequestInit).body as URLSearchParams;
+    expect(body.get('wsfunction')).toBe('core_course_get_courses_by_field');
+    expect(body.get('field')).toBe('id');
+    expect(body.get('value')).toBe('42');
+  });
+
+  it('reads canonical completion only through the explicitly configured evidence plugin', async () => {
+    process.env.MOODLE_CONNECTIONS_JSON = JSON.stringify({ [tenant]: { instanceId, baseUrl: 'https://moodle.example.test',
+      token: 'test-token', completionEvidence: 'local_hse_evidence' } });
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ completionstatus: { completed: true, completions: [] }, warnings: [] }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ courseid: 42, userid: 17, completed: true,
+        completionid: 123, timecompleted: 1781184000, score: 91.5 }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+    const result = await readCompletion(tenant, 42, 17);
+    expect(result.completedAt?.toISOString()).toBe('2026-06-11T13:20:00.000Z');
+    expect(result).toMatchObject({ completed: true, score: 91.5, sourceCompletionId: 123 });
+    const body = (fetchMock.mock.calls[1][1] as RequestInit).body as URLSearchParams;
+    expect(body.get('wsfunction')).toBe('local_hse_evidence_get_completion');
+    expect(body.get('userid')).toBe('17');
+  });
+
+  it('rejects mismatched canonical evidence and future source times without substituting criterion dates', async () => {
+    process.env.MOODLE_CONNECTIONS_JSON = JSON.stringify({ [tenant]: { instanceId, baseUrl: 'https://moodle.example.test',
+      token: 'test-token', completionEvidence: 'local_hse_evidence' } });
+    for (const evidence of [
+      { courseid: 43, userid: 17, completed: true, completionid: 123, timecompleted: 1781184000, score: null },
+      { courseid: 42, userid: 17, completed: true, completionid: 123, timecompleted: Math.floor(Date.now() / 1000) + 86400, score: null }
+    ]) {
+      vi.stubGlobal('fetch', vi.fn()
+        .mockResolvedValueOnce(new Response(JSON.stringify({ completionstatus: { completed: true,
+          completions: [{ timecompleted: 1781184000 }] }, warnings: [] }), { status: 200 }))
+        .mockResolvedValueOnce(new Response(JSON.stringify(evidence), { status: 200 })));
+      await expect(readCompletion(tenant, 42, 17)).rejects.toMatchObject({ code: 'invalid_response' });
+    }
+  });
+
   it('sends enrollment via allowlisted POST and never puts token in URL', async () => {
     process.env.MOODLE_CONNECTIONS_JSON = JSON.stringify({ [tenant]: { instanceId, baseUrl: 'https://moodle.example.test', token: 'secret-test-token', learnerRoleId: 5 } });
     const fetchMock = vi.fn().mockResolvedValue(new Response('null', { status: 200, headers: { 'content-type': 'application/json' } }));

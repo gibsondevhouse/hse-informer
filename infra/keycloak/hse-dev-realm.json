@@ -6,9 +6,77 @@
   "loginWithEmailAllowed": true,
   "duplicateEmailsAllowed": false,
   "resetPasswordAllowed": true,
+  "browserFlow": "hse-browser",
+  "authenticationFlows": [
+    {
+      "alias": "hse-browser",
+      "description": "Fresh password authentication and OTP for enrolled users, with completed-execution AMR",
+      "providerId": "basic-flow",
+      "topLevel": true,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticator": "auth-username-password-form",
+          "authenticatorConfig": "hse-amr-password",
+          "requirement": "REQUIRED",
+          "priority": 10,
+          "authenticatorFlow": false,
+          "userSetupAllowed": false
+        },
+        {
+          "flowAlias": "hse-conditional-otp",
+          "requirement": "CONDITIONAL",
+          "priority": 20,
+          "authenticatorFlow": true,
+          "userSetupAllowed": false
+        }
+      ]
+    },
+    {
+      "alias": "hse-conditional-otp",
+      "description": "Require enrolled OTP without forcing learners to enroll",
+      "providerId": "basic-flow",
+      "topLevel": false,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticator": "conditional-user-configured",
+          "requirement": "REQUIRED",
+          "priority": 10,
+          "authenticatorFlow": false,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticator": "auth-otp-form",
+          "authenticatorConfig": "hse-amr-otp",
+          "requirement": "REQUIRED",
+          "priority": 20,
+          "authenticatorFlow": false,
+          "userSetupAllowed": false
+        }
+      ]
+    }
+  ],
+  "authenticatorConfig": [
+    {
+      "alias": "hse-amr-password",
+      "config": {
+        "default.reference.value": "pwd",
+        "default.reference.maxAge": "43200"
+      }
+    },
+    {
+      "alias": "hse-amr-otp",
+      "config": {
+        "default.reference.value": "otp",
+        "default.reference.maxAge": "43200"
+      }
+    }
+  ],
   "clients": [
     {
       "clientId": "hse-web",
+      "attributes": { "post.logout.redirect.uris": "http://localhost:5173/signed-out*" },
       "name": "HSE Informer SvelteKit",
       "enabled": true,
       "protocol": "openid-connect",
@@ -18,22 +86,118 @@
       "standardFlowEnabled": true,
       "directAccessGrantsEnabled": false,
       "serviceAccountsEnabled": false,
-      "redirectUris": ["http://localhost:5173/auth/callback"],
-      "webOrigins": ["http://localhost:5173"]
+      "redirectUris": [
+        "http://localhost:5173/auth/callback"
+      ],
+      "webOrigins": [
+        "http://localhost:5173"
+      ],
+      "protocolMappers": [
+        {
+          "name": "completed-authentication-methods",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-amr-mapper",
+          "consentRequired": false,
+          "config": {
+            "id.token.claim": "true",
+            "access.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "hse-account-admin",
+      "name": "HSE Informer account administration service",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${HSE_ADMIN_CLIENT_SECRET}",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "fullScopeAllowed": false,
+      "defaultClientScopes": [
+        "roles"
+      ]
     }
   ],
   "roles": {
     "realm": [
-      {"name": "hse_admin"},
-      {"name": "hse_evaluator"},
-      {"name": "hse_learner"}
+      {
+        "name": "hse_admin"
+      },
+      {
+        "name": "hse_evaluator"
+      },
+      {
+        "name": "hse_learner"
+      }
     ]
   },
   "groups": [
-    {"name": "company-a", "subGroups": [{"name": "tifton"}, {"name": "ocilla"}, {"name": "vernon"}]},
-    {"name": "company-b", "subGroups": [{"name": "pilot"}]}
+    {
+      "name": "company-a",
+      "subGroups": [
+        {
+          "name": "tifton"
+        },
+        {
+          "name": "ocilla"
+        },
+        {
+          "name": "vernon"
+        }
+      ]
+    },
+    {
+      "name": "company-b",
+      "subGroups": [
+        {
+          "name": "pilot"
+        }
+      ]
+    }
   ],
+  "clientScopeMappings": {
+    "realm-management": [
+      {
+        "client": "hse-account-admin",
+        "roles": [
+          "manage-users",
+          "view-users",
+          "query-users"
+        ]
+      }
+    ]
+  },
+  "components": {
+    "org.keycloak.userprofile.UserProfileProvider": [
+      {
+        "providerId": "declarative-user-profile",
+        "subComponents": {},
+        "config": {
+          "kc.user.profile.config": [
+            "{\"attributes\":[{\"name\":\"username\",\"validations\":{\"length\":{\"min\":3,\"max\":255},\"username-prohibited-characters\":{}},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\"]}},{\"name\":\"email\",\"validations\":{\"email\":{},\"length\":{\"max\":255}},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\"]}},{\"name\":\"firstName\",\"validations\":{\"length\":{\"max\":255}},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\"]}},{\"name\":\"lastName\",\"validations\":{\"length\":{\"max\":255}},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\"]}},{\"name\":\"hse_person_id\",\"permissions\":{\"view\":[\"admin\"],\"edit\":[\"admin\"]},\"multivalued\":false},{\"name\":\"hse_tenant_id\",\"permissions\":{\"view\":[\"admin\"],\"edit\":[\"admin\"]},\"multivalued\":false},{\"name\":\"hse_identity_email_technical\",\"permissions\":{\"view\":[\"admin\"],\"edit\":[\"admin\"]},\"multivalued\":false}],\"groups\":[],\"unmanagedAttributePolicy\":\"DISABLED\"}"
+          ]
+        }
+      }
+    ]
+  },
   "users": [
+    {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "username": "service-account-hse-account-admin",
+      "enabled": true,
+      "serviceAccountClientId": "hse-account-admin",
+      "clientRoles": {
+        "realm-management": [
+          "manage-users",
+          "view-users",
+          "query-users"
+        ]
+      }
+    },
     {
       "id": "33333333-3333-4333-8333-333333333333",
       "username": "synthetic.admin.a",
@@ -42,9 +206,25 @@
       "lastName": "Admin A",
       "enabled": true,
       "emailVerified": true,
-      "groups": ["/company-a"],
-      "realmRoles": ["hse_admin"],
-      "credentials": [{"type": "password", "value": "${DEV_WORKER_PASSWORD}", "temporary": false}]
+      "groups": [
+        "/company-a"
+      ],
+      "realmRoles": [
+        "hse_admin"
+      ],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${DEV_WORKER_PASSWORD}",
+          "temporary": false
+        },
+        {
+          "type": "otp",
+          "userLabel": "Development fixture only",
+          "secretData": "{\"value\":\"${DEV_ADMIN_OTP_SECRET}\"}",
+          "credentialData": "{\"digits\":6,\"counter\":0,\"period\":30,\"algorithm\":\"HmacSHA1\",\"subType\":\"totp\",\"secretEncoding\":\"BASE32\"}"
+        }
+      ]
     },
     {
       "id": "11111111-1111-4111-8111-111111111111",
@@ -54,9 +234,19 @@
       "lastName": "Worker A",
       "enabled": true,
       "emailVerified": true,
-      "groups": ["/company-a/tifton"],
-      "realmRoles": ["hse_learner"],
-      "credentials": [{"type": "password", "value": "${DEV_WORKER_PASSWORD}", "temporary": false}]
+      "groups": [
+        "/company-a/tifton"
+      ],
+      "realmRoles": [
+        "hse_learner"
+      ],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${DEV_WORKER_PASSWORD}",
+          "temporary": false
+        }
+      ]
     },
     {
       "id": "22222222-2222-4222-8222-222222222222",
@@ -66,9 +256,19 @@
       "lastName": "Worker B",
       "enabled": true,
       "emailVerified": true,
-      "groups": ["/company-b/pilot"],
-      "realmRoles": ["hse_learner"],
-      "credentials": [{"type": "password", "value": "${DEV_WORKER_PASSWORD}", "temporary": false}]
+      "groups": [
+        "/company-b/pilot"
+      ],
+      "realmRoles": [
+        "hse_learner"
+      ],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${DEV_WORKER_PASSWORD}",
+          "temporary": false
+        }
+      ]
     }
   ]
 }

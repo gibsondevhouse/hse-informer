@@ -489,9 +489,9 @@ export async function processDueRecurrences(tenantId: string, asOf = new Date(),
         AND ($3::timestamptz IS NULL OR (a.assigned_at, a.id) > ($3::timestamptz, $4::uuid))
         AND NOT EXISTS (SELECT 1 FROM assignments successor
           WHERE successor.tenant_id = a.tenant_id AND successor.supersedes_assignment_id = a.id)
-        AND EXISTS (SELECT 1 FROM knowledge_evidence ke
+        AND EXISTS (SELECT 1 FROM effective_knowledge_evidence ke
           WHERE ke.tenant_id = a.tenant_id AND ke.assignment_id = a.id
-            AND ke.course_version_id = a.course_version_id AND ke.moodle_timecompleted <= $2)
+            AND ke.course_version_id = a.course_version_id AND ke.completed_at <= $2)
       ORDER BY a.assigned_at, a.id LIMIT 250`, [tenantId, asOf, cursorAt, cursorId]);
     if (!candidates.length) break;
     for (const candidate of candidates) {
@@ -501,16 +501,16 @@ export async function processDueRecurrences(tenantId: string, asOf = new Date(),
       try { outcome = await transaction(async (client): Promise<keyof ReassignmentResult | null> => {
       const row = await client.query<RecurrenceSource>(`SELECT a.id, a.tenant_id, a.person_id,
         a.site_id, a.requirement_id, a.course_version_id,
-        ke.moodle_timecompleted AS completed_at, ke.id AS completion_evidence_id,
+        ke.completed_at AS completed_at, ke.id AS completion_evidence_id,
         EXISTS (SELECT 1 FROM integration_drifts d
           WHERE d.tenant_id = a.tenant_id AND d.assignment_id = a.id
             AND d.resolved_at IS NULL AND d.kind LIKE 'completion_%') AS blocking_drift
         FROM assignments a JOIN people p ON p.tenant_id = a.tenant_id AND p.id = a.person_id
         JOIN tenants t ON t.id = a.tenant_id
-        LEFT JOIN LATERAL (SELECT id, moodle_timecompleted FROM knowledge_evidence ke
+        LEFT JOIN LATERAL (SELECT id, completed_at FROM effective_knowledge_evidence ke
           WHERE ke.tenant_id = a.tenant_id AND ke.assignment_id = a.id
-            AND ke.course_version_id = a.course_version_id AND ke.moodle_timecompleted <= $3
-          ORDER BY moodle_timecompleted DESC, observed_at DESC, id DESC LIMIT 1) ke ON true
+            AND ke.course_version_id = a.course_version_id AND ke.completed_at <= $3
+          ORDER BY completed_at DESC, observed_at DESC, id DESC LIMIT 1) ke ON true
         WHERE a.tenant_id = $1 AND a.id = $2 AND a.cancelled_at IS NULL
           AND p.active AND (t.synthetic OR NOT p.synthetic)
           AND NOT EXISTS (SELECT 1 FROM assignments successor

@@ -23,7 +23,7 @@ type RecipientResult = Recipient & { id: string };
 type BatchResult = { created: RecipientResult[]; skipped: Recipient[] };
 
 interface AssignmentRow {
-  id: string; tenant_id: string; person_id: string; person_name: string; site_id: string; site_name: string;
+  id: string; course_version_id: string | null; tenant_id: string; person_id: string; person_name: string; site_id: string; site_name: string;
   requirement_id: string; requirement_title: string; requirement_code: string; reason: string;
   assigned_at: Date; due_at: Date; closed_at: Date | null; enrolled_at: Date | null; knowledge_completed_at: Date | null;
   auth_decision: 'authorized' | 'restricted' | 'revoked' | null; auth_expires_at: Date | null;
@@ -31,13 +31,14 @@ interface AssignmentRow {
   review_status: string; course_review_status: string | null; moodle_course_id: string | null;
   authorization_prerequisites: string[];
   prerequisites_current: boolean;
-  completion_drift: boolean;
+  completion_drift: boolean; knowledge_delivery_source: string | null;
   knowledge_evidence_id: string | null; site_evidence_id: string | null; practical_evidence_id: string | null;
   medical_evidence_id: string | null; fit_evidence_id: string | null; external_evidence_id: string | null;
 }
 
 export interface AssignmentItem {
   id: string;
+  courseVersionId: string | null;
   person: { id: string; displayName: string };
   site: { id: string; name: string };
   requirement: { id: string; code: string; title: string; reviewStatus: string };
@@ -56,22 +57,22 @@ function visibleSiteClause(actor: Actor, start = 2): { sql: string; params: unkn
 
 export async function listAssignments(actor: Actor, now = new Date()): Promise<AssignmentItem[]> {
   const scope = visibleSiteClause(actor, 3);
-  const rows = await query<AssignmentRow>(`SELECT a.id, a.tenant_id, a.person_id, p.display_name AS person_name,
+  const rows = await query<AssignmentRow>(`SELECT a.id, a.course_version_id, a.tenant_id, a.person_id, p.display_name AS person_name,
     a.site_id, s.name AS site_name, a.requirement_id, r.title AS requirement_title, r.code AS requirement_code,
     a.reason, a.assigned_at, a.due_at, a.closed_at, me.enrolled_at,
-    ke.moodle_timecompleted AS knowledge_completed_at, au.decision AS auth_decision,
+    ke.completed_at AS knowledge_completed_at, au.decision AS auth_decision,
     au.expires_at AS auth_expires_at, au.restrictions AS auth_restrictions,
     au.prerequisite_evidence AS auth_evidence,
-    ke.id AS knowledge_evidence_id, site_latest.id AS site_evidence_id,
+    ke.id AS knowledge_evidence_id, ke.delivery_source AS knowledge_delivery_source, site_latest.id AS site_evidence_id,
     practical_latest.id AS practical_evidence_id, medical_latest.id AS medical_evidence_id,
     fit_latest.id AS fit_evidence_id, external_latest.id AS external_evidence_id,
     drift.completion_drift,
     rv.review_status, rv.authorization_prerequisites, cv.review_status AS course_review_status, cv.moodle_course_id,
-    (rv.review_status = 'approved')
+    (rv.review_status = 'approved') AND NOT COALESCE(cv.practice_only, false)
     AND jsonb_array_length(rv.authorization_prerequisites) > 0
     AND (rv.authorization_prerequisites <@ '["knowledge","site","practical","medical","fitTest","externalCredential"]'::jsonb)
     AND (NOT (rv.authorization_prerequisites ? 'knowledge') OR
-      (cv.review_status = 'approved' AND ke.moodle_timecompleted IS NOT NULL
+      (cv.review_status IN ('approved','retired') AND ke.completed_at IS NOT NULL
         AND NOT drift.completion_drift))
     AND (NOT (rv.authorization_prerequisites ? 'site') OR COALESCE(site_latest.valid, false))
     AND (NOT (rv.authorization_prerequisites ? 'practical') OR COALESCE(practical_latest.valid, false))
@@ -89,9 +90,9 @@ export async function listAssignments(actor: Actor, now = new Date()): Promise<A
     LEFT JOIN LATERAL (SELECT EXISTS (SELECT 1 FROM integration_drifts d
       WHERE d.tenant_id = a.tenant_id AND d.assignment_id = a.id AND d.resolved_at IS NULL
         AND d.kind LIKE 'completion_%') AS completion_drift) drift ON true
-    LEFT JOIN LATERAL (SELECT id, moodle_timecompleted FROM knowledge_evidence k
+    LEFT JOIN LATERAL (SELECT id, completed_at, delivery_source FROM effective_knowledge_evidence k
       WHERE k.tenant_id = a.tenant_id AND k.assignment_id = a.id
-        AND k.course_version_id = a.course_version_id AND k.moodle_timecompleted <= $2
+        AND k.course_version_id = a.course_version_id AND k.completed_at <= $2
       ORDER BY observed_at DESC, id DESC LIMIT 1) ke ON true
     LEFT JOIN LATERAL (SELECT decision, expires_at, restrictions, prerequisite_evidence FROM authorizations x
       WHERE x.tenant_id = a.tenant_id AND x.assignment_id = a.id
@@ -133,17 +134,17 @@ export async function listAssignments(actor: Actor, now = new Date()): Promise<A
       knowledgeCompletedAt: row.knowledge_completed_at, authorizationDecision: row.auth_decision,
       authorizationExpiresAt: row.auth_expires_at, prerequisitesCurrent: evidenceCurrent,
       needsReview: row.authorization_prerequisites.some((item) => item !== 'knowledge'),
-      hasBlockingDrift: row.completion_drift };
+      hasBlockingDrift: row.completion_drift && row.knowledge_delivery_source !== 'manual' };
     const state = assignmentState(signals, now);
     const deliveryState: DeliveryState = row.enrolled_at ? 'enrolled' : row.review_status === 'approved'
-      && row.course_review_status === 'approved' && row.moodle_course_id ? 'queued' : 'draft';
+      && ['approved','retired'].includes(row.course_review_status ?? '') && row.moodle_course_id ? 'queued' : 'draft';
     return {
-      id: row.id, person: { id: row.person_id, displayName: row.person_name },
+      id: row.id, courseVersionId: row.course_version_id, person: { id: row.person_id, displayName: row.person_name },
       site: { id: row.site_id, name: row.site_name },
       requirement: { id: row.requirement_id, code: row.requirement_code, title: row.requirement_title,
         reviewStatus: row.review_status },
       reason: row.reason, assignedAt: row.assigned_at.toISOString(), dueAt: row.due_at.toISOString(),
-      state, deliveryState, knowledgeComplete: !!row.knowledge_completed_at && !row.completion_drift,
+      state, deliveryState, knowledgeComplete: !!row.knowledge_completed_at && (!row.completion_drift || row.knowledge_delivery_source === 'manual'),
       authorized: authorizationCurrent(signals, now),
       authorizationDecision: row.auth_decision, authorizationRestrictions: row.auth_restrictions,
       completionDrift: row.completion_drift,
@@ -199,13 +200,14 @@ async function createAssignmentBatch(actor: Actor, requested: Recipient[], requi
       `SELECT rv.id AS version_id, rv.review_status, rv.authorization_prerequisites,
        (SELECT cv.id FROM course_versions cv WHERE cv.tenant_id = r.tenant_id
          AND cv.requirement_version_id = rv.id AND cv.review_status = 'approved'
-         AND cv.moodle_course_id IS NOT NULL AND (cv.effective_at IS NULL OR cv.effective_at <= now())
+         AND cv.moodle_course_id IS NOT NULL
+         AND (cv.retired_at IS NULL OR cv.retired_at > now()) AND (cv.effective_at IS NULL OR cv.effective_at <= now())
          ORDER BY cv.effective_at DESC NULLS LAST, cv.created_at DESC LIMIT 1) AS course_version_id
        FROM requirements r JOIN requirement_versions rv ON rv.tenant_id = r.tenant_id AND rv.id = r.active_version_id
        WHERE r.tenant_id = $1 AND r.id = $2`, [actor.tenantId, requirementId]);
     if (!requirement.rowCount) throw error(404, 'Requirement not found');
     if (requirement.rows[0].review_status !== 'approved' || !requirement.rows[0].course_version_id) {
-      throw error(409, 'Requirement and Moodle course mapping require HSE approval before assignment');
+      throw error(409, 'An approved requirement and published course version are required before assignment');
     }
     const addenda = await client.query<{ site_id: string; id: string }>(
       `SELECT DISTINCT ON (site_id) site_id, id FROM site_addendum_versions
@@ -331,4 +333,21 @@ export function summarize(items: AssignmentItem[], now = new Date()) {
     bySite.set(item.site.id, site);
   }
   return { asOf: now.toISOString(), counts, courses: [...byCourse.values()], sites: [...bySite.values()] };
+}
+
+/** Cancelling preserves the decision and any progress/evidence; reassignment is a new reviewed decision. */
+export async function cancelAssignment(actor: Actor, assignmentId: string, input: unknown): Promise<void> {
+  requireRole(actor, ['tenant_admin', 'site_admin']);
+  const parsed = z.strictObject({ reason: z.string().trim().min(3).max(500) }).safeParse(input);
+  if (!parsed.success) throw error(400, parsed.error.message);
+  await transaction(async (client) => {
+    const row = await client.query<{ site_id: string }>(`SELECT site_id FROM assignments
+      WHERE tenant_id = $1 AND id = $2 AND cancelled_at IS NULL FOR UPDATE`, [actor.tenantId, assignmentId]);
+    if (!row.rowCount) throw error(404, 'Assignment not found');
+    requireSite(actor, row.rows[0].site_id);
+    await client.query('UPDATE assignments SET cancelled_at = now() WHERE tenant_id = $1 AND id = $2', [actor.tenantId, assignmentId]);
+    await client.query(`INSERT INTO audit_log (tenant_id,actor_principal_id,action,entity_type,entity_id,after_value)
+      VALUES ($1,$2,'assignment.cancelled','assignment',$3,$4::jsonb)`,
+      [actor.tenantId, actor.id, assignmentId, JSON.stringify({ reason: parsed.data.reason })]);
+  });
 }

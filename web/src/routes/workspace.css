@@ -196,3 +196,7 @@ td:last-child a { margin-left: 9px; }
 @media (pointer: coarse) { .primary, .pagination button, .modal-actions button, .center-actions button, .close, input, select, .sidebar nav button { min-height: var(--hse-control-touch); } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; } }
 @media (forced-colors: active) { .status, .review, .primary, input, select, .course-card, .site-card { border: 1px solid CanvasText; } :focus-visible { outline-color: Highlight; } }
+
+/* Destinations shared with the beta administration screens. */
+.sidebar nav > a { display: block; padding: 10px 14px; color: var(--hse-color-ink); text-decoration: none; border-radius: var(--hse-radius-control); font-weight: var(--hse-weight-semibold); }
+.sidebar nav > a:hover { background: var(--hse-color-canvas); }

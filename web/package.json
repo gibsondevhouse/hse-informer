@@ -17,8 +17,10 @@
     "test": "vitest run --exclude '**/*.integration.test.ts'",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:e2e": "playwright test",
+    "test:e2e:beta": "playwright test -c playwright.beta.config.ts",
     "db:migrate": "tsx scripts/migrate.ts",
     "db:seed:synthetic": "tsx scripts/seed-synthetic.ts",
+    "tenant:bootstrap": "tsx scripts/bootstrap-tenant.ts",
     "jobs:run": "tsx scripts/run-jobs.ts",
     "jobs:reassignment": "tsx scripts/run-reassignment.ts"
   },

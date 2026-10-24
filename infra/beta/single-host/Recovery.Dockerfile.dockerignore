@@ -1,0 +1,12 @@
+**/node_modules
+**/.svelte-kit
+**/build
+**/.env
+**/.env.*
+**/*.env
+!**/.env.example
+.git
+**/test-results
+**/playwright-report
+**/*.log
+**/__pycache__

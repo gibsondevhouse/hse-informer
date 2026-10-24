@@ -24,6 +24,12 @@ describe('training decision rules', () => {
       authorizationDecision: null, authorizationExpiresAt: null, needsReview: true }, now)).toBe('overdue');
   });
 
+  it('keeps a knowledge-only completion complete after its deadline', () => {
+    expect(assignmentState({ dueAt: new Date('2026-10-01T00:00:00Z'), enrolled: true,
+      knowledgeCompletedAt: now, needsReview: false, authorizationDecision: null,
+      authorizationExpiresAt: null }, now)).toBe('knowledge_complete');
+  });
+
   it('calculates calendar recurrence, including leap-day completion', () => {
     expect(nextDueDate(new Date('2024-02-29T10:30:00Z'), { kind: 'annual' })?.toISOString())
       .toBe('2025-02-28T10:30:00.000Z');

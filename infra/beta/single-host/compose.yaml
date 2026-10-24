@@ -1,0 +1,237 @@
+name: hse-beta-one
+
+x-app-environment: &app-environment
+  DATABASE_URL: postgres://hse_app:${HSE_DB_PASSWORD:?Set generated HSE_DB_PASSWORD}@postgres:5432/hse
+  APP_ORIGIN: https://${APP_HOST:?Set APP_HOST}
+  ORIGIN: https://${APP_HOST:?Set APP_HOST}
+  OIDC_ISSUER: https://${AUTH_HOST:?Set AUTH_HOST}/realms/hse-beta
+  OIDC_CLIENT_ID: hse-web
+  OIDC_CLIENT_SECRET: ${HSE_OIDC_CLIENT_SECRET:?Set generated HSE_OIDC_CLIENT_SECRET}
+  KEYCLOAK_ADMIN_CLIENT_ID: hse-account-admin
+  KEYCLOAK_ADMIN_CLIENT_SECRET: ${HSE_ADMIN_CLIENT_SECRET:?Set generated HSE_ADMIN_CLIENT_SECRET}
+  SESSION_SECRET: ${SESSION_SECRET:?Set generated SESSION_SECRET}
+  ADDRESS_HEADER: x-forwarded-for
+  XFF_DEPTH: "1"
+  HSE_TENANT_ID: ${HSE_TENANT_ID:-}
+  MOODLE_INSTANCE_ID: ${MOODLE_INSTANCE_ID:?Set stable generated MOODLE_INSTANCE_ID}
+  MOODLE_SERVICE_TOKEN: ${MOODLE_SERVICE_TOKEN:-}
+  MOODLE_BASE_URL: https://${COURSES_HOST:?Set COURSES_HOST}
+  MOODLE_AUTH_METHOD: oauth2
+
+services:
+  postgres:
+    image: postgres:17-bookworm
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_ADMIN_PASSWORD:?Set generated POSTGRES_ADMIN_PASSWORD}
+      POSTGRES_DB: postgres
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256
+      HSE_DB_PASSWORD: ${HSE_DB_PASSWORD:?Set generated HSE_DB_PASSWORD}
+      KEYCLOAK_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?Set generated KEYCLOAK_DB_PASSWORD}
+      MOODLE_DB_PASSWORD: ${MOODLE_DB_PASSWORD:?Set generated MOODLE_DB_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./init-databases.sh:/docker-entrypoint-initdb.d/10-hse-databases.sh:ro
+    networks: [data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U postgres -d postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    restart: unless-stopped
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.7.3
+    command: ["start", "--import-realm"]
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?Set generated KEYCLOAK_DB_PASSWORD}
+      KC_HOSTNAME: https://${AUTH_HOST:?Set AUTH_HOST}
+      KC_HOSTNAME_STRICT: "true"
+      KC_HTTP_ENABLED: "true"
+      KC_PROXY_HEADERS: xforwarded
+      KC_HEALTH_ENABLED: "true"
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USER:?Set KEYCLOAK_ADMIN_USER}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?Set generated KEYCLOAK_ADMIN_PASSWORD}
+      APP_HOST: ${APP_HOST:?Set APP_HOST}
+      COURSES_HOST: ${COURSES_HOST:?Set COURSES_HOST}
+      HSE_OIDC_CLIENT_SECRET: ${HSE_OIDC_CLIENT_SECRET:?Set generated HSE_OIDC_CLIENT_SECRET}
+      HSE_ADMIN_CLIENT_SECRET: ${HSE_ADMIN_CLIENT_SECRET:?Set generated HSE_ADMIN_CLIENT_SECRET}
+      MOODLE_OIDC_CLIENT_SECRET: ${MOODLE_OIDC_CLIENT_SECRET:?Set generated MOODLE_OIDC_CLIENT_SECRET}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_FROM: ${SMTP_FROM:-}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_AUTH: ${SMTP_AUTH:-true}
+      SMTP_STARTTLS: ${SMTP_STARTTLS:-true}
+      SMTP_SSL: ${SMTP_SSL:-false}
+    volumes:
+      - ./keycloak-beta-realm.json:/opt/keycloak/data/import/hse-beta-realm.json:ro
+    ports: ["127.0.0.1:${KEYCLOAK_LOOPBACK_PORT:-8080}:8080"]
+    networks: [data, edge]
+    depends_on:
+      postgres: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD-SHELL", "bash -ec 'exec 3<>/dev/tcp/127.0.0.1/9000; printf \"GET /health/ready HTTP/1.0\\r\\n\\r\\n\" >&3; IFS= read -r status <&3; [[ $$status == *\" 200 \"* ]]'"]
+      interval: 15s
+      timeout: 5s
+      start_period: 60s
+      retries: 30
+    restart: unless-stopped
+
+  moodle:
+    image: ${BETA_IMAGE_REPOSITORY:?Set image repository}:${BETA_IMAGE_TAG:?Set reviewed commit SHA}-moodle
+    build:
+      context: ../../..
+      dockerfile: infra/beta/single-host/Moodle.Dockerfile
+      args:
+        MOODLE_BASE_IMAGE: ${BETA_IMAGE_REPOSITORY:?Set image repository}:${BETA_IMAGE_TAG:?Set reviewed commit SHA}-moodle-base
+    environment:
+      MOODLE_DB_HOST: postgres
+      MOODLE_DB_NAME: moodle
+      MOODLE_DB_USER: moodle
+      MOODLE_DB_PASSWORD: ${MOODLE_DB_PASSWORD:?Set generated MOODLE_DB_PASSWORD}
+      MOODLE_WWWROOT: https://${COURSES_HOST:?Set COURSES_HOST}
+      MOODLE_ADMIN_USER: ${MOODLE_ADMIN_USER:?Set MOODLE_ADMIN_USER}
+      MOODLE_ADMIN_PASSWORD: ${MOODLE_ADMIN_PASSWORD:?Set generated MOODLE_ADMIN_PASSWORD}
+      MOODLE_ADMIN_EMAIL: ${ADMIN_EMAIL:?Set actual administrator email}
+      MOODLE_SITE_FULLNAME: ${MOODLE_SITE_FULLNAME:?Set actual site name}
+      MOODLE_SITE_SHORTNAME: ${MOODLE_SITE_SHORTNAME:?Set actual short site name}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_FROM: ${SMTP_FROM:-}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_AUTH: ${SMTP_AUTH:-true}
+      SMTP_STARTTLS: ${SMTP_STARTTLS:-true}
+      SMTP_SSL: ${SMTP_SSL:-false}
+    volumes:
+      - moodle-data:/var/moodledata
+    ports: ["127.0.0.1:${MOODLE_LOOPBACK_PORT:-8081}:80"]
+    networks: [data, edge]
+    depends_on:
+      postgres: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "--output", "/dev/null", "http://127.0.0.1/login/index.php"]
+      interval: 15s
+      timeout: 5s
+      start_period: 180s
+      retries: 30
+    restart: unless-stopped
+
+  migrate:
+    image: ${BETA_IMAGE_REPOSITORY:?Set image repository}:${BETA_IMAGE_TAG:?Set reviewed commit SHA}-tools
+    command: ["node_modules/.bin/tsx", "scripts/migrate.ts"]
+    environment:
+      DATABASE_URL: postgres://hse_app:${HSE_DB_PASSWORD:?Set generated HSE_DB_PASSWORD}@postgres:5432/hse
+    depends_on:
+      postgres: { condition: service_healthy }
+    networks: [data]
+    read_only: true
+    tmpfs: ["/tmp"]
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    restart: "no"
+
+  web:
+    image: ${BETA_IMAGE_REPOSITORY:?Set image repository}:${BETA_IMAGE_TAG:?Set reviewed commit SHA}
+    command: ["node", "/opt/hse/start-app.mjs", "web"]
+    environment: *app-environment
+    volumes:
+      - ./start-app.mjs:/opt/hse/start-app.mjs:ro
+      - app-uploads:/app/uploads
+    ports: ["127.0.0.1:${APP_LOOPBACK_PORT:-3000}:3000"]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      keycloak: { condition: service_healthy }
+    networks: [data, edge]
+    read_only: true
+    tmpfs: ["/tmp"]
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    restart: unless-stopped
+
+  jobs:
+    profiles: [operations]
+    image: ${BETA_IMAGE_REPOSITORY:?Set image repository}:${BETA_IMAGE_TAG:?Set reviewed commit SHA}-tools
+    command: ["node", "/opt/hse/start-app.mjs", "jobs"]
+    environment:
+      <<: *app-environment
+      ALERT_WEBHOOK_URL: ${ALERT_WEBHOOK_URL:-}
+      ALERT_OWNER: ${ALERT_OWNER:-}
+      BETA_JOB_INTERVAL_SECONDS: ${BETA_JOB_INTERVAL_SECONDS:-300}
+    volumes:
+      - ./start-app.mjs:/opt/hse/start-app.mjs:ro
+    depends_on:
+      web: { condition: service_healthy }
+      moodle: { condition: service_healthy }
+    networks: [data, edge]
+    read_only: true
+    tmpfs: ["/tmp"]
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    restart: unless-stopped
+
+  caddy:
+    profiles: [tls]
+    image: caddy:2.10.2-alpine
+    environment:
+      APP_HOST: ${APP_HOST:?Set APP_HOST}
+      AUTH_HOST: ${AUTH_HOST:?Set AUTH_HOST}
+      COURSES_HOST: ${COURSES_HOST:?Set COURSES_HOST}
+      ACME_EMAIL: ${ADMIN_EMAIL:?Set actual certificate contact email}
+    ports: ["80:80", "443:443", "443:443/udp"]
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks:
+      edge:
+        aliases:
+          - ${APP_HOST:?Set APP_HOST}
+          - ${AUTH_HOST:?Set AUTH_HOST}
+          - ${COURSES_HOST:?Set COURSES_HOST}
+    depends_on:
+      web: { condition: service_healthy }
+      keycloak: { condition: service_healthy }
+      moodle: { condition: service_healthy }
+    restart: unless-stopped
+
+  recovery:
+    profiles: [backup]
+    image: ${BETA_IMAGE_REPOSITORY:?Set image repository}:${BETA_IMAGE_TAG:?Set reviewed commit SHA}-recovery
+    build:
+      context: ../../..
+      dockerfile: infra/beta/single-host/Recovery.Dockerfile
+    environment:
+      HSE_DATABASE_URL: postgres://hse_app:${HSE_DB_PASSWORD:?Set generated HSE_DB_PASSWORD}@postgres:5432/hse
+      KEYCLOAK_DATABASE_URL: postgres://keycloak:${KEYCLOAK_DB_PASSWORD:?Set generated KEYCLOAK_DB_PASSWORD}@postgres:5432/keycloak
+      MOODLE_DATABASE_URL: postgres://moodle:${MOODLE_DB_PASSWORD:?Set generated MOODLE_DB_PASSWORD}@postgres:5432/moodle
+      MOODLE_FILES_DIR: /backup-input/moodledata
+      MOODLE_CODE_DIR: /backup-input/moodlecode
+      HSE_UPLOADS_DIR: /backup-input/uploads
+      AGE_RECIPIENT: ${AGE_RECIPIENT:-}
+      BETA_BACKUP_QUIESCED: "yes"
+    volumes:
+      - moodle-data:/backup-input/moodledata:ro
+      - app-uploads:/backup-input/uploads:ro
+    depends_on:
+      postgres: { condition: service_healthy }
+    networks: [data]
+    cap_drop: ["ALL"]
+    cap_add: ["DAC_READ_SEARCH"]
+    security_opt: ["no-new-privileges:true"]
+    restart: "no"
+
+networks:
+  data: { internal: true }
+  edge: {}
+volumes:
+  postgres-data:
+  moodle-data:
+  app-uploads:
+  caddy-data:
+  caddy-config:

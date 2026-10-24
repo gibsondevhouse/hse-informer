@@ -1,10 +1,16 @@
 /** Server-only Moodle boundary. Function availability and return shapes must be verified against the pinned installation. */
 export const MOODLE_FUNCTIONS = [
+  'core_course_get_courses_by_field',
+  'local_hse_evidence_get_completion',
+  'local_hse_evidence_end_user_sessions',
   'enrol_manual_enrol_users',
   'core_completion_get_course_completion_status',
   'core_enrol_get_users_courses',
   'core_user_get_users_by_field',
   'core_user_create_users',
+  'core_user_update_users',
+  'core_user_update_user_preferences',
+  'core_message_get_user_notification_preferences',
   'core_cohort_add_cohort_members',
   'mod_scorm_get_scorm_attempt_count',
   'mod_scorm_get_scorm_scoes',
@@ -13,7 +19,8 @@ export const MOODLE_FUNCTIONS = [
 ] as const;
 type MoodleFunction = typeof MOODLE_FUNCTIONS[number];
 
-interface Connection { instanceId: string; baseUrl: string; token: string; learnerRoleId?: number; authMethod?: string }
+interface Connection { instanceId: string; baseUrl: string; token: string; learnerRoleId?: number; authMethod?: string;
+  completionEvidence?: 'local_hse_evidence' }
 
 function connections(): Record<string, Connection> {
   const raw = process.env.MOODLE_CONNECTIONS_JSON ?? '{}';
@@ -22,6 +29,9 @@ function connections(): Record<string, Connection> {
   const instances = new Set<string>();
   const instanceIds = new Set<string>();
   for (const connection of Object.values(parsed)) {
+    if (connection.completionEvidence !== undefined && connection.completionEvidence !== 'local_hse_evidence') {
+      throw new Error('Unknown Moodle completion evidence provider');
+    }
     if (!connection?.baseUrl || !connection.token || !connection.instanceId
       || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(connection.instanceId)) {
       throw new Error('Moodle connection requires a stable UUID instanceId, baseUrl, and token');
@@ -91,6 +101,53 @@ export async function enrollUser(tenantId: string, courseId: number, userId: num
   });
 }
 
+/** Moodle 5.3 core suspends login and destroys the user's sessions in this call. */
+export async function suspendMoodleUser(tenantId: string, userId: number, suspended: boolean): Promise<void> {
+  positiveInteger(userId, 'core_user_update_users');
+  if (typeof suspended !== 'boolean') throw new Error('A boolean Moodle suspension state is required');
+  const result = responseObject(await moodleCall<unknown>(tenantId, 'core_user_update_users', {
+    users: [{ id: userId, suspended }]
+  }), 'core_user_update_users');
+  checkedWarnings(result.warnings, 'core_user_update_users');
+  const users = await moodleCall<Array<{ id: number; suspended?: boolean | number }>>(tenantId, 'core_user_get_users_by_field', {
+    field: 'id', values: [String(userId)]
+  });
+  if (!Array.isArray(users) || users.length !== 1 || users[0].id !== userId ||
+    ![true, false, 0, 1].includes(users[0].suspended as boolean | number) || Boolean(users[0].suspended) !== suspended) {
+    throw new MoodleError('Moodle did not confirm the requested account suspension state', 'core_user_update_users', 'invalid_response');
+  }
+}
+
+/** Suppress notifications for a technical identity address and verify Moodle applied it. */
+export async function suppressMoodleEmail(tenantId: string, userId: number): Promise<void> {
+  positiveInteger(userId, 'core_user_update_user_preferences');
+  const result = await moodleCall<unknown>(tenantId, 'core_user_update_user_preferences', {
+    userid: userId, emailstop: 1, preferences: []
+  });
+  if (result !== null) throw new MoodleError('Unexpected notification update response', 'core_user_update_user_preferences', 'invalid_response');
+  const readback = responseObject(await moodleCall<unknown>(tenantId, 'core_message_get_user_notification_preferences', { userid: userId }),
+    'core_message_get_user_notification_preferences');
+  checkedWarnings(readback.warnings, 'core_message_get_user_notification_preferences');
+  const preferences = responseObject(readback.preferences, 'core_message_get_user_notification_preferences');
+  if (preferences.userid !== userId || preferences.disableall !== 1) {
+    throw new MoodleError('Moodle did not confirm notification suppression for the technical identity',
+      'core_message_get_user_notification_preferences', 'invalid_response');
+  }
+}
+
+/** End only the server-resolved worker's Moodle sessions during coordinated logout. */
+export async function endMoodleUserSessions(tenantId: string, userId: number): Promise<void> {
+  const fn = 'local_hse_evidence_end_user_sessions';
+  positiveInteger(userId, fn);
+  if (moodleConnection(tenantId)?.completionEvidence !== 'local_hse_evidence') {
+    throw new MoodleError('The Moodle session-ending service is not configured', fn, 'not_configured');
+  }
+  const result = responseObject(await moodleCall<unknown>(tenantId, fn, { userid: userId }), fn);
+  if (result.userid !== userId || result.ended !== true) {
+    throw new MoodleError('Moodle did not confirm that the mapped worker sessions ended', fn, 'invalid_response');
+  }
+}
+
 export async function addUserToCohort(tenantId: string, cohortId: number, userId: number): Promise<void> {
   if (![cohortId, userId].every((value) => Number.isSafeInteger(value) && value > 0)) {
     throw new Error('Invalid Moodle cohort or user ID');
@@ -112,6 +169,24 @@ export interface MoodleCompletion {
   attempts: number | null;
   scormObservation: MoodleScormObservation | null;
   raw: unknown;
+  sourceCompletionId?: number;
+}
+
+/** Read the exact mapped course; the token must be able to inspect its settings. */
+export async function inspectMoodleCourse(tenantId: string, courseId: number) {
+  const fn = 'core_course_get_courses_by_field';
+  positiveInteger(courseId, fn);
+  const result = responseObject(await moodleCall<unknown>(tenantId, fn, { field: 'id', value: String(courseId) }), fn);
+  checkedWarnings(result.warnings, fn);
+  if (!Array.isArray(result.courses) || result.courses.length !== 1) {
+    throw new MoodleError('Moodle course was not found or is inaccessible', fn, 'invalid_mapping');
+  }
+  const course = responseObject(result.courses[0], fn);
+  if (course.id !== courseId || typeof course.fullname !== 'string' || course.enablecompletion !== 1) {
+    throw new MoodleError('Moodle course completion must be enabled and inspectable', fn, 'invalid_mapping');
+  }
+  return { id: courseId, title: course.fullname, shortName: String(course.shortname ?? ''),
+    completionEnabled: true, visible: course.visible === 1 };
 }
 
 /** Observed SCORM and activity fields only. This is not course-completion evidence. */
@@ -215,7 +290,30 @@ export async function readCompletion(tenantId: string, courseId: number, userId:
   const completed = status.completed;
   // This Moodle 5.3 response has criterion timestamps, not a canonical course completion time.
   // Do not promote one criterion's time to the course completion evidence without Gate B validation.
-  const completedAt = null;
+  let completedAt: Date | null = null;
+  let canonicalRaw: unknown = null;
+  let canonicalScore: number | null = null;
+  let sourceCompletionId: number | undefined;
+  if (completed && moodleConnection(tenantId)?.completionEvidence === 'local_hse_evidence') {
+    canonicalRaw = await moodleCall<unknown>(tenantId, 'local_hse_evidence_get_completion', { courseid: courseId, userid: userId });
+    const canonical = responseObject(canonicalRaw, 'local_hse_evidence_get_completion');
+    if (canonical.courseid !== courseId || canonical.userid !== userId || canonical.completed !== true) {
+      throw new MoodleError('Canonical completion does not match the requested learner and course',
+        'local_hse_evidence_get_completion', 'invalid_response');
+    }
+    sourceCompletionId = positiveInteger(canonical.completionid, 'local_hse_evidence_get_completion');
+    const seconds = positiveInteger(canonical.timecompleted, 'local_hse_evidence_get_completion');
+    completedAt = new Date(seconds * 1000);
+    if (!Number.isFinite(completedAt.getTime()) || completedAt.getTime() > Date.now() + 1000) {
+      throw new MoodleError('Invalid canonical completion timestamp', 'local_hse_evidence_get_completion', 'invalid_response');
+    }
+    if (canonical.score !== null && canonical.score !== undefined) {
+      if (typeof canonical.score !== 'number' || !Number.isFinite(canonical.score) || canonical.score < 0 || canonical.score > 100) {
+        throw new MoodleError('Invalid canonical course grade', 'local_hse_evidence_get_completion', 'invalid_response');
+      }
+      canonicalScore = canonical.score;
+    }
+  }
   let attempts: number | null = null;
   let scormObservation: MoodleScormObservation | null = null;
   let attemptRaw: unknown = null;
@@ -298,8 +396,8 @@ export async function readCompletion(tenantId: string, courseId: number, userId:
   }
   // Moodle's course-completion service does not itself guarantee score or attempt details.
   // Observed SCORM details remain separate from evidence until Gate B validates the exact criteria.
-  return { completed, completedAt, score: null, attempts, scormObservation,
-    raw: { course: courseRaw, scormAttemptCount: attemptRaw, scormScoes: scoesRaw,
+  return { completed, completedAt, score: canonicalScore, attempts, scormObservation, sourceCompletionId,
+    raw: { course: courseRaw, canonical: canonicalRaw, scormAttemptCount: attemptRaw, scormScoes: scoesRaw,
       scormTracks: tracksRaw, activity: activityRaw } };
 }
 
@@ -324,15 +422,19 @@ export async function findMoodleUserByHseId(tenantId: string, hseId: string): Pr
 }
 
 export async function provisionMoodleUser(tenantId: string, person: {
-  hseId: string; username: string; firstName: string; lastName: string; email: string;
+  hseId: string; username: string; firstName: string; lastName: string; email: string; suppressEmail?: boolean;
 }, authMethod: string): Promise<number> {
   if (!/^[a-z][a-z0-9_]{1,30}$/.test(authMethod) || authMethod === 'manual') throw new Error('A tested external Moodle auth method is required');
   const existing = await findMoodleUserByHseId(tenantId, person.hseId);
-  if (existing) return existing;
+  if (existing) {
+    if (person.suppressEmail) await suppressMoodleEmail(tenantId, existing);
+    return existing;
+  }
   const created = await moodleCall<Array<{ id: number }>>(tenantId, 'core_user_create_users', {
     users: [{ username: person.username, firstname: person.firstName, lastname: person.lastName,
       email: person.email, idnumber: person.hseId, auth: authMethod, createpassword: 0 }]
   });
   if (!Array.isArray(created) || !created[0] || !Number.isSafeInteger(created[0].id)) throw new Error('Moodle did not return a created user ID');
+  if (person.suppressEmail) await suppressMoodleEmail(tenantId, created[0].id);
   return created[0].id;
 }

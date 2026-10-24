@@ -3,16 +3,18 @@ import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { database } from '../src/lib/server/db';
 import { listAssignments } from '../src/lib/server/assignments';
 import type { Actor } from '../src/lib/server/auth';
-import { runJobs } from '../src/lib/server/jobs';
+import { enqueueReconciliation, runJobs } from '../src/lib/server/jobs';
 
 const mock = vi.hoisted(() => ({
-  isUserEnrolled: vi.fn(), readCompletion: vi.fn()
+  isUserEnrolled: vi.fn(), readCompletion: vi.fn(), suspendMoodleUser: vi.fn(), suppressMoodleEmail: vi.fn()
 }));
 vi.mock('../src/lib/server/moodle', () => ({
   moodleConnection: () => ({ instanceId: 'f5a21bbd-1582-45fa-8b7f-71d01d66a4f8',
     baseUrl: 'https://moodle.example.test', token: 'synthetic-token', learnerRoleId: 5 }),
   isUserEnrolled: mock.isUserEnrolled,
   readCompletion: mock.readCompletion,
+  suspendMoodleUser: mock.suspendMoodleUser,
+  suppressMoodleEmail: mock.suppressMoodleEmail,
   findMoodleUserByHseId: vi.fn(), provisionMoodleUser: vi.fn(),
   addUserToCohort: vi.fn(), enrollUser: vi.fn(), moodleCourseUrl: vi.fn()
 }));
@@ -36,8 +38,8 @@ describe.skipIf(!enabled)('Moodle reconciliation drift lifecycle', () => {
       VALUES ($1,$2,'test','Synthetic site','GA')`, [id.site, id.tenant]);
     // Disposable test-only data uses the live-path flags to exercise reconciliation;
     // Moodle calls are mocked and this database is never a production evidence store.
-    await db.query(`INSERT INTO people (id, tenant_id, display_name, person_type, synthetic)
-      VALUES ($1,$2,'Mock worker','employee',false)`, [id.person, id.tenant]);
+    await db.query(`INSERT INTO people (id, tenant_id, display_name, person_type, synthetic, email)
+      VALUES ($1,$2,'Mock worker','employee',false,'worker@example.test')`, [id.person, id.tenant]);
     await db.query(`INSERT INTO principals (id, tenant_id, oidc_issuer, oidc_subject, role)
       VALUES ($1,$2,'synthetic-test',$3,'tenant_admin')`, [id.principal, id.tenant, id.principal]);
     await db.query(`INSERT INTO person_external_ids
@@ -126,4 +128,53 @@ describe.skipIf(!enabled)('Moodle reconciliation drift lifecycle', () => {
       state: 'needs_review', knowledgeComplete: false, completionDrift: true, authorized: false
     });
   });
+  it('suspends and resumes the mapped Moodle account using current profile state', async () => {
+    const db = database();
+    await db.query('UPDATE people SET active=false WHERE id=$1', [id.person]);
+    const stateJob = await db.query<{id:string}>(`INSERT INTO integration_outbox (tenant_id,kind,aggregate_id)
+      VALUES ($1,'moodle_user_state',$2) RETURNING id`, [id.tenant, id.person]);
+    mock.suspendMoodleUser.mockResolvedValue(undefined);
+    expect(await runJobs(1, id.tenant)).toEqual({done:1,failed:0});
+    expect(mock.suspendMoodleUser).toHaveBeenLastCalledWith(id.tenant,17,true);
+    await db.query('UPDATE people SET active=true WHERE id=$1',[id.person]);
+    await db.query(`UPDATE integration_outbox SET state='pending',next_attempt_at=now() WHERE id=$1`,[stateJob.rows[0].id]);
+    expect(await runJobs(1,id.tenant)).toEqual({done:1,failed:0});
+    expect(mock.suspendMoodleUser).toHaveBeenLastCalledWith(id.tenant,17,false);
+  });
+
+  it('preserves a requeued account state change while a worker finishes', async () => {
+    const db=database();
+    await db.query(`UPDATE integration_outbox SET state='pending',next_attempt_at=now()
+      WHERE tenant_id=$1 AND kind='moodle_user_state'`,[id.tenant]);
+    mock.suspendMoodleUser.mockImplementationOnce(async()=>{
+      await db.query(`UPDATE integration_outbox SET state='pending',next_attempt_at=now()
+        WHERE tenant_id=$1 AND kind='moodle_user_state'`,[id.tenant]);
+    });
+    expect(await runJobs(1,id.tenant)).toEqual({done:1,failed:0});
+    const rows=await db.query(`SELECT state FROM integration_outbox WHERE tenant_id=$1 AND kind='moodle_user_state'`,[id.tenant]);
+    expect(rows.rows[0].state).toBe('pending');
+    expect(await runJobs(1,id.tenant)).toEqual({done:1,failed:0});
+  });
+
+  it('repairs enrollment skipped while a printed account awaited activation', async () => {
+    const db=database();
+    await db.query('DELETE FROM moodle_enrollments WHERE tenant_id=$1 AND assignment_id=$2',[id.tenant,id.assignment]);
+    await db.query('UPDATE people SET account_access_locked=true WHERE id=$1',[id.person]);
+    await db.query(`INSERT INTO integration_outbox(tenant_id,kind,aggregate_id) VALUES($1,'moodle_enrol',$2)`,[id.tenant,id.assignment]);
+    expect(await runJobs(1,id.tenant)).toEqual({done:1,failed:0});
+    await enqueueReconciliation(id.tenant);
+    let row=await db.query(`SELECT state FROM integration_outbox WHERE tenant_id=$1 AND aggregate_id=$2 AND kind='moodle_enrol'`,[id.tenant,id.assignment]);
+    expect(row.rows[0].state).toBe('done');
+    await db.query('UPDATE people SET account_access_locked=false WHERE id=$1',[id.person]);
+    await db.query(`INSERT INTO site_moodle_cohorts(tenant_id,site_id,moodle_cohort_id,instance_key)
+      VALUES($1,$2,3,'f5a21bbd-1582-45fa-8b7f-71d01d66a4f8')`,[id.tenant,id.site]);
+    await enqueueReconciliation(id.tenant);
+    row=await db.query(`SELECT state FROM integration_outbox WHERE tenant_id=$1 AND aggregate_id=$2 AND kind='moodle_enrol'`,[id.tenant,id.assignment]);
+    expect(row.rows[0].state).toBe('pending');
+    mock.isUserEnrolled.mockResolvedValue(false);
+    expect(await runJobs(3,id.tenant)).toEqual({done:2,failed:0});
+    const enrollment=await db.query('SELECT moodle_user_id FROM moodle_enrollments WHERE tenant_id=$1 AND assignment_id=$2',[id.tenant,id.assignment]);
+    expect(Number(enrollment.rows[0].moodle_user_id)).toBe(17);
+  });
+
 });
