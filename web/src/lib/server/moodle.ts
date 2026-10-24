@@ -16,6 +16,8 @@ export const MOODLE_FUNCTIONS = [
   'mod_scorm_get_scorm_attempt_count',
   'mod_scorm_get_scorm_scoes',
   'mod_scorm_get_scorm_sco_tracks',
+  'mod_quiz_get_quizzes_by_courses',
+  'mod_quiz_get_user_quiz_attempts',
   'core_completion_get_activities_completion_status'
 ] as const;
 type MoodleFunction = typeof MOODLE_FUNCTIONS[number];
@@ -200,6 +202,7 @@ export interface MoodleCompletion {
   score: number | null;
   attempts: number | null;
   scormObservation: MoodleScormObservation | null;
+  quizObservation: MoodleQuizObservation | null;
   raw: unknown;
   sourceCompletionId?: number;
 }
@@ -219,6 +222,58 @@ export async function inspectMoodleCourse(tenantId: string, courseId: number) {
   }
   return { id: courseId, title: course.fullname, shortName: String(course.shortname ?? ''),
     completionEnabled: true, visible: course.visible === 1 };
+}
+
+/** Resolve one pinned Quiz in its exact course/module without retaining manager-only settings. */
+export async function inspectMoodleQuiz(tenantId: string, courseId: number, quizId: number, activityModuleId: number) {
+  const fn = 'mod_quiz_get_quizzes_by_courses';
+  for (const id of [courseId, quizId, activityModuleId]) positiveInteger(id, fn);
+  const result = responseObject(await moodleCall<unknown>(tenantId, fn, { courseids: [courseId] }), fn);
+  checkedWarnings(result.warnings, fn);
+  if (!Array.isArray(result.quizzes)) throw new MoodleError('Missing Moodle quiz list', fn, 'invalid_response');
+  const matching = result.quizzes.filter((item: unknown) => item && typeof item === 'object'
+    && !Array.isArray(item) && (item as Record<string, unknown>).id === quizId);
+  if (matching.length !== 1) throw new MoodleError('Quiz mapping is missing or ambiguous', fn, 'invalid_mapping');
+  const quiz = responseObject(matching[0], fn);
+  if (quiz.course !== courseId || quiz.coursemodule !== activityModuleId) {
+    throw new MoodleError('Quiz does not match the pinned course and activity module', fn, 'invalid_mapping');
+  }
+  if (typeof quiz.name !== 'string' || typeof quiz.grade !== 'number' || !Number.isFinite(quiz.grade) || quiz.grade < 0
+    || typeof quiz.sumgrades !== 'number' || !Number.isFinite(quiz.sumgrades) || quiz.sumgrades < 0
+    || ![1, 2, 3, 4].includes(quiz.grademethod as number)
+    || !Number.isSafeInteger(quiz.attempts) || (quiz.attempts as number) < 0) {
+    throw new MoodleError('Quiz assessment settings are missing or malformed', fn, 'invalid_response');
+  }
+  return { id: quizId, courseId, activityModuleId, title: quiz.name,
+    maximumGrade: quiz.grade, totalMarks: quiz.sumgrades,
+    gradingMethod: quiz.grademethod as 1 | 2 | 3 | 4, serviceAccountAttemptLimit: quiz.attempts as number };
+}
+
+export interface MoodleQuizObservation {
+  quizId: number;
+  courseId: number;
+  activityModuleId: number;
+  activityState: 0 | 1 | 2 | 3 | 4;
+  /** Activity state update time, not a course completion timestamp. */
+  activityUpdatedAt: Date | null;
+  maximumGrade: number;
+  totalMarks: number;
+  gradingMethod: 1 | 2 | 3 | 4;
+  /** Service-account effective setting; learner overrides are not exposed here. Zero means unlimited. */
+  serviceAccountAttemptLimit: number;
+  observedAt: Date;
+  attempts: Array<{
+    id: number;
+    attemptNumber: number;
+    state: 'notstarted' | 'inprogress' | 'overdue' | 'submitted' | 'finished' | 'abandoned';
+    currentPage: number;
+    startedAt: Date | null;
+    /** Moodle timefinish is submission time; grading may complete later. */
+    submittedAt: Date | null;
+    modifiedAt: Date | null;
+    /** Quiz marks, not a percent or canonical course grade; may be hidden. */
+    rawMarks: number | null;
+  }>;
 }
 
 /** Observed SCORM and activity fields only. This is not course-completion evidence. */
@@ -262,6 +317,52 @@ function activityTimestamp(value: unknown): Date | null {
   return date;
 }
 
+function quizTimestamp(value: unknown): Date | null {
+  if (value === 0 || value === null) return null;
+  const fn = 'mod_quiz_get_user_quiz_attempts';
+  const date = new Date(positiveInteger(value, fn) * 1000);
+  if (!Number.isFinite(date.getTime())) throw new MoodleError('Invalid Quiz attempt timestamp', fn, 'invalid_response');
+  return date;
+}
+
+function quizAttempts(value: unknown, quizId: number, userId: number): MoodleQuizObservation['attempts'] {
+  const fn = 'mod_quiz_get_user_quiz_attempts';
+  const response = responseObject(value, fn);
+  checkedWarnings(response.warnings, fn);
+  if (!Array.isArray(response.attempts)) throw new MoodleError('Missing Quiz attempts', fn, 'invalid_response');
+  const ids = new Set<number>();
+  const numbers = new Set<number>();
+  const attempts = response.attempts.map((item: unknown) => {
+    const attempt = responseObject(item, fn);
+    const id = positiveInteger(attempt.id, fn);
+    const attemptNumber = positiveInteger(attempt.attempt, fn);
+    if (attempt.quiz !== quizId || attempt.userid !== userId || attempt.preview !== 0
+      || ids.has(id) || numbers.has(attemptNumber)) {
+      throw new MoodleError('Quiz attempts are duplicated or outside the pinned learner and assessment', fn, 'invalid_response');
+    }
+    ids.add(id);
+    numbers.add(attemptNumber);
+    if (!['notstarted', 'inprogress', 'overdue', 'submitted', 'finished', 'abandoned'].includes(attempt.state as string)
+      || !Number.isSafeInteger(attempt.currentpage) || (attempt.currentpage as number) < 0
+      || (attempt.sumgrades !== null && (typeof attempt.sumgrades !== 'number' || !Number.isFinite(attempt.sumgrades)))
+      || (attempt.state !== 'finished' && attempt.sumgrades !== null)) {
+      throw new MoodleError('Malformed Quiz attempt state or marks', fn, 'invalid_response');
+    }
+    const startedAt = quizTimestamp(attempt.timestart);
+    const submittedAt = quizTimestamp(attempt.timefinish);
+    const modifiedAt = quizTimestamp(attempt.timemodified);
+    if ((attempt.state !== 'notstarted' && !startedAt)
+      || (attempt.state === 'finished' && !submittedAt)
+      || (startedAt && submittedAt && submittedAt < startedAt)) {
+      throw new MoodleError('Quiz attempt timestamps do not match its state', fn, 'invalid_response');
+    }
+    return { id, attemptNumber, state: attempt.state as MoodleQuizObservation['attempts'][number]['state'],
+      currentPage: attempt.currentpage as number, startedAt, submittedAt, modifiedAt,
+      rawMarks: attempt.sumgrades as number | null };
+  });
+  return attempts.sort((left, right) => left.attemptNumber - right.attemptNumber);
+}
+
 function scormTracks(value: unknown): { attempt: number; lessonStatus: string; rawScore: number | null } {
   const fn = 'mod_scorm_get_scorm_sco_tracks';
   const response = responseObject(value, fn);
@@ -303,14 +404,22 @@ function scormTracks(value: unknown): { attempt: number; lessonStatus: string; r
 }
 
 export async function readCompletion(tenantId: string, courseId: number, userId: number,
-  scormId?: number | null, expectedActivityModuleId?: number | null): Promise<MoodleCompletion> {
+  scormId?: number | null, expectedActivityModuleId?: number | null, quizId?: number | null): Promise<MoodleCompletion> {
+  positiveInteger(courseId, 'core_completion_get_course_completion_status');
+  positiveInteger(userId, 'core_completion_get_course_completion_status');
+  const hasScorm = scormId !== null && scormId !== undefined;
+  const hasQuiz = quizId !== null && quizId !== undefined;
+  if ((hasScorm && hasQuiz) || (hasQuiz && (expectedActivityModuleId === null || expectedActivityModuleId === undefined))) {
+    throw new MoodleError('Map one assessment with its exact activity module', 'mod_quiz_get_quizzes_by_courses', 'invalid_mapping');
+  }
   if (expectedActivityModuleId !== null && expectedActivityModuleId !== undefined) {
     positiveInteger(expectedActivityModuleId, 'core_completion_get_activities_completion_status');
-    if (scormId === null || scormId === undefined) {
-      throw new MoodleError('Activity mapping requires a SCORM mapping',
+    if (!hasScorm && !hasQuiz) {
+      throw new MoodleError('Activity mapping requires an assessment mapping',
         'core_completion_get_activities_completion_status', 'invalid_mapping');
     }
   }
+  const quiz = hasQuiz ? await inspectMoodleQuiz(tenantId, courseId, quizId, expectedActivityModuleId!) : null;
   const courseRaw = await moodleCall<unknown>(
     tenantId, 'core_completion_get_course_completion_status', { courseid: courseId, userid: userId });
   const course = responseObject(courseRaw, 'core_completion_get_course_completion_status');
@@ -348,6 +457,7 @@ export async function readCompletion(tenantId: string, courseId: number, userId:
   }
   let attempts: number | null = null;
   let scormObservation: MoodleScormObservation | null = null;
+  let quizObservation: MoodleQuizObservation | null = null;
   let attemptRaw: unknown = null;
   let scoesRaw: unknown = null;
   let tracksRaw: unknown = null;
@@ -426,11 +536,40 @@ export async function readCompletion(tenantId: string, courseId: number, userId:
     scormObservation = { scormId, activityModuleId, activityState, activityTimecompleted,
       latestAttempt, scoId, lessonStatus, rawScore };
   }
-  // Moodle's course-completion service does not itself guarantee score or attempt details.
-  // Observed SCORM details remain separate from evidence until Gate B validates the exact criteria.
-  return { completed, completedAt, score: canonicalScore, attempts, scormObservation, sourceCompletionId,
+  if (quiz) {
+    const fn = 'core_completion_get_activities_completion_status';
+    const response = responseObject(await moodleCall<unknown>(tenantId, fn,
+      { courseid: courseId, userid: userId }), fn);
+    checkedWarnings(response.warnings, fn);
+    if (!Array.isArray(response.statuses)) throw new MoodleError('Missing Moodle activity statuses', fn, 'invalid_response');
+    const matching = response.statuses.filter((item: unknown) => item && typeof item === 'object'
+      && !Array.isArray(item) && (item as Record<string, unknown>).modname === 'quiz'
+      && (item as Record<string, unknown>).instance === quiz.id);
+    if (matching.length !== 1) throw new MoodleError('Quiz activity mapping is missing or ambiguous', fn, 'invalid_mapping');
+    const activity = responseObject(matching[0], fn);
+    if (activity.cmid !== quiz.activityModuleId) {
+      throw new MoodleError('Quiz activity differs from the pinned course version', fn, 'activity_mapping_changed');
+    }
+    if (![0, 1, 2, 3, 4].includes(activity.state as number)) {
+      throw new MoodleError('Invalid Quiz activity state', fn, 'invalid_response');
+    }
+    const activityUpdatedAt = activityTimestamp(activity.timecompleted);
+    if (activity.state !== 0 && !activityUpdatedAt) {
+      throw new MoodleError('Completed Quiz activity lacks its state timestamp', fn, 'invalid_response');
+    }
+    const observedAttempts = quizAttempts(await moodleCall<unknown>(tenantId, 'mod_quiz_get_user_quiz_attempts',
+      { quizid: quiz.id, userid: userId, status: 'all', includepreviews: false }), quiz.id, userId);
+    attempts = observedAttempts.filter((attempt) => attempt.state !== 'notstarted').length;
+    quizObservation = { quizId: quiz.id, courseId, activityModuleId: quiz.activityModuleId,
+      activityState: activity.state as MoodleQuizObservation['activityState'], activityUpdatedAt,
+      maximumGrade: quiz.maximumGrade, totalMarks: quiz.totalMarks, gradingMethod: quiz.gradingMethod,
+      serviceAccountAttemptLimit: quiz.serviceAccountAttemptLimit, observedAt: new Date(), attempts: observedAttempts };
+  }
+  // Assessment observations describe the scoped state when read. Only the
+  // canonical completion provider establishes the course completion time/grade.
+  return { completed, completedAt, score: canonicalScore, attempts, scormObservation, quizObservation, sourceCompletionId,
     raw: { course: courseRaw, canonical: canonicalRaw, scormAttemptCount: attemptRaw, scormScoes: scoesRaw,
-      scormTracks: tracksRaw, activity: activityRaw } };
+      scormTracks: tracksRaw, activity: activityRaw, quiz: quizObservation } };
 }
 
 export async function isUserEnrolled(tenantId: string, courseId: number, userId: number): Promise<boolean> {

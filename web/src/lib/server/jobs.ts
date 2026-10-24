@@ -44,7 +44,7 @@ async function takeJob(tenantId?: string): Promise<Job | null> {
 
 async function assignmentForJob(job: Job, instanceKey: string, client: JobClient) {
   const result = await client.query<{ id: string; tenant_id: string; person_id: string; hse_id: string; moodle_user_ids: string[];
-    moodle_course_id: string | null; moodle_scorm_id: string | null; moodle_activity_id: string | null;
+    moodle_course_id: string | null; moodle_scorm_id: string | null; moodle_activity_id: string | null; moodle_quiz_id: string | null;
     course_version_id: string | null;
     display_name: string; email: string | null; identity_email: string; identity_email_technical: boolean; synthetic: boolean; person_synthetic: boolean; assigned_at: Date;
     course_review_status: string | null; completion_criteria_verified: boolean | null;
@@ -53,7 +53,7 @@ async function assignmentForJob(job: Job, instanceKey: string, client: JobClient
       ARRAY(SELECT external_id FROM person_external_ids x WHERE x.tenant_id = p.tenant_id
         AND x.person_id = p.id AND x.source = 'moodle' AND x.instance_key = $3
         AND x.superseded_at IS NULL ORDER BY x.created_at) AS moodle_user_ids,
-      cv.moodle_course_id, cv.moodle_scorm_id, cv.moodle_activity_id, cv.id AS course_version_id,
+      cv.moodle_course_id, cv.moodle_scorm_id, cv.moodle_activity_id, cv.moodle_quiz_id, cv.id AS course_version_id,
       cv.review_status AS course_review_status, cv.completion_criteria_verified,
       a.site_id, smc.moodle_cohort_id, a.assigned_at, t.synthetic
       FROM assignments a JOIN people p ON p.tenant_id = a.tenant_id AND p.id = a.person_id
@@ -187,13 +187,14 @@ async function perform(job: Job, client: JobClient = database()): Promise<void> 
     WHERE tenant_id = $1 AND assignment_id = $2`, [job.tenant_id, job.aggregate_id]);
   if (!assignment.completion_criteria_verified) {
     await recordDrift(job, 'completion_criteria_unverified', { courseId,
-      reason: 'Pinned course completion and SCORM success criteria require Gate B verification' });
+      reason: 'Pinned course completion and assessment success criteria require Gate B verification' });
     return;
   }
   await resolveDrifts(job, ['completion_criteria_unverified']);
   const completion = await readCompletion(job.tenant_id, courseId, userId,
     assignment.moodle_scorm_id ? Number(assignment.moodle_scorm_id) : null,
-    assignment.moodle_activity_id ? Number(assignment.moodle_activity_id) : null);
+    assignment.moodle_activity_id ? Number(assignment.moodle_activity_id) : null,
+    assignment.moodle_quiz_id ? Number(assignment.moodle_quiz_id) : null);
   const previous = await query<{ moodle_timecompleted: Date; course_version_id: string;
     moodle_course_id: string; moodle_user_id: string }>(`SELECT moodle_timecompleted,
       course_version_id, moodle_course_id, moodle_user_id FROM knowledge_evidence
@@ -220,7 +221,7 @@ async function perform(job: Job, client: JobClient = database()): Promise<void> 
     await resolveDrifts(job, ['completion_missing', 'completion_time_missing', 'completion_changed']);
     await recordDrift(job, 'completion_timestamp_unverified', { userId, courseId,
       reason: 'Moodle course-completion response has no canonical course completion timestamp',
-      scormObservation: completion.scormObservation });
+      scormObservation: completion.scormObservation, quizObservation: completion.quizObservation });
     return;
   }
   if (completion.completedAt < assignment.assigned_at) {
