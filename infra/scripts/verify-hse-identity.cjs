@@ -9,6 +9,11 @@ const {chromium}=requireWeb('@playwright/test');
 const assert=require('node:assert/strict');
 const base=(process.env.KEYCLOAK_URL||'http://auth.localhost:8080').replace(/\/$/,'');
 const issuer=`${base}/realms/hse-dev`,redirect='http://localhost:5173/auth/callback';
+const callbackTarget=new URL(redirect);
+
+function isCallbackUrl(url) {
+  return url.origin===callbackTarget.origin&&url.pathname===callbackTarget.pathname;
+}
 
 function otp(secret) {
   const alphabet='ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';let bits='';
@@ -35,14 +40,14 @@ async function main() {
     browser=await chromium.launch();
     for(const [username,subject,mfa,printed]of[['synthetic.worker.a','11111111-1111-4111-8111-111111111111',false,false],['synthetic.admin.a','33333333-3333-4333-8333-333333333333',true,false],[technicalUsername,technicalSubject,false,true]]){
       const context=await browser.newContext(),page=await context.newPage();let callback;
-      await page.route(`${redirect}*`,async route=>{callback=new URL(route.request().url());await route.fulfill({status:200,body:'Identity verification complete'});});
+      await page.route(isCallbackUrl,async route=>{callback=new URL(route.request().url());await route.fulfill({status:200,body:'Identity verification complete'});});
       const verifier=randomBytes(32).toString('base64url'),state=randomBytes(24).toString('base64url'),nonce=randomBytes(24).toString('base64url');
       const auth=new URL(`${issuer}/protocol/openid-connect/auth`);
       for(const [key,value]of Object.entries({client_id:'hse-web',response_type:'code',redirect_uri:redirect,scope:'openid email',state,nonce,code_challenge:createHash('sha256').update(verifier).digest('base64url'),code_challenge_method:'S256'}))auth.searchParams.set(key,value);
       await page.goto(auth.toString());await page.locator('input[name="username"]').fill(username);await page.locator('input[name="password"]').fill(printed?technicalPassword:password);await page.locator('#kc-login').click();
       if(mfa){await page.locator('input[name="otp"]').waitFor();await page.locator('input[name="otp"]').fill(otp(otpSecret));await page.locator('#kc-login').click();}
       if(printed){const replacement=`Updated-${randomBytes(18).toString('base64url')}!`;await page.locator('input[name="password-new"]').fill(replacement);await page.locator('input[name="password-confirm"]').fill(replacement);await page.locator('#kc-passwd-update-form [type="submit"]').click();}
-      await page.waitForURL(`${redirect}*`);assert.equal(callback.searchParams.get('state'),state);assert.ok(callback.searchParams.get('code'),'Expected authorization code');
+      await page.waitForURL(isCallbackUrl);assert.equal(callback.searchParams.get('state'),state);assert.ok(callback.searchParams.get('code'),'Expected authorization code');
       const response=await fetch(`${issuer}/protocol/openid-connect/token`,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({grant_type:'authorization_code',client_id:'hse-web',client_secret:clientSecret,code:callback.searchParams.get('code'),redirect_uri:redirect,code_verifier:verifier})});
       assert.equal(response.status,200,'Code exchange failed');const tokens=await response.json();
       const {payload}=await jwtVerify(tokens.id_token,keys,{issuer,audience:'hse-web',algorithms:['RS256','ES256']});
@@ -57,4 +62,5 @@ async function main() {
     console.log('OK account service can administer users and cannot administer clients');
   }finally{if(browser)await browser.close();const removed=await fetch(`${base}/admin/realms/hse-dev/users/${encodeURIComponent(technicalSubject)}`,{method:'DELETE',headers:{Authorization:`Bearer ${token}`}});assert.equal(removed.status,204,'Technical fixture account cleanup failed');}
 }
-main().catch(error=>{console.error(error.message);process.exitCode=1;});
+module.exports={isCallbackUrl};
+if(require.main===module)main().catch(error=>{console.error(error.message);process.exitCode=1;});
