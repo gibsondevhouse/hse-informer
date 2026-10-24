@@ -44,6 +44,8 @@ Use [initial tenant and identity setup](../../../docs/runbooks/beta-identity.md)
 
 For native Quiz courses, the ordinary learning service also needs `mod_quiz_get_quizzes_by_courses` and `mod_quiz_get_user_quiz_attempts`, with `mod/quiz:view` and `mod/quiz:viewreports` restricted to approved course/module contexts. Configure the exact Quiz instance and course-module IDs on the HSE course version, separately from any SCORM mapping. These reads do not belong to the identity bridge token and require no Quiz-write capabilities. Verify returned identity/activity and attempt observations using the restricted service before publishing; course completion time and course grade continue to come from the completion plugin.
 
+All incomplete-course progress reads, including course-only mappings, require the ordinary learning service's `core_enrol_get_users_courses` and `core_completion_get_activities_completion_status`, plus `report/progress:view` at approved course contexts and appropriate learner-group visibility. Keep these reads out of the identity bridge service. Test them with the restricted service role; unavailable last access must remain unknown rather than implying the learner has started.
+
 For the initial bootstrap, the tools image is available through the `jobs` service: an operator may override its entrypoint with `node_modules/.bin/tsx`, mount the private tenant JSON read-only, and run `scripts/bootstrap-tenant.ts /tmp/tenant.json`. The environment already contains the private DB and identity endpoints. SMTP must be tested first; failed invitation delivery rolls back bootstrap.
 
 Once the tenant exists and the restricted Moodle token has been issued, put `HSE_TENANT_ID` and `MOODLE_SERVICE_TOKEN` together into the same file. Also set `MOODLE_OAUTH_ISSUER_ID` to the actual Moodle OAuth issuer ID and `MOODLE_OAUTH_BRIDGE_TOKEN` to a separate token for the `hse_identity_bridge` service. That restricted service exposes only `local_hse_evidence_link_oauth_login` and requires `local/hse_evidence:linkoauth` plus `auth/oauth2:managelinkedlogins`; keep its token separate from the ordinary course/user-state service token. The bridge binds the active Keycloak subject to Moodle before enrollment, including learners without email. Core startup is possible before these operational settings exist; starting the worker requires them. Then:
@@ -54,6 +56,8 @@ docker compose --env-file "$BETA_ENV_FILE" -f infra/beta/single-host/compose.yam
 ```
 
 The worker processes Moodle reconciliation and account state; it does not schedule advanced reassignment. Test a real user's invite/printed activation, MFA as required, course launch/resume/fail/retry/pass, captured score/time, suspension and coordinated sign-out, site/tenant denials, and alert receipt. Enabling the worker is not proof these checks passed. Publish the participant address only after these checks and the beta acceptance gates pass.
+
+The disposable [joined CI journey](../../README.md#joined-beta-account-and-learning-journey) exercises these connected profile, activation, federated login, enrollment, SCORM evidence and deactivation paths. Check its actual run artifact before treating it as passed. It uses development endpoints and privileged fixture tokens; deployed restricted roles, SMTP, prompt/session policy, participant accessibility and approved content still require verification on this server. The native practice probe separately exercises server-graded Quiz retry, resume and attempt limits.
 
 ## Persistent data and recovery
 
