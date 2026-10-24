@@ -98,6 +98,10 @@ test('administrator adds an accessible versioned Moodle course draft', async ({ 
   await form.getByLabel('Source version', { exact: true }).fill('UI-1');
   await form.getByLabel('Package SHA-256', { exact: true }).fill('d'.repeat(64));
   await form.getByLabel('Moodle course ID', { exact: true }).fill(String(100000 + Math.floor(Math.random() * 900000000)));
+  await form.getByRole('combobox', { name: 'Delivery format', exact: true }).selectOption('url');
+  await form.getByRole('combobox', { name: 'Assessment mapping', exact: true }).selectOption('quiz');
+  await form.getByLabel('Moodle activity module ID', { exact: true }).fill('7302');
+  await form.getByLabel('Moodle quiz instance ID', { exact: true }).fill('7301');
   await form.getByLabel('Practice content only', { exact: false }).check();
   expect((await new AxeBuilder({ page }).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations).toEqual([]);
   await form.getByRole('button', { name: 'Save draft mapping', exact: true }).click();
@@ -105,6 +109,8 @@ test('administrator adds an accessible versioned Moodle course draft', async ({ 
   const course = page.locator('article').filter({ has: page.getByRole('heading', { name: `Practice UI ${code}`, exact: true }) });
   await expect(course).toContainText('Practice course');
   await expect(course).toContainText('Draft');
+  await course.getByText('Package and verification details', { exact: true }).click();
+  await expect(course.getByText('Assessment: native Moodle quiz 7301 · activity module 7302', { exact: true })).toBeVisible();
   await expect(course.getByRole('button', { name: 'Publish version', exact: true })).toBeDisabled();
   await course.getByRole('button', { name: 'Verify Moodle completion', exact: true }).click();
   await expect(course.getByLabel('Verification evidence and configured criteria')).toBeVisible();
