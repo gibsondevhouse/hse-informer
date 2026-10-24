@@ -1,4 +1,4 @@
-# Identity, LMS, content, and migration contracts
+# Identity and Moodle contracts
 
 **Status:** implementation draft. Function names below are a **candidate allowlist** from Moodle's published [web-service function index](https://docs.moodle.org/dev/Web_service_API_functions). The exact payloads, capabilities, completion fields, and behavior must be checked in the pinned live instance's **Site administration → Server → Web services → API Documentation**, as Moodle [recommends](https://moodledev.io/docs/5.3/apis/subsystems/external). No live integration is claimed here.
 
@@ -21,15 +21,9 @@ Each client company has one self-hosted Moodle instance and one server-held serv
 | Read course/activity completion | `core_completion_get_course_completion_status`, `core_completion_get_activities_completion_status` | Completion criteria, original timestamp, reset/re-enrollment/version behavior. |
 | Read SCORM attempts and tracking, if format fits | `mod_scorm_get_scorm_attempt_count`, `mod_scorm_get_scorm_scoes`, `mod_scorm_get_scorm_sco_tracks` | Score, attempt and answer-history availability; retain raw source IDs. |
 
-Enable only tested functions and minimum required Moodle capabilities for the service account. Moodle is authoritative for new knowledge completion. There is no generic historical-date completion write in this contract: Moodle's [function index](https://docs.moodle.org/dev/Web_service_API_functions) lists specific completion functions with different purposes, so Gate C must test the chosen importer on the pinned release. Do not call a completion-write function to fabricate learner results. Do not change Moodle core files or directly update its core tables.
+Enable only tested functions and minimum required Moodle capabilities for the service account. Moodle is authoritative for new knowledge completion. Do not call a completion-write function to fabricate learner results. Do not change Moodle core files or directly update its core tables.
 
 The Moodle version target is **5.3 LTS**. The disposable CI fixture pins **5.3.0** by archive checksum and exercises synthetic account, cohort, enrollment, and SCORM reads. The [5.3 release documentation](https://moodledev.io/docs/5.3) identifies the series as LTS. That fixture does not accept 5.3.0 as the live pilot patch; the exact deployment revision and its behavior still need Gate B verification.
-
-## DeepHow content intake
-
-Treat the export as an opaque, externally supplied artifact until a real sample is received. Required intake record: DeepHow tenant/content ID, source revision or immutable version identifier, exported-at time, export format, checksum, rights/approval, language and translation revision, and any launch URL or package reference. Record ingestion operator and result. A changed checksum under an existing version ID is a conflict for review; it never silently replaces published content.
-
-Gate A must establish the actual format and launch method. Moodle's native [SCORM FAQ](https://docs.moodle.org/500/en/SCORM_FAQ) says SCORM 1.2 is supported and SCORM 2004 is not fully supported. A synthetic SCORM 1.2 package can prove the plumbing, but it cannot prove DeepHow interoperability. If the real export is an LTI link, video, xAPI/cmi5, or another format, document the supported delivery and authoritative completion source before publishing a course. A staff-reviewed mapping binds a DeepHow revision to one Moodle course/activity and the package checksum. Publishing a new revision creates a new immutable mapping.
 
 ## Assignment outbox and reconciliation
 
@@ -37,29 +31,6 @@ An HSE transaction commits the assignment decision and an enrollment outbox mess
 
 The reconciliation job checks expected Moodle enrollments and completions against assignment decisions and previous snapshots, reporting missing or changed records. It does not yet enumerate unexpected manual enrollments. It never silently overwrites an older evidence snapshot. A deployment must schedule the job, alert on aged outbox items, completion-read failures and drift, and provide an operator-visible retry and resolution trail. A verified completion with an authoritative source time may set **Knowledge Complete** but cannot create **Authorized / Qualified**. The synthetic 5.3.0 course-completion response lacked a canonical course timestamp, so the current adapter records SCORM activity/criterion observations for review without promoting them to knowledge evidence.
 
-## HSI field-inventory template
+## Administrative completion records
 
-**Awaiting a real HSI export.** The following is a mapping worksheet, not a claim that HSI exposes these fields. For each row, record the literal source file and column, type/example with personal data redacted, conversion, target field, and disposition (`mapped`, `missing`, `requires_review`, `not_applicable`). Never invent a missing date or infer it from an import timestamp.
-
-| Candidate field to investigate | Source file/column | Target or disposition | Required proof |
-|---|---|---|---|
-| HSI record/completion ID | **TBD from export** | External record mapping | Stable unique key or documented composite key |
-| Person/employee ID and aliases | **TBD from export** | `person_id` mapping | Collision and duplicate review |
-| Employer, site, department, job/role | **TBD from export** | Historical context snapshot | Values at training time if available |
-| Course ID/title and historical content/materials version | **TBD from export** | Course/version mapping | Exact revision or explicit unavailable state |
-| Original completion date/time and timezone | **TBD from export** | Historical completion evidence | Full precision and source representation preserved |
-| Original expiry/due date | **TBD from export** | Historical validity context | Preserve source value, do not recompute silently |
-| Score, attempt, assessment answers, duration, language | **TBD from export** | Knowledge evidence | Field availability and null meanings |
-| Trainer/evaluator identity and qualifications | **TBD from export** | Practical/trainer evidence | Source identity and provenance |
-| Site procedure/equipment and authorization/restrictions | **TBD from export** | Site/authorization history | Do not fabricate authorization from completion |
-| Provider/certificate/materials references | **TBD from export** | External credential/materials evidence | Document location and checksum where available |
-
-Archive the full source export with checksum, extraction timestamp, operator, HSI query/report definition, and record count. Preserve every unmapped row with a reason. The [reconciliation CLI](../../tools/hsi-reconcile/README.md) operates on **normalized CSVs after reviewed mapping**:
-
-| Input | Required normalized CSV columns |
-|---|---|
-| HSI | `hsi_record_id,tenant_id,site_id,person_id,course_id,completed_at,expires_at,original_completed_raw,original_expires_raw,original_timezone` |
-| PostgreSQL provenance | HSI columns plus `moodle_completion_id,moodle_user_id,moodle_course_id,source_export_sha256,import_batch_id` |
-| Moodle completions | `moodle_completion_id,moodle_user_id,moodle_course_id,completed_at` |
-
-Normalized dates are timezone-aware ISO 8601 timestamps with second precision; the `original_*_raw` fields preserve the HSI source strings exactly, and `original_timezone` captures the source zone if known. `source_export_sha256` is the hash of the untouched original export supplied to the CLI with `--source-archive`. This normalized shape is a **rehearsal interface**, not a proven HSI parser, Moodle importer, or acceptance of a real HSI format. Gate C additionally requires a reviewed one-time Moodle importer, two clean rehearsals, 100% equality of original completion dates and provenance, rollback proof, and HSE signoff. Until then, HSI remains authoritative and read-only cutover is blocked.
+Administrators may record a clearly labeled manual completion with provenance. Manual entry is not a Moodle assessment attempt and never changes Moodle grades. Corrections and voids append linked records with actor, time, and reason; preserve original evidence and show effective state separately. Profile edits retain stable person IDs and historical snapshots. See the [domain contract](domain.md).

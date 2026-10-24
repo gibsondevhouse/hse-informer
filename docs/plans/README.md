@@ -4,6 +4,6 @@ Each folder in this directory holds the plans for one release target. The folder
 
 | Version | Goal | State |
 |---|---|---|
-| [beta](beta/README.md) | A multi-user test run with a small group of real administrators, evaluators, and workers | Planning |
+| [beta](beta/README.md) | Admin controls, Moodle learning, user profiles, and completion records | Planning |
 
-Plans describe work and how it will be checked. The [Refactor 001 roadmap](../refactor-001.md) and the [B0 beta administration plan](../vision/B0-beta-admin-system.md) remain the architecture and product references, and the beta plans link to them where they overlap. A plan does not approve regulatory content. Approval still comes only from the named HSE reviewer.
+Plans describe work and how it will be checked. The [Refactor 001 roadmap](../refactor-001.md) and the [B0 beta administration plan](../vision/B0-beta-admin-system.md) remain broader architecture and product references; the confirmed beta scope takes precedence for this release, and the beta plans link to them where they overlap. A plan does not approve regulatory content. Approval still comes only from the named HSE reviewer.

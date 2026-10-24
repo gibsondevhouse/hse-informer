@@ -1,5 +1,7 @@
 # B0 Beta Admin System Phased Approach
 
+> **2026-10-24 scope update:** This document is a broader product reference. The current [beta scope](../plans/beta/README.md) takes precedence: admin controls, Moodle learning, profiles, and completion records. Qualification workflows, vendor integrations, and other broader capabilities below are later work unless explicitly included in that beta plan.
+
 **Status:** Planning proposal
 
 **Prepared:** October 3, 2026

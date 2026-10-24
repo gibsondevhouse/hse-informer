@@ -1,5 +1,7 @@
 # 08 · Operations and security
 
+> **Focused beta scope — 2026-10-24:** Apply deployment, recovery, security, and accessibility work to the core screens in the beta README. Notification/reminder jobs and alerts are required only when those features ship; Moodle is required. Moodle, its course files, PostgreSQL, and Keycloak need recovery coverage.
+
 **Goal:** a deployed staging environment that real people can use for the test run, with backups, monitoring, and basic security and accessibility checks passed.
 
 ## Why
@@ -10,7 +12,7 @@
 
 ### Environments and deployment
 
-- [ ] Choose hosting for the SvelteKit Node server, managed PostgreSQL 16 or newer, Keycloak, and object storage for media and uploads. Record the choice and its cost.
+- [ ] Choose hosting for the SvelteKit Node server, managed PostgreSQL 16 or newer, Keycloak, Moodle, and object storage for media and uploads. Record the choice and its cost.
 - [ ] Create a staging environment for the test run. Production can wait until after beta.
 - [ ] Deploy from CI on merge to `main`, run migrations as a deploy step, and keep a one-command rollback.
 - [ ] Store secrets in the host's secret manager. No secrets in the repository or in client bundles.
@@ -18,7 +20,7 @@
 
 ### Backups and recovery
 
-- [ ] Turn on daily PostgreSQL backups with point-in-time recovery, and back up Keycloak and uploaded files.
+- [ ] Turn on daily PostgreSQL backups with point-in-time recovery, and back up Keycloak, Moodle databases/course files, installed extensions, and uploaded files.
 - [ ] Run a restore drill into a separate database and check record counts and one evidence packet. Record the result here.
 
 ### Monitoring

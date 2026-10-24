@@ -1,43 +1,26 @@
-# 05 · Admin and compliance workflows
+# 05 · Admin and completion record management
 
-**Goal:** administrators, evaluators, and approvers do their whole job in the UI.
+**Implementation:** UI/API and synthetic verification are complete; live beta acceptance remains open.
 
-## Why
+**Goal:** administrators control assignments and maintain accurate completion records through the UI.
 
-`web/` has APIs for practical evaluations, attestations, authorizations, training contexts, and change events, but the UI is a single dashboard page (`web/src/routes/+page.svelte`). Instructor-led training and toolbox talks, the most common HSE training records, have no support at all.
+## Assignments
 
-## Work
+- [x] Create individual and bulk assignments with recipient review, course version, reason, and due date.
+- [x] Edit deadlines, cancel, and reassign with a reason and audit history; prevent duplicate open assignments.
+- [x] Show not started, in progress, Knowledge Complete, and overdue separately from workplace qualification.
 
-### Assignments
+## Completion records
 
-- [ ] Finish preview parity for manual and bulk assignment, deadline edits, cancellation, and reassignment with a reason, using the [admin-app README](../../../admin-app/README.md) checklist.
-- [ ] Add a rule editor: audience by site, department, role or job, task, and contractor flag, with a dry-run recipient count before activation.
-- [ ] Show each rule's source requirement, owner, effective date, and last review.
-- [ ] Add a form to record an observed deficiency or a procedure change, which creates a change event for the existing reassignment engine.
+- [x] Search and filter by person, site, course/version, source, completion date, and record state.
+- [x] Inspect course version, completion time, score, attempt history, source, and recording actor.
+- [x] Record a manual completion for an existing user and course version with original completion date, source/reference, recording actor/time, and reason. Label it `manual`; never manufacture an assessment attempt or passing score.
+- [x] Correct or void a completion through a linked superseding record with actor, timestamp, and mandatory reason. Preserve the original and show both the current effective view and full history.
+- [x] Define and test whether a manual entry satisfies an assignment: require explicit assignment linkage, matching person/course version, and an authorized administrator's decision. Voiding evidence re-evaluates assignment status without erasing attempts or silently creating new assignments.
+- [x] Audit every assignment and record mutation. Learners cannot edit completions.
 
-### Instructor-led sessions and toolbox talks
+An effective manual record explicitly linked by an authorized administrator satisfies the matching assignment's knowledge step even when the Moodle feed has an unresolved completion discrepancy. The discrepancy stays visible and is not silently resolved. Existing workplace authorization guards continue to block on unresolved completion discrepancies. Voiding the manual record removes its knowledge credit and re-evaluates status using the remaining effective evidence.
 
-- [ ] Add sessions: topic or course version, trainer, site, date, start and end time, location, and capacity.
-- [ ] Take attendance from the roster on a tablet, with each attendee's signature or a trainer attestation.
-- [ ] Support a quick toolbox talk: topic, short notes, attendees, done in under two minutes on a phone.
-- [ ] Upload a scanned paper sign-in sheet as supporting evidence.
-- [ ] Count a session as site training evidence when the requirement allows it.
+**Done when:** an administrator assigns a course, inspects its Moodle completion, adds a clearly labeled manual record, corrects it, and voids it without losing history. Unauthorized roles and other sites/tenants cannot perform these actions.
 
-### Evaluations and authorizations
-
-- [ ] Add an evaluator worklist: who is waiting for a practical evaluation, at which site, for which checklist version.
-- [ ] Add a mobile checklist screen: each item pass or fail, comments, restrictions, evaluator and employee attestations.
-- [ ] Reject signoff from an evaluator without a current qualification for that checklist. The server rule exists; show the reason in the UI.
-- [ ] Add an approver screen to issue, restrict, and revoke an authorization, showing every prerequisite and its evidence. Issuing is blocked while any prerequisite is missing.
-- [ ] Add clearance status entry (medical clearance and fit test, status and date only) and external credential upload with verification.
-
-### Site addenda and evaluator qualifications
-
-- [ ] Add screens to create and version site addenda and attach them to a requirement.
-- [ ] Add screens to record evaluator qualifications with scope and expiry.
-
-## Done when
-
-- The Phase 3 exit scenarios in the [roadmap](../../refactor-001.md) run through the UI, not only the tests: an unqualified evaluator is rejected, a procedure change at Ocilla reassigns exactly the affected people, and a worker becomes Authorized only after a qualified signoff.
-- A trainer records a 10-person toolbox talk on a phone in under two minutes.
-- Every admin action above writes an audit event, and browser tests cover each screen.
+Practical evaluation, authorization issuance/revocation, clearance, external credentials, site addenda, and instructor-led session workflows are deferred. Existing authorization guards remain intact.

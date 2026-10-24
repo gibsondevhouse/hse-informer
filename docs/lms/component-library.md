@@ -13,7 +13,7 @@ The generic `CoursePlayer` and block library remain available in the author lab 
 - Captions show authored text for the current slide. The transcript presents the slide's fuller narration text and can step between slides. These are text presentation tools; recorded audio and timed media are not supplied.
 - The player provides presentation settings and fullscreen viewing. Captions, outline, transcript, and settings remain accessible at narrow widths and short viewport heights. Only supplemental panels may scroll independently.
 - Slide position and viewing preferences live in React state and reset on reload. The component makes no training-service calls and writes no stored progress, score, completion, or authorization.
-- Scope is PBJ course design. Real media, DeepHow integration, delivery tracking, assessments, and course publishing remain outside this presentation component.
+- Scope is PBJ course design. Real media, delivery tracking, assessments, and course publishing remain outside this presentation component.
 
 ## Research basis
 

@@ -44,9 +44,9 @@ npm run build
 
 ## Current scope
 
-The SvelteKit foundation has server-owned records and synthetic fixtures for Tifton, Ocilla, and Vernon. The React sample workspace has fictional organizations, sites, learners, and browser-stored edits; those records are never migrated as production evidence. Its protected D1 pilot routes fail closed until the required services and identities are configured. PBJ-101 is practice content, and Respiratory Protection remains a draft lesson. A lesson or knowledge completion alone never grants workplace authorization.
+The SvelteKit beta has profile/account administration, roster import, reviewed Moodle course mappings, learner assignments/transcripts, and completion record management with immutable corrections and CSV exports. Moodle delivers every course. The focused [beta plan](docs/plans/beta/README.md) records implementation evidence and open live release gates. Bundled Tifton/Ocilla/Vernon fixtures remain synthetic. The React sample workspace has fictional organizations, sites, learners, and browser-stored edits; those records are never migrated as production evidence. Its protected D1 pilot routes fail closed until the required services and identities are configured. PBJ-101 is practice content, and Respiratory Protection remains a draft lesson. A lesson or knowledge completion alone never grants workplace authorization.
 
-No starter requirement or course is approved, no real DeepHow or HSI data has been imported, and no production authorization is issued. The [private hosted React sample](https://hse-informer-training.clgibso91.chatgpt.site/) is published through Sites; the SvelteKit foundation has not been deployed.
+No starter requirement or course is approved, no production authorization is issued. The [private hosted React sample](https://hse-informer-training.clgibso91.chatgpt.site/) is published through Sites; the SvelteKit foundation has not been deployed.
 
 ## Repository workflow
 
