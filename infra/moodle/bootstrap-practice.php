@@ -113,6 +113,11 @@ function practice_module_info(stdClass $course, string $type, string $name, stri
         'completion' => COMPLETION_TRACKING_AUTOMATIC, 'completionexpected' => 0];
 }
 
+/** Diagnostics contain identifiers, digests and policy values, never lesson text or answers. */
+function practice_mismatch(string $message, array $metadata): void {
+    throw new RuntimeException($message . ': ' . json_encode($metadata, JSON_THROW_ON_ERROR));
+}
+
 $stage = 'three native Pages';
 $pagetitles = ['Find your assigned training', 'Learn and resume', 'Your profile and completion history'];
 $pagecmids = [];
@@ -122,20 +127,51 @@ foreach ($pagetitles as $index => $title) {
     $cm = practice_module($course, 'page', $idnumber);
     if (!$cm) {
         $info = practice_module_info($course, 'page', $title, $idnumber);
+        // With no moodleform passed to add_moduleinfo(), page_add_instance()
+        // consumes these stored fields directly. The page[text/format/itemid]
+        // editor array is used only when its $mform argument is non-null.
         $info->content = $content;
-        $info->contentformat = FORMAT_HTML;
+        $info->contentformat = (int) FORMAT_HTML;
+        $info->revision = 1; // Normal mod_page_mod_form creation default.
+        $info->legacyfiles = RESOURCELIB_LEGACYFILES_NO;
         $info->display = RESOURCELIB_DISPLAY_AUTO;
         $info->printintro = 0;
         $info->printlastmodified = 0;
         $info->completionview = 1;
+        $info->completionusegrade = 0;
+        $info->completionpassgrade = 0;
         $info->completiongradeitemnumber = null;
         $created = add_moduleinfo($info, $course);
         $cm = get_coursemodule_from_id('page', $created->coursemodule, $course->id, false, MUST_EXIST);
     }
     $page = $DB->get_record('page', ['id' => $cm->instance], '*', MUST_EXIST);
-    if ($page->name !== $title || $page->content !== $content || (int) $page->contentformat !== FORMAT_HTML
-            || (int) $cm->completion !== COMPLETION_TRACKING_AUTOMATIC || (int) $cm->completionview !== 1) {
-        throw new RuntimeException('An existing Page differs from the prepared practice source or completion policy');
+    $displayoptions = unserialize_array($page->displayoptions);
+    // FORMAT_HTML is the string '1' in Moodle 5.3, whereas DB values are
+    // compared numerically. Do not use a strict int-to-string comparison.
+    // The direct API does not trim content: preserve the manifest-verified
+    // source byte for byte, including its final newline.
+    if ($page->name !== $title || $page->content !== $content || (int) $page->contentformat !== (int) FORMAT_HTML
+            || (int) $page->revision !== 1 || (int) $page->legacyfiles !== (int) RESOURCELIB_LEGACYFILES_NO
+            || (int) $page->display !== (int) RESOURCELIB_DISPLAY_AUTO
+            || !isset($displayoptions['printintro'], $displayoptions['printlastmodified'])
+            || (int) $displayoptions['printintro'] !== 0 || (int) $displayoptions['printlastmodified'] !== 0
+            || (int) $cm->completion !== (int) COMPLETION_TRACKING_AUTOMATIC || (int) $cm->completionview !== 1
+            || $cm->completiongradeitemnumber !== null || (int) $cm->completionpassgrade !== 0) {
+        practice_mismatch('An existing Page differs from the prepared practice source or completion policy', [
+            'pageNumber' => $index + 1, 'pageId' => (int) $page->id, 'moduleId' => (int) $cm->id,
+            'nameMatches' => $page->name === $title, 'contentMatches' => $page->content === $content,
+            'sourceSha256' => hash('sha256', $content), 'storedSha256' => hash('sha256', (string) $page->content),
+            'sourceTrimmedSha256' => hash('sha256', trim($content)),
+            'storedTrimmedSha256' => hash('sha256', trim((string) $page->content)),
+            'sourceBytes' => strlen($content), 'storedBytes' => strlen((string) $page->content),
+            'contentFormat' => (int) $page->contentformat, 'expectedContentFormat' => (int) FORMAT_HTML,
+            'revision' => (int) $page->revision, 'legacyFiles' => (int) $page->legacyfiles,
+            'display' => (int) $page->display, 'printIntro' => $displayoptions['printintro'] ?? null,
+            'printLastModified' => $displayoptions['printlastmodified'] ?? null,
+            'completion' => (int) $cm->completion, 'completionView' => (int) $cm->completionview,
+            'completionGradeItemNumber' => $cm->completiongradeitemnumber,
+            'completionPassGrade' => (int) $cm->completionpassgrade,
+        ]);
     }
     $pagecmids[] = (int) $cm->id;
 }
