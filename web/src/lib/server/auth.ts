@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from 'node:crypto';
-import { createRemoteJWKSet, jwtVerify, SignJWT } from 'jose';
+import { createRemoteJWKSet, errors as joseErrors, jwtVerify, SignJWT, type JWTPayload } from 'jose';
 import { error, redirect, type Cookies } from '@sveltejs/kit';
 import { query } from './db';
 
@@ -190,9 +190,22 @@ export async function actorFromRequest(cookies: Cookies, bearer?: string): Promi
   let mfa = false;
   if (bearer) {
     const config = await discovery();
-    const { payload } = await jwtVerify(bearer, createRemoteJWKSet(new URL(config.jwks_uri)), {
-      issuer: config.issuer, audience: requireOidcConfig().clientId, algorithms: ['RS256', 'ES256']
-    });
+    let payload: JWTPayload;
+    try {
+      ({ payload } = await jwtVerify(bearer, createRemoteJWKSet(new URL(config.jwks_uri)), {
+        issuer: config.issuer, audience: requireOidcConfig().clientId, algorithms: ['RS256', 'ES256']
+      }));
+    } catch (cause) {
+      if (cause instanceof joseErrors.JWTInvalid || cause instanceof joseErrors.JWSInvalid
+        || cause instanceof joseErrors.JWTExpired || cause instanceof joseErrors.JWTClaimValidationFailed
+        || cause instanceof joseErrors.JWSSignatureVerificationFailed || cause instanceof joseErrors.JOSEAlgNotAllowed
+        || cause instanceof joseErrors.JOSENotSupported || cause instanceof joseErrors.JWKSNoMatchingKey) {
+        throw error(401, 'Sign in required');
+      }
+      // Network, key-service and configuration failures remain infrastructure
+      // errors; never relabel an unavailable identity service as bad credentials.
+      throw cause;
+    }
     subject = payload.sub;
     issuer = config.issuer;
     mfa = verifiedMfa(payload);
