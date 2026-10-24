@@ -162,7 +162,7 @@ if (!$category) {
         'SYNTHETIC prepared practice questions; not approved.', FORMAT_HTML, 'hse-beta-practice-1.0.0');
     $category = $DB->get_record('question_categories', ['id' => $categoryid], '*', MUST_EXIST);
 }
-$questionquery = 'SELECT q.id,q.name,q.qtype,q.defaultmark,qv.version,qv.status FROM {question} q
+$questionquery = 'SELECT q.id,q.name,q.qtype,q.defaultmark,qv.version,qv.status,qbe.id AS entryid FROM {question} q
     JOIN {question_versions} qv ON qv.questionid=q.id
     JOIN {question_bank_entries} qbe ON qbe.id=qv.questionbankentryid
     WHERE qbe.questioncategoryid=? ORDER BY q.name';
@@ -234,6 +234,16 @@ if ((int) $quiz->attempts !== 3 || (int) $quiz->grademethod !== (int) QUIZ_GRADE
 }
 $slots = $DB->get_records('quiz_slots', ['quizid' => $quiz->id], 'slot');
 if (count($slots) > 10) { throw new RuntimeException('Existing Quiz contains more than ten questions'); }
+$entries = array_map(static fn($q) => (int) $q->entryid, array_values($questions));
+$references = $DB->get_fieldset_sql('SELECT qr.questionbankentryid FROM {quiz_slots} qs
+    JOIN {question_references} qr ON qr.itemid=qs.id AND qr.component=? AND qr.questionarea=? AND qr.usingcontextid=?
+    WHERE qs.quizid=?', ['mod_quiz', 'slot', context_module::instance($quizcm->id)->id, $quiz->id]);
+if (count($references) !== count($slots)) { throw new RuntimeException('Existing Quiz contains an unexpected question reference'); }
+foreach ($references as $entryid) {
+    if (!in_array((int) $entryid, $entries, true)) {
+        throw new RuntimeException('Refusing to alter an existing Quiz with a different question set');
+    }
+}
 if (count($slots) < 10 && quiz_has_attempts($quiz->id)) {
     throw new RuntimeException('Refusing to change questions after a fixture attempt exists');
 }
