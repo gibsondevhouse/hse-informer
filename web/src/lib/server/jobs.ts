@@ -1,5 +1,5 @@
 import { database, query, transaction } from './db';
-import { addUserToCohort, enrollUser, findMoodleUserByHseId, isUserEnrolled, moodleConnection, provisionMoodleUser, readCompletion, suspendMoodleUser, suppressMoodleEmail } from './moodle';
+import { addUserToCohort, enrollUser, findMoodleUserByHseId, isUserEnrolled, linkMoodleUser, moodleConnection, provisionMoodleUser, readCompletion, suspendMoodleUser, suppressMoodleEmail } from './moodle';
 
 interface Job { id: string; tenant_id: string; kind: 'moodle_enrol' | 'moodle_reconcile' | 'moodle_user_state'; aggregate_id: string; attempt_count: number }
 
@@ -41,12 +41,12 @@ async function takeJob(tenantId?: string): Promise<Job | null> {
 }
 
 async function assignmentForJob(job: Job, instanceKey: string) {
-  const rows = await query<{ id: string; tenant_id: string; hse_id: string; moodle_user_ids: string[];
+  const rows = await query<{ id: string; tenant_id: string; person_id: string; hse_id: string; moodle_user_ids: string[];
     moodle_course_id: string | null; moodle_scorm_id: string | null; moodle_activity_id: string | null;
     course_version_id: string | null;
     display_name: string; email: string | null; identity_email: string; identity_email_technical: boolean; synthetic: boolean; person_synthetic: boolean; assigned_at: Date;
     course_review_status: string | null; completion_criteria_verified: boolean | null;
-    site_id: string; moodle_cohort_id: string | null }>(`SELECT a.id, a.tenant_id, p.hse_id,
+    site_id: string; moodle_cohort_id: string | null }>(`SELECT a.id, a.tenant_id, a.person_id, p.hse_id,
       p.display_name, p.email, p.identity_email, p.identity_email_technical, p.synthetic AS person_synthetic,
       ARRAY(SELECT external_id FROM person_external_ids x WHERE x.tenant_id = p.tenant_id
         AND x.person_id = p.id AND x.source = 'moodle' AND x.instance_key = $3
@@ -113,11 +113,28 @@ async function perform(job: Job): Promise<void> {
   if (!assignment.course_version_id || !assignment.moodle_course_id
     || !['approved', 'retired'].includes(assignment.course_review_status ?? '')) throw new Error('Approved Moodle course mapping is missing');
   const courseId = Number(assignment.moodle_course_id);
+  // Resolve the source identity before any user provisioning. Assignment order is
+  // independent of account invitation; a missing account remains a retryable job.
+  let oauthIdentity: { subject: string; issuer: string } | null = null;
+  if (job.kind === 'moodle_enrol' && connection.authMethod === 'oauth2') {
+    if (!connection.oauthIssuerId || typeof connection.oauthBridgeToken !== 'string' || !connection.oauthBridgeToken) {
+      throw new Error('The Moodle OAuth identity bridge is not configured');
+    }
+    const issuer = process.env.OIDC_ISSUER?.replace(/\/$/, '');
+    if (!issuer) throw new Error('The expected portal OIDC issuer is not configured');
+    const principals = await query<{ oidc_subject: string; oidc_issuer: string }>(`SELECT pr.oidc_subject,pr.oidc_issuer
+      FROM principals pr JOIN people p ON p.tenant_id=pr.tenant_id AND p.id=pr.person_id
+      WHERE pr.tenant_id=$1 AND pr.person_id=$2 AND pr.oidc_issuer=$3
+        AND pr.active AND p.active AND NOT p.account_access_locked`,
+    [job.tenant_id, assignment.person_id, issuer]);
+    if (principals.length !== 1) throw new Error('Moodle enrollment awaits one active portal account for this person and issuer');
+    oauthIdentity = { subject: principals[0].oidc_subject, issuer: principals[0].oidc_issuer };
+  }
   if (assignment.moodle_user_ids.length > 1) throw new Error('Ambiguous active Moodle user mapping for this instance');
   let userId = assignment.moodle_user_ids[0] ? Number(assignment.moodle_user_ids[0]) : null;
   if (!userId) {
     userId = await findMoodleUserByHseId(job.tenant_id, assignment.hse_id);
-    if (!userId && connection.authMethod && assignment.identity_email) {
+    if (!userId && job.kind === 'moodle_enrol' && connection.authMethod && assignment.identity_email) {
       const names = assignment.display_name.trim().split(/\s+/);
       userId = await provisionMoodleUser(job.tenant_id, {
         hseId: assignment.hse_id, username: `hse_${assignment.hse_id.replaceAll('-', '')}`,
@@ -133,6 +150,9 @@ async function perform(job: Job): Promise<void> {
     [job.tenant_id, job.aggregate_id, String(userId), connection.instanceId]);
   }
   if (assignment.identity_email_technical) await suppressMoodleEmail(job.tenant_id, userId);
+  if (oauthIdentity) await linkMoodleUser(job.tenant_id, {
+    userId, hseId: assignment.hse_id, identityEmail: assignment.identity_email, ...oauthIdentity
+  });
   if (job.kind === 'moodle_enrol') {
     if (!assignment.moodle_cohort_id) throw new Error('Site has no Moodle cohort mapping for this instance');
     if (!connection.learnerRoleId) throw new Error('Moodle learnerRoleId is not configured');

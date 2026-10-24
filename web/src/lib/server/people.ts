@@ -189,9 +189,7 @@ async function updatePerson(client: PoolClient, actor: Actor, id: string,
     WHERE tenant_id=$1 AND id=$2 RETURNING updated_at`, [actor.tenantId, id, after.displayName, after.employeeNumber, after.email,
     after.phone, after.personType, after.jobTitle, after.department, after.language, after.startDate, after.active]);
   after.updatedAt=updated.rows[0].updated_at.toISOString();
-  if(before.active!==after.active)await client.query(`INSERT INTO integration_outbox (tenant_id,kind,aggregate_id)
-    VALUES ($1,'moodle_user_state',$2) ON CONFLICT (tenant_id,kind,aggregate_id) DO UPDATE SET
-    state='pending',attempt_count=0,next_attempt_at=now(),last_error=NULL,completed_at=NULL`,[actor.tenantId,id]);
+  if(before.active!==after.active)await queueMoodleAccountState(client,actor.tenantId,id);
   const removed = before.siteIds.filter((site) => !after.siteIds.includes(site));
   if (removed.length) await client.query(`UPDATE person_site_memberships SET ended_at=now() WHERE tenant_id=$1
     AND person_id=$2 AND site_id=ANY($3::uuid[]) AND ended_at IS NULL`, [actor.tenantId, id, removed]);
@@ -300,6 +298,17 @@ export async function manageAccount(actor: Actor, id: string, input: unknown, pr
 async function queueMoodleAccountState(client:PoolClient,tenantId:string,personId:string):Promise<void>{
   await client.query(`INSERT INTO integration_outbox (tenant_id,kind,aggregate_id) VALUES ($1,'moodle_user_state',$2)
     ON CONFLICT (tenant_id,kind,aggregate_id) DO UPDATE SET state='pending',attempt_count=0,next_attempt_at=now(),last_error=NULL,completed_at=NULL`,[tenantId,personId]);
+  // Account creation/activation can follow assignment creation. Wake its waiting
+  // enrollment without resetting a running worker or an existing enrollment.
+  await client.query(`INSERT INTO integration_outbox(tenant_id,kind,aggregate_id)
+    SELECT a.tenant_id,'moodle_enrol',a.id FROM assignments a
+    JOIN people p ON p.tenant_id=a.tenant_id AND p.id=a.person_id JOIN tenants t ON t.id=a.tenant_id
+    WHERE a.tenant_id=$1 AND a.person_id=$2 AND a.cancelled_at IS NULL
+      AND p.active AND NOT p.account_access_locked AND NOT p.synthetic AND NOT t.synthetic
+      AND EXISTS(SELECT 1 FROM principals pr WHERE pr.tenant_id=p.tenant_id AND pr.person_id=p.id AND pr.active)
+      AND NOT EXISTS(SELECT 1 FROM moodle_enrollments me WHERE me.tenant_id=a.tenant_id AND me.assignment_id=a.id)
+    ON CONFLICT(tenant_id,kind,aggregate_id) DO UPDATE SET state='pending',next_attempt_at=now(),last_error=NULL,completed_at=NULL
+      WHERE integration_outbox.state IN ('pending','failed','done')`,[tenantId,personId]);
 }
 
 /** A printed code authorizes password selection once. It is never a usable IdP password. */

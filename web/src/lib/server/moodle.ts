@@ -3,6 +3,7 @@ export const MOODLE_FUNCTIONS = [
   'core_course_get_courses_by_field',
   'local_hse_evidence_get_completion',
   'local_hse_evidence_end_user_sessions',
+  'local_hse_evidence_link_oauth_login',
   'enrol_manual_enrol_users',
   'core_completion_get_course_completion_status',
   'core_enrol_get_users_courses',
@@ -20,6 +21,7 @@ export const MOODLE_FUNCTIONS = [
 type MoodleFunction = typeof MOODLE_FUNCTIONS[number];
 
 interface Connection { instanceId: string; baseUrl: string; token: string; learnerRoleId?: number; authMethod?: string;
+  oauthIssuerId?: number; oauthBridgeToken?: string;
   completionEvidence?: 'local_hse_evidence' }
 
 function connections(): Record<string, Connection> {
@@ -29,6 +31,9 @@ function connections(): Record<string, Connection> {
   const instances = new Set<string>();
   const instanceIds = new Set<string>();
   for (const connection of Object.values(parsed)) {
+    if (connection.oauthIssuerId !== undefined && (!Number.isSafeInteger(connection.oauthIssuerId) || connection.oauthIssuerId <= 0)) {
+      throw new Error('Moodle OAuth issuer ID must be a positive integer');
+    }
     if (connection.completionEvidence !== undefined && connection.completionEvidence !== 'local_hse_evidence') {
       throw new Error('Unknown Moodle completion evidence provider');
     }
@@ -80,7 +85,9 @@ function appendParams(body: URLSearchParams, prefix: string, value: unknown): vo
 export async function moodleCall<T>(tenantId: string, fn: MoodleFunction, params: Record<string, unknown>): Promise<T> {
   const connection = moodleConnection(tenantId);
   if (!connection) throw new MoodleError('Moodle connection is not configured', fn, 'not_configured');
-  const body = new URLSearchParams({ wstoken: connection.token, wsfunction: fn, moodlewsrestformat: 'json' });
+  const token = fn === 'local_hse_evidence_link_oauth_login' ? connection.oauthBridgeToken : connection.token;
+  if (!token) throw new MoodleError('The dedicated Moodle identity bridge token is not configured', fn, 'not_configured');
+  const body = new URLSearchParams({ wstoken: token, wsfunction: fn, moodlewsrestformat: 'json' });
   Object.entries(params).forEach(([key, value]) => appendParams(body, key, value));
   const response = await fetch(`${connection.baseUrl}/webservice/rest/server.php`, {
     method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body,
@@ -99,6 +106,31 @@ export async function enrollUser(tenantId: string, courseId: number, userId: num
   await moodleCall<unknown>(tenantId, 'enrol_manual_enrol_users', {
     enrolments: [{ roleid: learnerRoleId, userid: userId, courseid: courseId }]
   });
+}
+
+/** Bind an existing external-auth learner through Moodle's supported OAuth linking API. */
+export async function linkMoodleUser(tenantId: string, identity: {
+  userId: number; hseId: string; subject: string; identityEmail: string; issuer: string;
+}): Promise<void> {
+  const fn = 'local_hse_evidence_link_oauth_login';
+  const connection = moodleConnection(tenantId);
+  const expectedIssuer = process.env.OIDC_ISSUER?.replace(/\/$/, '');
+  if (connection?.authMethod !== 'oauth2' || !connection.oauthIssuerId
+    || typeof connection.oauthBridgeToken !== 'string' || !connection.oauthBridgeToken || !expectedIssuer) {
+    throw new MoodleError('The Moodle OAuth identity bridge is not configured', fn, 'not_configured');
+  }
+  positiveInteger(identity.userId, fn);
+  if (identity.issuer !== expectedIssuer || !/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(identity.hseId)
+    || !/^[a-z0-9][a-z0-9._:@-]{0,254}$/.test(identity.subject) || !identity.identityEmail || identity.identityEmail.length > 254) {
+    throw new MoodleError('Invalid scoped Moodle identity binding', fn, 'invalid_identity');
+  }
+  const result = responseObject(await moodleCall<unknown>(tenantId, fn, {
+    userid: identity.userId, hseid: identity.hseId, subject: identity.subject,
+    identityemail: identity.identityEmail, issuerid: connection.oauthIssuerId, issuerurl: expectedIssuer
+  }), fn);
+  if (result.userid !== identity.userId || result.issuerid !== connection.oauthIssuerId || result.linked !== true) {
+    throw new MoodleError('Moodle did not confirm the exact identity binding', fn, 'invalid_response');
+  }
 }
 
 /** Moodle 5.3 core suspends login and destroys the user's sessions in this call. */

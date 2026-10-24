@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { addUserToCohort, endMoodleUserSessions, enrollUser, findMoodleUserByHseId, inspectMoodleCourse, isUserEnrolled, moodleConnection, moodleCourseUrl,
+import { addUserToCohort, endMoodleUserSessions, enrollUser, findMoodleUserByHseId, inspectMoodleCourse, isUserEnrolled, linkMoodleUser, moodleConnection, moodleCourseUrl,
   provisionMoodleUser, readCompletion, suppressMoodleEmail, suspendMoodleUser } from '../src/lib/server/moodle';
 
 const tenant = 'ffef29ba-5d6b-4a7a-8bdd-07e9508303b5';
@@ -9,9 +9,30 @@ const original = process.env.MOODLE_CONNECTIONS_JSON;
 afterEach(() => {
   process.env.MOODLE_CONNECTIONS_JSON = original;
   vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
 });
 
 describe('Moodle server adapter', () => {
+  it('uses only the dedicated bridge credential and verifies the exact mapped identity result', async () => {
+    vi.stubEnv('OIDC_ISSUER', 'https://identity.example.test/realms/hse');
+    process.env.MOODLE_CONNECTIONS_JSON = JSON.stringify({ [tenant]: { instanceId, baseUrl: 'https://moodle.example.test',
+      token: 'learning-token', authMethod: 'oauth2', oauthIssuerId: 3, oauthBridgeToken: 'bridge-token' } });
+    const identity = { userId: 17, hseId: '11111111-1111-4111-8111-111111111111', subject: 'immutable-subject',
+      identityEmail: 'worker@tenant.login.invalid', issuer: 'https://identity.example.test/realms/hse' };
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ userid: 17, issuerid: 3, linked: true })));
+    vi.stubGlobal('fetch', fetchMock);
+    await linkMoodleUser(tenant, identity);
+    const body = (fetchMock.mock.calls[0][1] as RequestInit).body as URLSearchParams;
+    expect(Object.fromEntries(body)).toMatchObject({ wstoken: 'bridge-token', wsfunction: 'local_hse_evidence_link_oauth_login',
+      userid: '17', issuerid: '3', hseid: identity.hseId, subject: identity.subject,
+      identityemail: identity.identityEmail, issuerurl: identity.issuer });
+    await expect(linkMoodleUser(tenant, { ...identity, issuer: 'https://foreign.example.test' })).rejects.toMatchObject({ code: 'invalid_identity' });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ userid: 18, issuerid: 3, linked: true }))));
+    await expect(linkMoodleUser(tenant, identity)).rejects.toMatchObject({ code: 'invalid_response' });
+    process.env.MOODLE_CONNECTIONS_JSON = JSON.stringify({ [tenant]: { instanceId, baseUrl: 'https://moodle.example.test', token: 'learning-token', authMethod: 'oauth2', oauthIssuerId: 3 } });
+    await expect(linkMoodleUser(tenant, identity)).rejects.toMatchObject({ code: 'not_configured' });
+  });
   it('ends sessions only through the configured plugin and validates its mapped user response', async () => {
     process.env.MOODLE_CONNECTIONS_JSON = JSON.stringify({ [tenant]: { instanceId, baseUrl: 'https://moodle.example.test',
       token: 'test-token', completionEvidence: 'local_hse_evidence' } });
