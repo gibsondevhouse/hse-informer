@@ -4,5 +4,5 @@ import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ cookies, url }) => {
   const destination = await startLogin(cookies, url.searchParams.get('returnTo') ?? '/');
-  throw redirect(302, destination);
+  throw redirect(302, destination, { external: [new URL(process.env.OIDC_ISSUER!).origin] });
 };

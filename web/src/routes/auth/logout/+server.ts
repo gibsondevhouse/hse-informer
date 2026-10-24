@@ -6,5 +6,7 @@ export const POST: RequestHandler = async ({ cookies, locals }) => {
   const actor = locals.actor;
   cookies.delete('hse_session', { path: '/' });
   cookies.delete('hse_oidc_flow', { path: '/' });
-  throw redirect(303, await logoutDestination(actor));
+  const destination = await logoutDestination(actor);
+  const external = destination.startsWith('/') ? [] : [new URL(process.env.OIDC_ISSUER!).origin];
+  throw redirect(303, destination, { external });
 };

@@ -84,7 +84,11 @@ async function main() {
       method, headers: { Authorization: `Bearer ${serviceToken}` }, signal: AbortSignal.timeout(10000) });
   }
   async function signIn(page: any, username: string, password: string, destination: string, mfa = false) {
-    await page.goto(`${ORIGIN}/auth/login?returnTo=${encodeURIComponent(destination)}`, { waitUntil: 'domcontentloaded' });
+    const navigation = await page.goto(`${ORIGIN}/auth/login?returnTo=${encodeURIComponent(destination)}`, { waitUntil: 'domcontentloaded' });
+    assert.ok(navigation, 'HSE sign-in navigation returned no response');
+    assert.equal(navigation.status(), 200, 'HSE sign-in navigation must reach a successful identity-provider login page');
+    assert.equal(new URL(page.url()).origin, new URL(ISSUER).origin,
+      'HSE sign-in navigation must reach the configured identity-provider origin');
     await page.locator('input[name="username"]').fill(username);
     await page.locator('input[name="password"]').fill(password); await page.locator('#kc-login').click();
     if (mfa) {
@@ -319,6 +323,49 @@ async function main() {
     evidence.checkpoints.joinedSourceCompletion = { assignmentId, personId, courseVersionId: courseId, version: completion.courseVersion,
       completedAt: completion.completedAt, score: completion.score, attempts: completion.attempts,
       sourceCompletionId: canonical.completionid, learnerHistoryVisible: true, adminRecordVisible: true, repeatedReadIdempotent: true };
+    phase = 'actual portal sign-out form and identity-provider confirmation';
+    const oldSession = (await workerContext.cookies(ORIGIN)).find((cookie: any) => cookie.name === 'hse_session');
+    assert.ok(oldSession, 'The worker must have an existing portal session before sign-out'); secrets.push(oldSession.value);
+    const logoutResponse = workerPage.waitForResponse((response: any) => new URL(response.url()).pathname === '/auth/logout'
+      && response.request().method() === 'POST');
+    await workerPage.getByRole('button', { name: 'Sign out', exact: true }).click();
+    const logoutHttp = await logoutResponse;
+    assert.equal(logoutHttp.status(), 303, 'The actual portal sign-out form must redirect to the identity provider');
+    const logoutTarget = new URL(logoutHttp.headers().location);
+    assert.equal(logoutTarget.origin, new URL(ISSUER).origin);
+    assert.equal(logoutTarget.pathname, '/realms/hse-dev/protocol/openid-connect/logout');
+    await workerPage.waitForURL((url: URL) => url.origin === new URL(ISSUER).origin
+      || (url.origin === ORIGIN && url.pathname === '/signed-out'), { timeout: 30000 });
+    if (new URL(workerPage.url()).origin === new URL(ISSUER).origin) {
+      await workerPage.locator('#kc-logout[name="confirmLogout"]').click();
+    }
+    await workerPage.waitForURL((url: URL) => url.origin === ORIGIN && url.pathname === '/signed-out', { timeout: 30000 });
+    assert.equal(new URL(workerPage.url()).search, '', 'Coordinated sign-out must not return an unconfirmed-service warning');
+    await expect(workerPage.getByRole('heading', { name: 'You’re signed out of HSE Informer', exact: true })).toBeVisible();
+    assert.equal((await workerContext.request.get(`${ORIGIN}/api/me`)).status(), 401);
+    assert.equal((await workerContext.request.get(`${ORIGIN}/api/me`, { headers: { Cookie: `hse_session=${oldSession.value}` } })).status(), 401,
+      'Replaying the pre-logout portal cookie must not restore its session');
+    phase = 'coordinated sign-out denies the existing Moodle session';
+    await workerPage.goto(`${MOODLE}/course/view.php?id=${scorm.courseid}`, { waitUntil: 'domcontentloaded' });
+    await workerPage.waitForURL((url: URL) => url.origin === MOODLE && url.pathname === '/login/index.php');
+    evidence.checkpoints.coordinatedSignOut = { actualPortalForm: true, identityProviderLogout: true,
+      returnedWithoutWarnings: true, oldPortalCookieDenied: true, oldMoodleSessionDenied: true };
+    phase = 'worker recreates real portal and Moodle sessions after sign-out';
+    const logoutCutoff = (await db.query('SELECT auth_valid_after FROM principals WHERE tenant_id=$1 AND person_id=$2',
+      [TENANT, personId])).rows[0].auth_valid_after;
+    await sleep(Math.max(0, (Math.floor(logoutCutoff.getTime() / 1000) + 1) * 1000 - Date.now() + 20));
+    await signIn(workerPage, printed.username, workerPassword, '/learn');
+    assert.equal((await portal(workerContext, '/api/me')).actor.personId, personId);
+    await expect(workerPage.getByLabel('Show', { exact: true })).toBeEnabled();
+    await workerPage.getByLabel('Show', { exact: true }).selectOption('completed');
+    await workerPage.getByRole('link', { name: 'Open course in Moodle ↗', exact: true }).click();
+    await workerPage.locator('.login-identityproviders a').filter({ hasText: 'HSE portal synthetic SSO' }).click();
+    await workerPage.locator('input[name="username"]').fill(printed.username);
+    await workerPage.locator('input[name="password"]').fill(workerPassword); await workerPage.locator('#kc-login').click();
+    await workerPage.waitForURL((url: URL) => url.origin === MOODLE && url.pathname === '/course/view.php'
+      && url.searchParams.get('id') === String(scorm.courseid));
+    assert.equal(await workerPage.evaluate(() => (window as any).M?.cfg?.userId), moodleUserId);
+    evidence.checkpoints.sessionsRecreatedBeforeDeactivation = true;
     phase = 'admin deactivation revokes existing portal and Moodle sessions';
     await portal(adminContext, `/api/people/${personId}`, 'PATCH', { active: false, reason: 'Synthetic joined deactivation acceptance' });
     assert.equal((await workerContext.request.get(`${ORIGIN}/api/me`)).status(), 401);

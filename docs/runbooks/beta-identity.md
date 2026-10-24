@@ -6,6 +6,8 @@ The `/people` screen manages profiles, accounts, role and site grants, roster im
 
 Set the existing OIDC and application session variables plus `KEYCLOAK_ADMIN_CLIENT_ID` and `KEYCLOAK_ADMIN_CLIENT_SECRET` in the server environment. The service client belongs to the same realm as `OIDC_ISSUER`. Give its service account only `realm-management` roles `manage-users`, `view-users`, and `query-users`. Interactive login and direct password grants must be disabled for this client. Keep credentials out of browser bundles and logs.
 
+The sign-in and sign-out routes permit external redirects only to the configured issuer's origin. HTML responses also add that exact origin to the form-action policy at runtime, so Chromium can follow the sign-out form's redirect to Keycloak. Other CSP directives remain intact; no external wildcard is enabled. Configure the final HTTPS issuer and callbacks through the host environment and verify the actual Sign out button, Keycloak confirmation/return, and previously open Moodle session on that host.
+
 The development fixture includes `hse-account-admin`, whose secret comes from `HSE_ADMIN_CLIENT_SECRET` in `infra/.env`. Copy that value to the web server's `KEYCLOAK_ADMIN_CLIENT_SECRET`. Configure Keycloak SMTP before using email invitations or password reset. The adapter reports a failed identity-provider request as a failed operation; it never substitutes a successful invitation message.
 
 The realm's user profile must permit workers without email and make `hse_person_id` and `hse_tenant_id` administrator-only attributes. The development realm includes that configuration. Keep identity profile fields under HSE Informer's control to prevent account-console edits from diverging from the personnel record.
