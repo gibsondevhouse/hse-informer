@@ -17,4 +17,26 @@ $functions = [
         'capabilities' => 'local/hse_evidence:endsessions',
         'ajax' => false,
     ],
+    'local_hse_evidence_link_oauth_login' => [
+        'classname' => 'local_hse_evidence\external\link_oauth_login',
+        'methodname' => 'execute',
+        'description' => 'Bind an exact server-verified HSE identity to an existing ordinary OAuth learner. Never changes learning records.',
+        'type' => 'write',
+        'capabilities' => 'local/hse_evidence:linkoauth,auth/oauth2:managelinkedlogins',
+        'ajax' => false,
+    ],
+];
+
+// Separate token and restricted service assignment keep identity writes outside
+// the course/enrolment/evidence service. An administrator must enable it.
+$services = [
+    'HSE identity bridge' => [
+        'shortname' => 'hse_identity_bridge',
+        'functions' => ['local_hse_evidence_link_oauth_login'],
+        'restrictedusers' => 1,
+        'enabled' => 0,
+        'requiredcapability' => 'local/hse_evidence:linkoauth',
+        'downloadfiles' => 0,
+        'uploadfiles' => 0,
+    ],
 ];
