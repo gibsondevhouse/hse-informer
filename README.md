@@ -4,6 +4,7 @@ Training administration for chemical manufacturing sites. This repository curren
 
 - [Refactor roadmap](docs/refactor-001.md): target architecture, milestones, verification, and release gates.
 - [Implementation ledger](docs/refactor-001-progress.md): completed groundwork and remaining gates.
+- [Beta plans](docs/plans/beta/README.md): everything needed before the first multi-user test run.
 - [SvelteKit foundation](web/README.md): tenant-scoped PostgreSQL records, Moodle integration, and synthetic development fixtures.
 - [React admin and learner pilot](admin-app/README.md): sample preview, protected Cloudflare D1 pilot routes, and course player.
 - [Local integration fixture](infra/README.md): PostgreSQL, Keycloak, and two isolated Moodle instances for synthetic tests.
