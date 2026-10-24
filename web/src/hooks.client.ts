@@ -1,5 +1,5 @@
 import { page } from '$app/state';
-import type { ClientInit, HandleClientError } from '@sveltejs/kit';
+import type { ClientInit, HandleClientError } from '@sveltejs/kit/hooks';
 import { ClientErrorBudget, clientErrorReport } from './lib/client-error-report';
 
 const budget = new ClientErrorBudget();
