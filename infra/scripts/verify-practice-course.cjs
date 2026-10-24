@@ -6,6 +6,7 @@ const assert = require('node:assert/strict');
 const { readFile, writeFile } = require('node:fs/promises');
 const path = require('node:path');
 const { chromium, expect } = require('../../web/node_modules/@playwright/test');
+const { reviewMoodleFocusGuard } = require('./moodle-focus-guard.cjs');
 const BASE = 'http://localhost:8081';
 const SOURCE = path.resolve(__dirname, '../../content/beta-practice/1.0.0');
 
@@ -144,11 +145,22 @@ async function finish(page, questions, passing) {
 }
 
 async function accessibility(page, label, evidence) {
+  await ready(page);
   const { default: AxeBuilder } = require('../../web/node_modules/@axe-core/playwright');
   const report = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
-  const violations = report.violations.map(v => ({ id: v.id, impact: v.impact, count: v.nodes.length }));
-  evidence.accessibility.push({ screen: label, violations });
-  assert.deepEqual(violations, [], `Accessibility violations on ${label}`);
+  const violations = report.violations.map(v => ({ id: v.id, impact: v.impact, count: v.nodes.length,
+    nodes: v.nodes.map(node => ({ target: node.target,
+      checks: [...node.any, ...node.all, ...node.none].map(check => check.id) })) }));
+  const scan = { screen: label, engine: report.testEngine, violations, reviewedFocusGuards: [] };
+  evidence.accessibility.push(scan);
+  const unresolved = [];
+  for (const violation of report.violations) {
+    if (label === 'native quiz attempt' && new URL(page.url()).pathname === '/mod/quiz/attempt.php'
+      && violation.id === 'aria-hidden-focus') {
+      for (const node of violation.nodes) scan.reviewedFocusGuards.push(await reviewMoodleFocusGuard(page, node));
+    } else unresolved.push(violation.id);
+  }
+  assert.deepEqual(unresolved, [], `Unreviewed accessibility violations on ${label}`);
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), false,
     `Horizontal page overflow on ${label}`);
 }

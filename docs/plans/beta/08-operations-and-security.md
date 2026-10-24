@@ -43,7 +43,7 @@ The production images and private stack now start successfully in CI. The owner 
 
 ### Accessibility
 
-- [ ] Run automated accessibility checks (axe) in the Playwright suite for every beta screen.
+- [ ] Run automated accessibility checks (axe) in the Playwright suite for every beta screen; retain findings and any narrowly verified dispositions in the [accessibility evidence record](../../runbooks/beta-accessibility.md).
 - [ ] Do a manual keyboard and screen-reader pass (NVDA or VoiceOver) on the beta learner portal, profiles, administrative records, and Moodle lessons/assessment. Fix every blocker. Evaluator workflows are deferred.
 
 ## Done when

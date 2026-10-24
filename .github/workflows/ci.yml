@@ -171,7 +171,7 @@ jobs:
           set -a
           source infra/.env
           set +a
-          node --test infra/scripts/test-practice-course.cjs
+          node --test infra/scripts/test-practice-course.cjs infra/scripts/test-practice-accessibility.cjs
           docker compose --env-file infra/.env -f infra/compose.yaml exec -T moodle-a \
             php -l /opt/hse/bootstrap-practice.php
           A="$(docker compose --env-file infra/.env -f infra/compose.yaml exec -T -u www-data moodle-a php /opt/hse/bootstrap-pilot.php)"

@@ -25,6 +25,8 @@ The categories follow the [OWASP Top 10:2025 list](https://top10.owasp.org/2025/
 
 The native Moodle course browser rehearsal and these new response/telemetry checks must pass on the final reviewed commit. CI results are linked from the draft pull request; a green synthetic run does not close the live gates below.
 
+The [accessibility evidence record](beta-accessibility.md) explains the native Quiz's narrowly verified focus-guard disposition, retained raw axe findings and open human testing. An accepted focus guard is not a blanket exemption for hidden controls or a screen-reader acceptance result.
+
 ## Open release gates
 
 - Verify HTTPS, ingress limits, proxy trust, secrets, isolation, and anonymous/authenticated responses on the chosen staging host.
