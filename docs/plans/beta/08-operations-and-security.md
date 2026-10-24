@@ -1,18 +1,19 @@
 # 08 · Operations and security
 
-> **Focused beta scope — 2026-10-24:** Apply deployment, recovery, security, and accessibility work to the core screens in the beta README. Notification/reminder jobs and alerts are required only when those features ship; Moodle is required. Moodle, its course files, PostgreSQL, and Keycloak need recovery coverage.
+> **Focused beta scope — 2026-10-24:** Apply deployment, recovery, security, and accessibility work to the core screens in the beta README. Moodle synchronization/cron and their failure alerts are required. Automated reminder/notification workflows remain deferred. Moodle, its course files, PostgreSQL, and Keycloak need recovery coverage.
 
 **Goal:** a deployed staging environment that real people can use for the test run, with backups, monitoring, and basic security and accessibility checks passed.
 
 ## Why
 
-The production images and private stack now start successfully in CI; a participant staging host has not been selected. Completion history must survive recovery. `admin-app/` remains a visual reference outside the deployed beta image, and its legacy dependency advisories do not describe the `web/` production dependency set.
+The production images and private stack now start successfully in CI. The owner chose company IT to provide hosting on 2026-10-24; the specific environment, cost and operating owners remain unconfirmed. The [IT handoff](../../runbooks/beta-it-handoff.md) lists what that team needs to supply. Completion history must survive recovery. `admin-app/` remains a visual reference outside the deployed beta image, and its legacy dependency advisories do not describe the `web/` production dependency set.
 
 ## Work
 
 ### Environments and deployment
 
-- [ ] Choose hosting for the SvelteKit Node server, managed PostgreSQL 16 or newer, Keycloak, Moodle, and object storage for media and uploads. Record the choice and its cost.
+- [x] Confirm hosting responsibility: company IT, selected by the owner on 2026-10-24.
+- [ ] Confirm IT's actual environment for the SvelteKit Node server, managed PostgreSQL 16 or newer, Keycloak, Moodle, and object storage for media and uploads. Record the topology, operating owners and cost.
 - [ ] Create a staging environment for the test run. Production can wait until after beta.
 - [ ] Deploy from CI on merge to `main`, run migrations as a deploy step, and keep a one-command rollback.
 - [ ] Store secrets in the host's secret manager. No secrets in the repository or in client bundles.

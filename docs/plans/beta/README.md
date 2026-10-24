@@ -2,6 +2,7 @@
 
 **State:** Implementation underway. Core portal and record workflows pass automated checks, including synthetic Moodle and identity-provider checks in CI. Online deployment, course approval, and the participant test run remain open.
 **Scope confirmed:** 2026-10-24 by the product owner.
+**Hosting direction:** Company IT will provide hosting; [IT handoff](../../runbooks/beta-it-handoff.md). The specific environment and operating owners remain to be confirmed.
 
 ## Release goal
 

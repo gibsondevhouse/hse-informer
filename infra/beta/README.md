@@ -1,6 +1,6 @@
 # Beta deployment and recovery
 
-The application image, migration step, worker, alert adapter, and recovery tools are implemented here. **No staging host has been provisioned.** Host/account, public DNS, service ownership, recurring cost, external alert recipient, managed backup/PITR configuration, full-stack recovery, deployment, and rollback remain release checks. `infra/compose.yaml` is a disposable development fixture and must not hold participant data.
+The application image, migration step, worker, alert adapter, and recovery tools are implemented here. **Company IT will provide hosting; no staging host has been provisioned.** Use the [IT handoff](../../docs/runbooks/beta-it-handoff.md) to confirm the actual environment. Host/account, public DNS, service ownership, recurring cost, external alert recipient, managed backup/PITR configuration, chosen-host recovery, deployment, and rollback remain release checks. `infra/compose.yaml` is a disposable development fixture and must not hold participant data.
 
 For one Linux server containing the application, sign-in, Moodle, and databases, use the separate [one server option](single-host/README.md). It uses one generated private settings file and optional automatic HTTPS. The externally hosted services configuration below remains available.
 
@@ -81,4 +81,4 @@ BETA_RESTORE_CONFIRM=isolated-target \
 python3 infra/beta/recovery.py hse-drill --output-evidence /protected-evidence/hse-restore.json
 ```
 
-`node infra/beta/verify-alert.mjs` has verified forced failure delivery to a local synthetic HTTP receiver and nonzero failure on a rejected delivery. Receipt by the real named on-call person remains unverified. Docker is unavailable on the implementation machine; image construction, full Compose startup, CI deployment, TLS, live identity/Moodle behavior, full-stack restore, and rollback are pending the configured staging host.
+`node infra/beta/verify-alert.mjs` has verified forced failure delivery to a local synthetic HTTP receiver and nonzero failure on a rejected delivery. Receipt by the real named on-call person remains unverified. Docker is unavailable on the implementation machine; GitHub CI has verified production image construction/private startup, synthetic identity/Moodle behavior and encrypted full-stack recovery. Deployment through CI, public TLS, real invitation delivery, the chosen host's recovery configuration and application rollback still require verification on company IT's environment.
