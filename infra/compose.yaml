@@ -112,6 +112,7 @@ services:
       - moodle-a-data:/var/moodledata
       - ./.dev-tls/ca.crt:/usr/local/share/ca-certificates/hse-dev.crt:ro
       - ../integrations/moodle-local/hse_evidence:/var/www/moodle/public/local/hse_evidence:ro
+      - ../content/beta-practice/1.0.0:/opt/hse/beta-practice/1.0.0:ro
     depends_on:
       moodle-a-db:
         condition: service_healthy

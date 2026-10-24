@@ -7,6 +7,7 @@ COPY infra/beta/single-host/moodle-entrypoint.sh /usr/local/bin/hse-beta-moodle-
 RUN chmod 0755 /usr/local/bin/hse-beta-moodle-entrypoint \
     && find /var/www/moodle/public/local/hse_evidence -type d -exec chmod 0755 {} \; \
     && find /var/www/moodle/public/local/hse_evidence -type f -exec chmod 0644 {} \; \
-    && rm -f /opt/hse/bootstrap-pilot.php /opt/hse/bootstrap-scorm.php
+    && rm -f /opt/hse/bootstrap-pilot.php /opt/hse/bootstrap-scorm.php \
+        /opt/hse/bootstrap-oauth.php /opt/hse/bootstrap-practice.php
 ENTRYPOINT ["hse-beta-moodle-entrypoint"]
 CMD ["apache2-foreground"]

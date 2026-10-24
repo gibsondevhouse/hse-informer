@@ -162,6 +162,43 @@ jobs:
             infra/moodle-sso-failure.png
           if-no-files-found: ignore
           retention-days: 7
+      - name: Verify native Moodle practice lessons, resume, quiz retries and completion
+        id: native_practice
+        if: ${{ !cancelled() && steps.browser_tools.outcome == 'success' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          set -a
+          source infra/.env
+          set +a
+          node --test infra/scripts/test-practice-course.cjs
+          docker compose --env-file infra/.env -f infra/compose.yaml exec -T moodle-a \
+            php -l /opt/hse/bootstrap-practice.php
+          A="$(docker compose --env-file infra/.env -f infra/compose.yaml exec -T -u www-data moodle-a php /opt/hse/bootstrap-pilot.php)"
+          echo "::add-mask::$(jq -er .token <<<"$A")"
+          echo "::add-mask::$SCORM_LEARNER_PASSWORD"
+          export HSE_PRACTICE_FIXTURE=1
+          export PRACTICE_LEARNER_PASSWORD="$SCORM_LEARNER_PASSWORD"
+          export MOODLE_A_PILOT="$A"
+          MOODLE_PRACTICE_FIXTURE="$(docker compose --env-file infra/.env -f infra/compose.yaml exec -T -u www-data \
+            -e HSE_PRACTICE_FIXTURE=1 -e PRACTICE_LEARNER_PASSWORD="$PRACTICE_LEARNER_PASSWORD" \
+            moodle-a php /opt/hse/bootstrap-practice.php)"
+          export MOODLE_PRACTICE_FIXTURE
+          node infra/scripts/verify-practice-course.cjs browser
+          docker compose --env-file infra/.env -f infra/compose.yaml exec -T -u www-data \
+            moodle-a php /var/www/moodle/admin/cli/cron.php
+          node infra/scripts/verify-practice-course.cjs completion
+      - name: Upload native Moodle practice evidence
+        if: ${{ !cancelled() && (steps.native_practice.outcome == 'success' || steps.native_practice.outcome == 'failure') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-moodle-practice-evidence
+          path: |
+            infra/practice-browser-evidence.json
+            infra/practice-completion-evidence.json
+            infra/practice-browser-failure.png
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Show stack logs on failure
         if: failure()
         run: docker compose --env-file infra/.env -f infra/compose.yaml logs --tail=100
