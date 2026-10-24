@@ -52,6 +52,17 @@ class RecoveryCiGuardrails(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 verifier.validate_target_model(model)
 
+    def test_upload_fixture_initializes_scoped_volume_and_keeps_app_nonroot(self):
+        successful = subprocess.CompletedProcess([], 0, '{"uploadCreated":true}', '')
+        with patch.object(verifier, "helper") as helper:
+            with patch.object(verifier.source, "compose", return_value=successful) as compose:
+                verifier.prepare_upload(Path("/private-ci-fixture"), "fresh-synthetic-uploads")
+                self.assertEqual(helper.call_args.args[1], [("fresh-synthetic-uploads", "/uploads", False)])
+                self.assertTrue(any("os.chown('/uploads',1000,1000)" in str(arg) for arg in helper.call_args.args))
+                self.assertNotIn("--user", compose.call_args.args)
+                self.assertIn("web", compose.call_args.args)
+                self.assertTrue(any("process.getuid()===0" in str(arg) for arg in compose.call_args.args))
+
     def test_private_settings_are_separate_from_evidence_and_marker_is_required(self):
         with tempfile.TemporaryDirectory() as temporary:
             with patch.dict(os.environ, {"CI": "true", "GITHUB_ACTIONS": "true", "RUNNER_TEMP": temporary}, clear=False):

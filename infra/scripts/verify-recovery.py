@@ -197,14 +197,29 @@ def tree_state(work, volumes):
 
 
 def moodle_file(work, recovered=False, create=False):
-    execute = target if recovered else lambda root, *args: source.compose(root / "source", *args)
+    execute = target if recovered else lambda root, *args, **kwargs: source.compose(root / "source", *args, **kwargs)
     operation = ("$file=$storage->create_file_from_string($record," + json.dumps(CANARY) + ");"
                  if create else "$file=$storage->get_file($record['contextid'],$record['component'],$record['filearea'],0,'/',$record['filename']);")
     program = "define('CLI_SCRIPT',true); require('/var/www/moodle/config.php'); "
     program += "$record=['contextid'=>context_system::instance()->id,'component'=>'local_hse_evidence','filearea'=>'recovery_ci','itemid'=>0,'filepath'=>'/','filename'=>'recovery-canary.txt']; $storage=get_file_storage(); "
     program += operation + " if(!$file || $file->get_content()!==" + json.dumps(CANARY) + ") { throw new Exception('Recovery file content mismatch'); } echo json_encode(['fileApiContentVerified'=>true]);"
-    result = execute(work, "exec", "-T", "moodle", "runuser", "-u", "www-data", "--", "php", "-r", program)
+    result = checked(work, "restored-moodle-file" if recovered else "source-moodle-file",
+                     execute(work, "exec", "-T", "moodle", "runuser", "-u", "www-data", "--", "php", "-r", program, check=False))
     return json.loads(result.stdout)
+
+
+def prepare_upload(work, volume):
+    # The app drops ALL capabilities. exec --user 0 does not restore CHOWN;
+    # initialize only this fresh synthetic volume with the scoped helper, then
+    # write the canary through the normal non-root application user.
+    helper(work, [(volume, "/uploads", False)], "python3", "-c",
+           "import os; os.chown('/uploads',1000,1000)")
+    program = "const fs=await import('node:fs'); if(process.getuid()===0)throw new Error('App fixture must remain non-root'); fs.writeFileSync('/app/uploads/recovery-ci.txt'," + json.dumps(CANARY) + "); console.log(JSON.stringify({uploadCreated:true}));"
+    return checked(work, "source-upload", source.compose(work / "source", "exec", "-T", "web", "node", "--input-type=module", "--eval", program, check=False))
+
+
+def phase(name):
+    print(json.dumps({"event": "recovery-ci.phase", "phase": name}), flush=True)
 
 
 def assert_frozen(work):
@@ -264,6 +279,7 @@ def recovered_startup(work):
 def drill(work, evidence):
     settings = load(work)
     source_work = work / "source"
+    phase("source-production-startup")
     source.smoke(source_work, evidence / "source-startup")
     model = json.loads(source.compose(source_work, "--profile", "operations", "--profile", "backup", "config", "--format", "json").stdout)
     source.require(not source.run(["docker", "ps", "--all", "--quiet", "--filter", f"label=com.docker.compose.project={TARGET_PROJECT}"]).stdout.strip(), "Recovery target must start without containers")
@@ -272,13 +288,14 @@ def drill(work, evidence):
         source.run(["docker", "volume", "create", "--label", f"hse.recovery-ci={SOURCE_PROJECT}", name])
     for key in ("postgres-data", "moodle-data", "app-uploads", "moodle-code", "restored"):
         source.require(source.run(["docker", "volume", "inspect", f"{TARGET_PROJECT}_{key}"], check=False).returncode != 0, "Recovery target volumes must be fresh")
-    source.query(source_work, "hse_app", "hse", "HSE_DB_PASSWORD", (source.ROOT / "infra/scripts/fixtures/recovery-ci.sql").read_text())
+    phase("synthetic-record-and-file-fixtures")
+    checked(work, "source-hse-fixture", source.query(source_work, "hse_app", "hse", "HSE_DB_PASSWORD",
+            (source.ROOT / "infra/scripts/fixtures/recovery-ci.sql").read_text(), check=False))
     moodle_file(work, create=True)
-    source.compose(source_work, "exec", "-T", "--user", "0", "web", "node", "--eval",
-                   "require('node:fs').chownSync('/app/uploads',1000,1000)")
-    source.node(source_work, "web", "const fs=await import('node:fs'); fs.writeFileSync('/app/uploads/recovery-ci.txt'," + json.dumps(CANARY) + "); console.log(JSON.stringify({uploadCreated:true}));")
+    prepare_upload(work, model["volumes"]["app-uploads"]["name"])
     # No app, Moodle cron, identity or worker writer remains running while any
     # database or file snapshot is measured, encrypted, or restored.
+    phase("freeze-source-writers")
     source.compose(source_work, "--profile", "operations", "stop", "web", "jobs", "keycloak", "moodle", timeout=180)
     assert_frozen(work)
     copy_frozen_code(work)
@@ -288,6 +305,7 @@ def drill(work, evidence):
     recipient = helper(work, [(EXTRA_VOLUMES["keys"], "/keys", False)], "sh", "-ec",
         "umask 077; age-keygen -o /keys/identity >/dev/null 2>&1; age-keygen -y /keys/identity").stdout.strip()
     source.require(recipient.startswith("age1") and "\n" not in recipient, "Could not create the ephemeral encryption recipient")
+    phase("encrypted-complete-backup")
     backup = json.loads(checked(work, "encrypted-backup", source.compose(source_work, "--profile", "backup", "run", "--rm", "--no-deps",
         "--env", f"AGE_RECIPIENT={recipient}", "--volume", f"{EXTRA_VOLUMES['code']}:/backup-input/moodlecode:ro",
         "--volume", f"{EXTRA_VOLUMES['archive']}:/transfer", "recovery", "backup", "--output", "/transfer/beta.tar.age", check=False, timeout=900)).stdout)
@@ -296,6 +314,7 @@ def drill(work, evidence):
     target(work, "up", "-d", "--no-build", "--wait", "--wait-timeout", "120", "postgres", timeout=180)
     for role, database, variable in (("hse_app", "hse", "HSE_DB_PASSWORD"), ("keycloak", "keycloak", "KEYCLOAK_DB_PASSWORD"), ("moodle", "moodle", "MOODLE_DB_PASSWORD")):
         source.require(target_query(work, role, database, variable, "SELECT count(*) FROM pg_tables WHERE schemaname !~ '^pg_' AND schemaname <> 'information_schema'") == "0", "Every restore database must be empty before recovery")
+    phase("restore-into-empty-target")
     restored = json.loads(checked(work, "isolated-restore", target(work, "run", "--rm", "--no-deps", "recovery", "restore", "--archive", "/transfer/beta.tar.age", "--target-root", "/restore", check=False, timeout=1200)).stdout)
     source.require(restored.get("event") == "restore.verified" and restored.get("countsVerified") and restored.get("evidencePacketVerified")
                    and restored.get("serviceDatabaseCountsVerified") == ["hse", "keycloak", "moodle"], "The exact recovery tool did not verify the complete restored set")
@@ -313,6 +332,7 @@ def drill(work, evidence):
     target_files = tree_state(work, {"moodlecode": f"{TARGET_PROJECT}_moodle-code", "moodledata": f"{TARGET_PROJECT}_moodle-data", "uploads": f"{TARGET_PROJECT}_app-uploads"})
     source.require(source_files == target_files, "Restored runtime file paths, contents or ownership differ from the frozen source")
     assert_frozen(work)
+    phase("recovered-service-startup")
     startup = recovered_startup(work)
     assert_frozen(work)
     source.require(tree_state(work, {"uploads": f"{TARGET_PROJECT}_app-uploads"})["uploads"] == source_files["uploads"], "Recovered app upload changed during startup")
