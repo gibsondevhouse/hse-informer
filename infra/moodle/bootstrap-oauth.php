@@ -52,10 +52,16 @@ if (count($issuers) > 1) { throw new RuntimeException('Ambiguous synthetic issue
 if (!$issuers) {
     $issuer = \core\oauth2\api::create_issuer((object) [
         'name' => 'HSE portal synthetic SSO', 'baseurl' => $issuerurl,
+        // Moodle 5.3's persistent defaults image to null although its database
+        // column is NOT NULL. Supply the same concrete image a form would; this
+        // also avoids guessing a favicon URL that drops the fixture TLS port.
+        'image' => $CFG->wwwroot . '/pix/moodlelogo.svg',
         'clientid' => 'moodle-hse-a', 'clientsecret' => $secret,
         'enabled' => 1, 'showonloginpage' => \core\oauth2\issuer::EVERYWHERE,
         'loginpagename' => 'HSE portal synthetic SSO', 'requireconfirmation' => 1,
         'loginscopes' => 'openid profile email', 'loginscopesoffline' => 'openid profile email',
+        'loginparams' => '', 'loginparamsoffline' => '', 'alloweddomains' => '',
+        'scopessupported' => '', 'servicetype' => 'custom', 'systememail' => null,
         'basicauth' => 0,
     ]);
 } else {
@@ -63,6 +69,12 @@ if (!$issuers) {
     if ($issuer->get('baseurl') !== $issuerurl || $issuer->get('clientid') !== 'moodle-hse-a'
             || !$issuer->get('requireconfirmation') || !$issuer->get('enabled')) {
         throw new RuntimeException('Existing synthetic issuer has unexpected security settings');
+    }
+    // A previous discovery failure can leave the issuer created without usable
+    // endpoints. Repair only through the supported discovery/configuration API.
+    if (!$issuer->get_endpoint_url('authorization') || !$issuer->get_endpoint_url('token')
+            || !$issuer->get_endpoint_url('userinfo')) {
+        \core\oauth2\api::create_endpoints_for_standard_issuer('custom', $issuer);
     }
 }
 $mappings = \core\oauth2\api::get_user_field_mappings($issuer);
